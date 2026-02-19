@@ -16,20 +16,6 @@ paths:
         '503':
           description: Service Unavailable
 
-  /api/v1/library/games:
-    get:
-      tags:
-        - games
-      operationId: listGames
-      summary: Get list of all games with check out status
-      responses:
-        '200':
-          description: List of games with checkout status successfully retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GameList'
-
   /api/v1/library/game:
     post:
       tags:
@@ -56,6 +42,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/library/games:
+    get:
+      tags:
+        - games
+      operationId: listGames
+      summary: Get list of all games with check out status
+      responses:
+        '200':
+          description: List of games with checkout status successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameList'
+
   /api/v1/library/game/{gameId}:
     get:
       tags:
@@ -78,6 +78,10 @@ paths:
                 $ref: '#/components/schemas/Game'
         '404':
           description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       tags:
         - games
@@ -107,6 +111,10 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
         - games
@@ -124,20 +132,10 @@ paths:
           description: Game deleted successfully
         '404':
           description: Game not found
-
-  /api/v1/library/patrons:
-    get:
-      tags:
-        - patrons
-      operationId: listPatrons
-      summary: Get list of all games with check out status
-      responses:
-        '200':
-          description: List of games with checkout status successfully retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PatronList'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/patron:
     post:
@@ -165,6 +163,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/library/patrons:
+    get:
+      tags:
+        - patrons
+      operationId: listPatrons
+      summary: Get list of all games with check out status
+      responses:
+        '200':
+          description: List of games with checkout status successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatronList'
+
   /api/v1/library/patron/{patronId}:
     get:
       tags:
@@ -187,6 +199,10 @@ paths:
                 $ref: '#/components/schemas/Patron'
         '404':
           description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       tags:
         - patrons
@@ -216,6 +232,10 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     delete:
       tags:
@@ -234,6 +254,10 @@ paths:
           description: Patron deleted successfully
         '404':
           description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/checkin:
     post:
@@ -242,7 +266,7 @@ paths:
       operationId: checkInGame
       summary: Check in a game
       description: |
-        Make an idempotent call to check in a game
+        Make an idempotent call to check in a game.
         If the game is already checked in, the most recent library transaction will be returned will be returned
       requestBody:
         required: true
@@ -273,7 +297,7 @@ paths:
       operationId: checkOutGame
       summary: Check out a game
       description: |
-        Make an idempotent call to check out a game
+        Make an idempotent call to check out a game.
         If the game is already checked out, the existing checkout will be returned
       requestBody:
         required: true
@@ -482,8 +506,8 @@ components:
               example: "VALIDATION_ERROR"
             message:
               type: string
-              description: Machine-readable error message
-              example: "patron.name cannot contain more than 100 characters"
+              description: Human-readable error message
+              example: "Validation Error"
             details:
               type: array
               items:
