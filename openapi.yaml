@@ -1,0 +1,316 @@
+openapi: "3.1.0"
+info:
+  title: BG Library
+  version: "1.0"
+servers:
+  - url: https://localhost:8080
+    description: Local dev server
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - health
+      responses:
+        '200':
+          description: OK
+        '503':
+          description: Service Unavailable
+  /api/v1/games:
+    get:
+      tags:
+        - games
+      operationId: listGames
+      summary: Get list of all games with check out status
+      responses:
+        '200':
+          description: List of games with checkout status successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameList'
+  /api/v1/game:
+    get:
+      tags:
+        - games
+      operationId: getGame
+      summary: Get a game
+      parameters:
+        - in: query
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      responses:
+        '200':
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '404':
+          description: Game not found
+    post:
+      tags:
+        - games
+      operationId: addGame
+      summary: Add a game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '201':
+          description: Game added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+    put:
+      tags:
+        - games
+      operationId: updateGame
+      summary: Update an existing game
+      parameters:
+        - in: query
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '204':
+          description: Game successfully updated
+        '404':
+          description: Game not found
+    delete:
+      tags:
+        - games
+      operationId: deleteGame
+      summary: Soft delete a game
+      parameters:
+        - in: query
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      responses:
+        '204':
+          description: Game deleted successfully
+        '404':
+          description: Game not found
+  /api/v1/patrons:
+    get:
+      tags:
+        - patrons
+      operationId: listPatrons
+      summary: Get list of all games with check out status
+      responses:
+        '200':
+          description: List of games with checkout status successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatronList'
+  /api/v1/patron:
+    get:
+      tags:
+        - patrons
+      operationId: getPatron
+      summary: Get a patron
+      parameters:
+        - in: query
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Patron ID
+      responses:
+        '200':
+          description: Patron found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patron'
+        '404':
+          description: Patron not found
+    post:
+      tags:
+        - patrons
+      operationId: addPatron
+      summary: Add a patron
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatronRequest'
+      responses:
+        '201':
+          description: Patron added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patron'
+    put:
+      tags:
+        - patrons
+      operationId: updatePatron
+      summary: Update an existing patron
+      parameters:
+        - in: query
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatronRequest'
+      responses:
+        '204':
+          description: Patron successfully updated
+        '404':
+          description: Patron not found
+
+    delete:
+      tags:
+        - patrons
+      operationId: deletePatron
+      summary: Soft delete a patron
+      parameters:
+        - in: query
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Patron ID
+      responses:
+        '204':
+          description: Patron deleted successfully
+        '404':
+          description: Patron not found
+
+components:
+  schemas:
+    GameStatus:
+      type: object
+      required:
+        - game
+      description: Game with check out info
+      properties:
+        game:
+          $ref: "#/components/schemas/Game"
+        patron:
+          $ref: "#/components/schemas/Patron"
+        checkedOutAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the game was checked out
+          example: "2026-01-31T12:00:00Z"
+    Game:
+      type: object
+      required:
+        - gameId
+        - title
+        - createdAt
+      description: A game in the library
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          description: Game ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the board game
+          example: "Catan"
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the game was added to library in UTC
+          example: "2026-01-31T12:00:00Z"
+    CreateGameRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the board game
+          example: "Catan"
+      description: Request payload for creating a new game
+    Patron:
+      type: object
+      required:
+        - patronId
+        - name
+        - createdAt
+      description: A library patron
+      properties:
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the patron
+          example: "John Smith"
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the patron was added to library in UTC
+          example: "2026-01-31T12:00:00Z"
+    CreatePatronRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the patron
+          example: "John Smith"
+      description: Request payload for creating a new patron
+    GameList:
+      type: object
+      required:
+        - games
+      description: List of games with check out info
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameStatus'
+          description: Array of the game statuses
+    PatronList:
+      type: object
+      required:
+        - patron
+      description: List of patrons with check out info
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patron'
+          description: Array of patrons
