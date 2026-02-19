@@ -1,0 +1,536 @@
+openapi: "3.1.0"
+info:
+  title: BG Library
+  version: "1.0"
+servers:
+  - url: https://localhost:8080
+    description: Local dev server
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - health
+      responses:
+        '204':
+          description: Service healthy
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/game:
+    post:
+      tags:
+        - games
+      operationId: addGame
+      summary: Add a game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '201':
+          description: Game added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/games:
+    get:
+      tags:
+        - games
+      operationId: listGames
+      summary: Get list of all games with check out status
+      responses:
+        '200':
+          description: List of games with checkout status successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameList'
+
+  /api/v1/library/game/{gameId}:
+    get:
+      tags:
+        - games
+      operationId: getGame
+      summary: Get a game
+      parameters:
+        - in: path
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      responses:
+        '200':
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - games
+      operationId: updateGame
+      summary: Update an existing game
+      parameters:
+        - in: path
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '204':
+          description: Game successfully updated
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - games
+      operationId: deleteGame
+      summary: Soft delete a game
+      parameters:
+        - in: path
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      responses:
+        '204':
+          description: Game deleted successfully
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/patron:
+    post:
+      tags:
+        - patrons
+      operationId: addPatron
+      summary: Add a patron
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatronRequest'
+      responses:
+        '201':
+          description: Patron added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patron'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/patrons:
+    get:
+      tags:
+        - patrons
+      operationId: listPatrons
+      summary: Get list of all games with check out status
+      responses:
+        '200':
+          description: List of games with checkout status successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatronList'
+
+  /api/v1/library/patron/{patronId}:
+    get:
+      tags:
+        - patrons
+      operationId: getPatron
+      summary: Get a patron
+      parameters:
+        - in: path
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Patron ID
+      responses:
+        '200':
+          description: Patron found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patron'
+        '404':
+          description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - patrons
+      operationId: updatePatron
+      summary: Update an existing patron
+      parameters:
+        - in: path
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatronRequest'
+      responses:
+        '204':
+          description: Patron successfully updated
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - patrons
+      operationId: deletePatron
+      summary: Soft delete a patron
+      parameters:
+        - in: path
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Patron ID
+      responses:
+        '204':
+          description: Patron deleted successfully
+        '404':
+          description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/checkin:
+    post:
+      tags:
+        - transactions
+      operationId: checkInGame
+      summary: Check in a game
+      description: |
+        Make an idempotent call to check in a game.
+        If the game is already checked in, the most recent library transaction will be returned will be returned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '201':
+          description: Check in successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryTransaction'
+        '204':
+          description: This game was never checked out
+        '400':
+          description: Game/Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/checkout:
+    post:
+      tags:
+        - transactions
+      operationId: checkOutGame
+      summary: Check out a game
+      description: |
+        Make an idempotent call to check out a game.
+        If the game is already checked out, the existing checkout will be returned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '201':
+          description: Check out successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryTransaction'
+        '400':
+          description: Game/Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    GameStatus:
+      type: object
+      required:
+        - game
+      description: Game with check out info
+      properties:
+        game:
+          $ref: "#/components/schemas/Game"
+        patron:
+          $ref: "#/components/schemas/Patron"
+        checkedOutAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the game was checked out
+          example: "2026-01-31T12:00:00Z"
+
+    Game:
+      type: object
+      required:
+        - gameId
+        - title
+        - createdAt
+      description: A game in the library
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          description: Game ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the board game
+          example: "Catan"
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the game was added to library in UTC
+          example: "2026-01-31T12:00:00Z"
+
+    CreateGameRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the board game
+          example: "Catan"
+      description: Request payload for creating a new game
+
+    Patron:
+      type: object
+      required:
+        - patronId
+        - name
+        - createdAt
+      description: A library patron
+      properties:
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the patron
+          example: "John Smith"
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the patron was added to library in UTC
+          example: "2026-01-31T12:00:00Z"
+
+    CreatePatronRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name of the patron
+          example: "John Smith"
+      description: Request payload for creating a new patron
+
+    GameList:
+      type: object
+      required:
+        - games
+      description: List of games with check out info
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameStatus'
+          description: Array of the game statuses
+
+    PatronList:
+      type: object
+      required:
+        - patron
+      description: List of patrons with check out info
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patron'
+          description: Array of patrons
+
+    TransactionRequest:
+      type: object
+      required:
+        - patronId
+        - gameId
+      properties:
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        gameId:
+          type: string
+          format: uuid
+          description: Game ID
+          example: "cc4bda14-ee18-45c0-b09b-a1dcd18c0df9"
+      description: Request payload for making a check in/out transaction
+
+    LibraryTransaction:
+      type: object
+      required:
+        - patronId
+        - gameId
+        - transactionType
+        - timestamp
+      properties:
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        gameId:
+          type: string
+          format: uuid
+          description: Game ID
+          example: "cc4bda14-ee18-45c0-b09b-a1dcd18c0df9"
+        transactionType:
+          type: string
+          enum:
+            - CHECK_OUT
+            - CHECK_IN
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the transaction occurred in UTC
+          example: "2026-01-31T12:00:00Z"
+      description: Request payload for making a check in/out transaction
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - INTERNAL_ERROR
+                - NOT_FOUND
+              description: Machine readable error code
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "Validation Error"
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+              description: Array of specific field errors
+      description: Response when errors occur
+
+    ErrorDetail:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          description: The input field that caused the error
+          example: "title"
+        message:
+          type: string
+          description: Human-readable error message for this field
+          example: "Title cannot exceed 100 characters"
+      description: Details about specific errors
