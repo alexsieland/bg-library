@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Server struct{}
@@ -38,9 +39,10 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 	panic("implement me")
 }
 
-func (Server) GetGame(ctx *gin.Context) {
+func (Server) GetGame(ctx *gin.Context, gameId string) {
+	gameUuid, _ := uuid.Parse(gameId)
 	resp := Game{
-		GameId:    "776e4960-ce84-4b73-a71e-62839db0ecab",
+		GameId:    gameUuid,
 		Title:     "Catan",
 		CreatedAt: time.Now(),
 	}
