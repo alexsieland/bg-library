@@ -15,7 +15,7 @@ paths:
           description: OK
         '503':
           description: Service Unavailable
-  /api/v1/games:
+  /api/v1/library/games:
     get:
       tags:
         - games
@@ -28,28 +28,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GameList'
-  /api/v1/game:
-    get:
-      tags:
-        - games
-      operationId: getGame
-      summary: Get a game
-      parameters:
-        - in: query
-          name: gameId
-          schema:
-            type: string
-          required: true
-          description: Game ID
-      responses:
-        '200':
-          description: Game found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Game'
-        '404':
-          description: Game not found
+  /api/v1/library/game:
     post:
       tags:
         - games
@@ -68,13 +47,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Game'
+  /api/v1/library/game/{gameId}:
+    get:
+      tags:
+        - games
+      operationId: getGame
+      summary: Get a game
+      parameters:
+        - in: path
+          name: gameId
+          schema:
+            type: string
+          required: true
+          description: Game ID
+      responses:
+        '200':
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '404':
+          description: Game not found
     put:
       tags:
         - games
       operationId: updateGame
       summary: Update an existing game
       parameters:
-        - in: query
+        - in: path
           name: gameId
           schema:
             type: string
@@ -97,7 +98,7 @@ paths:
       operationId: deleteGame
       summary: Soft delete a game
       parameters:
-        - in: query
+        - in: path
           name: gameId
           schema:
             type: string
@@ -108,7 +109,7 @@ paths:
           description: Game deleted successfully
         '404':
           description: Game not found
-  /api/v1/patrons:
+  /api/v1/library/patrons:
     get:
       tags:
         - patrons
@@ -121,28 +122,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PatronList'
-  /api/v1/patron:
-    get:
-      tags:
-        - patrons
-      operationId: getPatron
-      summary: Get a patron
-      parameters:
-        - in: query
-          name: patronId
-          schema:
-            type: string
-          required: true
-          description: Patron ID
-      responses:
-        '200':
-          description: Patron found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Patron'
-        '404':
-          description: Patron not found
+  /api/v1/library/patron:
     post:
       tags:
         - patrons
@@ -161,13 +141,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Patron'
+  /api/v1/library/patron/{patronId}:
+    get:
+      tags:
+        - patrons
+      operationId: getPatron
+      summary: Get a patron
+      parameters:
+        - in: path
+          name: patronId
+          schema:
+            type: string
+          required: true
+          description: Patron ID
+      responses:
+        '200':
+          description: Patron found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patron'
+        '404':
+          description: Patron not found
     put:
       tags:
         - patrons
       operationId: updatePatron
       summary: Update an existing patron
       parameters:
-        - in: query
+        - in: path
           name: patronId
           schema:
             type: string
@@ -191,7 +193,7 @@ paths:
       operationId: deletePatron
       summary: Soft delete a patron
       parameters:
-        - in: query
+        - in: path
           name: patronId
           schema:
             type: string
@@ -202,7 +204,56 @@ paths:
           description: Patron deleted successfully
         '404':
           description: Patron not found
-
+  /api/v1/library/checkin:
+    post:
+      tags:
+        - transactions
+      operationId: checkInGame
+      summary: Check in a game
+      description: |
+        Make an idempotent call to check in a game
+        If the game is already checked in, the most recent library transaction will be returned will be returned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '201':
+          description: Check in successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryTransaction'
+        '204':
+          description: This game was never checked out
+        '400':
+          description: Game/Patron not found
+  /api/v1/library/checkout:
+    post:
+      tags:
+        - transactions
+      operationId: checkOutGame
+      summary: Check out a game
+      description: |
+        Make an idempotent call to check out a game
+        If the game is already checked out, the existing checkout will be returned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '201':
+          description: Check out successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryTransaction'
+        '400':
+          description: Game/Patron not found
 components:
   schemas:
     GameStatus:
@@ -314,3 +365,49 @@ components:
           items:
             $ref: '#/components/schemas/Patron'
           description: Array of patrons
+    TransactionRequest:
+      type: object
+      required:
+        - patronId
+        - gameId
+      properties:
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        gameId:
+          type: string
+          format: uuid
+          description: Game ID
+          example: "cc4bda14-ee18-45c0-b09b-a1dcd18c0df9"
+      description: Request payload for making a check in/out transaction
+    LibraryTransaction:
+      type: object
+      required:
+        - patronId
+        - gameId
+        - transactionType
+        - timestamp
+      properties:
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        gameId:
+          type: string
+          format: uuid
+          description: Game ID
+          example: "cc4bda14-ee18-45c0-b09b-a1dcd18c0df9"
+        transactionType:
+          type: string
+          enum:
+            - CHECK_OUT
+            - CHECK_IN
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the transaction occurred in UTC
+          example: "2026-01-31T12:00:00Z"
+      description: Request payload for making a check in/out transaction
