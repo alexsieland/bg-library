@@ -15,6 +15,10 @@ paths:
           description: OK
         '503':
           description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/game:
     post:
