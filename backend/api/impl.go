@@ -19,7 +19,7 @@ func (s Server) GetApiV1Health(c *gin.Context) {
 	panic("implement me")
 }
 
-func (s Server) CheckInGame(c *gin.Context) {
+func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
 	//TODO implement me
 	panic("implement me")
 }
