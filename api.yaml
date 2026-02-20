@@ -272,23 +272,18 @@ paths:
       description: |
         Make an idempotent call to check in a game.
         If the game is already checked in, the most recent library transaction will be returned will be returned
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransactionRequest'
+      parameters:
+        - in: query
+          name: transactionId
+          schema:
+            type: string
+          required: true
+          description: Transaction ID
       responses:
-        '201':
-          description: Check in successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LibraryTransaction'
         '204':
-          description: This game was never checked out
-        '400':
-          description: Game/Patron not found
+          description: Check in successful
+        '404':
+          description: Transaction not found
           content:
             application/json:
               schema:
@@ -308,7 +303,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TransactionRequest'
+              $ref: '#/components/schemas/CheckOutRequest'
       responses:
         '201':
           description: Check out successful
@@ -441,7 +436,7 @@ components:
             $ref: '#/components/schemas/Patron'
           description: Array of patrons
 
-    TransactionRequest:
+    CheckOutRequest:
       type: object
       required:
         - patronId
@@ -462,11 +457,16 @@ components:
     LibraryTransaction:
       type: object
       required:
+        - id
         - patronId
         - gameId
-        - transactionType
-        - timestamp
+        - checkoutTimestamp
       properties:
+        id:
+          type: string
+          format: uuid
+          description: Transaction ID
+          example: "f13bb82c-18dd-4a94-a878-44ca6706e2d9"
         patronId:
           type: string
           format: uuid
@@ -477,11 +477,6 @@ components:
           format: uuid
           description: Game ID
           example: "cc4bda14-ee18-45c0-b09b-a1dcd18c0df9"
-        transactionType:
-          type: string
-          enum:
-            - CHECK_OUT
-            - CHECK_IN
         timestamp:
           type: string
           format: date-time

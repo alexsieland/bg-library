@@ -1,0 +1,24 @@
+name: bg-library
+services:
+  db:
+    image: postgres:18.2
+    restart: always
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=librarydb
+    networks:
+      - server-side
+    ports:
+      - 5432:5432
+    volumes:
+      - db-data:/var/lib/postgresql/18/data
+      - ./db/initdb:/docker-entrypoint-initdb.d
+
+networks:
+  client-side: {}
+  server-side: {}
+
+volumes:
+  backend-cache: {}
+  db-data: {}
