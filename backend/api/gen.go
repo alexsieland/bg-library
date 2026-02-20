@@ -20,11 +20,14 @@ const (
 	VALIDATIONERROR ErrorResponseErrorCode = "VALIDATION_ERROR"
 )
 
-// Defines values for LibraryTransactionTransactionType.
-const (
-	CHECKIN  LibraryTransactionTransactionType = "CHECK_IN"
-	CHECKOUT LibraryTransactionTransactionType = "CHECK_OUT"
-)
+// CheckOutRequest Request payload for making a check in/out transaction
+type CheckOutRequest struct {
+	// GameId Game ID
+	GameId openapi_types.UUID `json:"gameId"`
+
+	// PatronId Patron ID
+	PatronId openapi_types.UUID `json:"patronId"`
+}
 
 // CreateGameRequest Request payload for creating a new game
 type CreateGameRequest struct {
@@ -99,16 +102,15 @@ type LibraryTransaction struct {
 	// GameId Game ID
 	GameId openapi_types.UUID `json:"gameId"`
 
+	// Id Transaction ID
+	Id openapi_types.UUID `json:"id"`
+
 	// PatronId Patron ID
 	PatronId openapi_types.UUID `json:"patronId"`
 
 	// Timestamp ISO 8601 timestamp when the transaction occurred in UTC
-	Timestamp       time.Time                         `json:"timestamp"`
-	TransactionType LibraryTransactionTransactionType `json:"transactionType"`
+	Timestamp *time.Time `json:"timestamp,omitempty"`
 }
-
-// LibraryTransactionTransactionType defines model for LibraryTransaction.TransactionType.
-type LibraryTransactionTransactionType string
 
 // Patron A library patron
 type Patron struct {
@@ -128,20 +130,14 @@ type PatronList struct {
 	Games *[]Patron `json:"games,omitempty"`
 }
 
-// TransactionRequest Request payload for making a check in/out transaction
-type TransactionRequest struct {
-	// GameId Game ID
-	GameId openapi_types.UUID `json:"gameId"`
-
-	// PatronId Patron ID
-	PatronId openapi_types.UUID `json:"patronId"`
+// CheckInGameParams defines parameters for CheckInGame.
+type CheckInGameParams struct {
+	// TransactionId Transaction ID
+	TransactionId string `form:"transactionId" json:"transactionId"`
 }
 
-// CheckInGameJSONRequestBody defines body for CheckInGame for application/json ContentType.
-type CheckInGameJSONRequestBody = TransactionRequest
-
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.
-type CheckOutGameJSONRequestBody = TransactionRequest
+type CheckOutGameJSONRequestBody = CheckOutRequest
 
 // AddGameJSONRequestBody defines body for AddGame for application/json ContentType.
 type AddGameJSONRequestBody = CreateGameRequest
@@ -162,7 +158,7 @@ type ServerInterface interface {
 	GetApiV1Health(c *gin.Context)
 	// Check in a game
 	// (POST /api/v1/library/checkin)
-	CheckInGame(c *gin.Context)
+	CheckInGame(c *gin.Context, params CheckInGameParams)
 	// Check out a game
 	// (POST /api/v1/library/checkout)
 	CheckOutGame(c *gin.Context)
@@ -223,6 +219,26 @@ func (siw *ServerInterfaceWrapper) GetApiV1Health(c *gin.Context) {
 // CheckInGame operation middleware
 func (siw *ServerInterfaceWrapper) CheckInGame(c *gin.Context) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CheckInGameParams
+
+	// ------------- Required query parameter "transactionId" -------------
+
+	if paramValue := c.Query("transactionId"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument transactionId is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "transactionId", c.Request.URL.Query(), &params.TransactionId)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter transactionId: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -230,7 +246,7 @@ func (siw *ServerInterfaceWrapper) CheckInGame(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CheckInGame(c)
+	siw.Handler.CheckInGame(c, params)
 }
 
 // CheckOutGame operation middleware
