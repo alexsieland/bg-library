@@ -1,16 +1,31 @@
 name: bg-library
 services:
+  backend:
+    image: alexsieland/bg-library:latest
+    restart: always
+    environment:
+      - DB_PORT
+      - DB_HOST
+      - DB_USER
+      - DB_PASSWORD
+      - DB_NAME
+      - GIN_MODE
+    networks:
+      - server-side
+      - client-side
+    ports:
+      - 8080:8080
   db:
     image: postgres:18.2
     restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=librarydb
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     networks:
       - server-side
     ports:
-      - 5432:5432
+      - ${DB_PORT}:5432
     volumes:
       - db-data:/var/lib/postgresql/18/data
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql

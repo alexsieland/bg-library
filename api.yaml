@@ -3,7 +3,7 @@ info:
   title: BG Library
   version: "1.0"
 servers:
-  - url: https://localhost:8080
+  - url: http://localhost:8080
     description: Local dev server
 paths:
   /api/v1/health:

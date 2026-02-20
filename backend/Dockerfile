@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM golang:1.25.7
 
 WORKDIR /usr/src/app
@@ -7,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -v -o /usr/local/bin/app ./...
+RUN go build -v -o /usr/local/bin/app ./
 
 EXPOSE 8080
 
