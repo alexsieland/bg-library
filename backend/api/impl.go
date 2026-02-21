@@ -1,17 +1,26 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-type Server struct{}
+type Server struct {
+	database *db.LibraryDatabase
+	queries  *db.Queries
+}
 
 func NewServer() Server {
-	return Server{}
+	d := db.NewLibraryDatabase()
+	return Server{
+		database: &d,
+		queries:  db.New(d),
+	}
 }
 
 func (s Server) GetApiV1Health(c *gin.Context) {
@@ -39,7 +48,7 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 	panic("implement me")
 }
 
-func (Server) GetGame(ctx *gin.Context, gameId string) {
+func (Server) GetGame(c *gin.Context, gameId string) {
 	gameUuid, _ := uuid.Parse(gameId)
 	resp := Game{
 		GameId:    gameUuid,
@@ -47,7 +56,7 @@ func (Server) GetGame(ctx *gin.Context, gameId string) {
 		CreatedAt: time.Now(),
 	}
 
-	ctx.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, resp)
 }
 
 func (s Server) UpdateGame(c *gin.Context, gameId string) {
@@ -56,8 +65,15 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 }
 
 func (s Server) ListGames(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	games, error := s.queries.ListGames(c.Request.Context(), db.ListGamesParams{
+		Limit:  999,
+		Offset: 0,
+	})
+	if error != nil {
+		log.Printf("Error listing games: %v", error)
+		c.AbortWithError(http.StatusInternalServerError, error)
+	}
+	c.JSON(http.StatusOK, games)
 }
 
 func (s Server) AddPatron(c *gin.Context) {

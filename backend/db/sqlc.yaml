@@ -5,8 +5,8 @@ sql:
     schema: "schema.sql"
     gen:
       go:
-        package: "internal"
-        out: "db/sdlc/sdlc-gen"
+        package: "db"
+        out: "./"
         sql_package: "pgx/v5"
         output_batch_file_name: "batch.gen.go"
         output_db_file_name: "db.gen.go"
