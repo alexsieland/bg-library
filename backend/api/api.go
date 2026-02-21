@@ -3,7 +3,6 @@ package api
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
@@ -51,9 +50,8 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 func (Server) GetGame(c *gin.Context, gameId string) {
 	gameUuid, _ := uuid.Parse(gameId)
 	resp := Game{
-		GameId:    gameUuid,
-		Title:     "Catan",
-		CreatedAt: time.Now(),
+		GameId: gameUuid,
+		Title:  "Catan",
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -65,15 +63,22 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 }
 
 func (s Server) ListGames(c *gin.Context) {
-	games, error := s.queries.ListGames(c.Request.Context(), db.ListGamesParams{
+	dbGameStatusList, error := s.queries.ListGamesStatus(c.Request.Context(), db.ListGamesStatusParams{
 		Limit:  999,
 		Offset: 0,
 	})
+
 	if error != nil {
 		log.Printf("Error listing games: %v", error)
 		c.AbortWithError(http.StatusInternalServerError, error)
 	}
-	c.JSON(http.StatusOK, games)
+
+	gameList := make([]GameStatus, len(dbGameStatusList))
+	for i, dbGameStatus := range dbGameStatusList {
+		gameList[i] = ConvertToOpenAPIGameStatus(dbGameStatus)
+	}
+
+	c.JSON(http.StatusOK, GameList{Games: gameList})
 }
 
 func (s Server) AddPatron(c *gin.Context) {

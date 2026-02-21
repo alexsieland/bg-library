@@ -341,7 +341,6 @@ components:
       required:
         - gameId
         - title
-        - createdAt
       description: A game in the library
       properties:
         gameId:
@@ -355,11 +354,6 @@ components:
           maxLength: 100
           description: The name of the board game
           example: "Catan"
-        createdAt:
-          type: string
-          format: date-time
-          description: ISO 8601 timestamp when the game was added to library in UTC
-          example: "2026-01-31T12:00:00Z"
 
     CreateGameRequest:
       type: object
@@ -393,11 +387,6 @@ components:
           maxLength: 100
           description: The name of the patron
           example: "John Smith"
-        createdAt:
-          type: string
-          format: date-time
-          description: ISO 8601 timestamp when the patron was added to library in UTC
-          example: "2026-01-31T12:00:00Z"
 
     CreatePatronRequest:
       type: object
