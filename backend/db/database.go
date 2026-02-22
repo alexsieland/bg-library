@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/caarlos0/env/v11"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,8 +20,6 @@ type databaseConfig struct {
 	DatabaseName string `env:"DB_NAME" envDefault:"librarydb"`
 }
 
-var config = databaseConfig{}
-
 func (conf databaseConfig) databaseURL() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", conf.User, conf.Password, conf.Host, conf.Port, conf.DatabaseName)
 }
@@ -30,14 +29,18 @@ type LibraryDatabase struct {
 	dbConfig databaseConfig
 }
 
-func NewLibraryDatabase() LibraryDatabase {
-	return LibraryDatabase{
-		dbConfig: databaseConfig{},
+func NewLibraryDatabase() *LibraryDatabase {
+	dbConfig := databaseConfig{}
+	if err := env.Parse(&dbConfig); err != nil {
+		log.Printf("Failed to parse database config from environment: %v", err)
+	}
+	return &LibraryDatabase{
+		dbConfig: dbConfig,
 	}
 }
 
-func (database LibraryDatabase) Connect() error {
-	poolConfig, err := pgxpool.ParseConfig(config.databaseURL())
+func (database *LibraryDatabase) Connect() error {
+	poolConfig, err := pgxpool.ParseConfig(database.dbConfig.databaseURL())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to parse DATABASE_URL: %s\n", err)
 		return err
@@ -47,25 +50,23 @@ func (database LibraryDatabase) Connect() error {
 	if err != nil {
 		log.Fatalln("Unable to create connection pool:", err)
 	}
-
-	defer database.pool.Close()
 	return nil
 }
 
-func (database LibraryDatabase) Close() {
+func (database *LibraryDatabase) Close() {
 	if database.pool != nil {
 		database.pool.Close()
 	}
 }
 
-func (database LibraryDatabase) Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error) {
+func (database *LibraryDatabase) Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error) {
 	return database.pool.Exec(ctx, s, i...)
 }
 
-func (database LibraryDatabase) Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error) {
+func (database *LibraryDatabase) Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error) {
 	return database.pool.Query(ctx, s, i...)
 }
 
-func (database LibraryDatabase) QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row {
+func (database *LibraryDatabase) QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row {
 	return database.pool.QueryRow(ctx, s, i...)
 }

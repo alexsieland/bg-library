@@ -7,18 +7,19 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Server struct {
-	database *db.LibraryDatabase
+	Database *db.LibraryDatabase
 	queries  *db.Queries
 }
 
 func NewServer() Server {
-	d := db.NewLibraryDatabase()
+	database := db.NewLibraryDatabase()
 	return Server{
-		database: &d,
-		queries:  db.New(d),
+		Database: database,
+		queries:  db.New(database),
 	}
 }
 
@@ -63,14 +64,14 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 }
 
 func (s Server) ListGames(c *gin.Context) {
-	dbGameStatusList, error := s.queries.ListGamesStatus(c.Request.Context(), db.ListGamesStatusParams{
+	dbGameStatusList, err := s.queries.ListGamesStatus(c.Request.Context(), db.ListGamesStatusParams{
 		Limit:  999,
 		Offset: 0,
 	})
 
-	if error != nil {
-		log.Printf("Error listing games: %v", error)
-		c.AbortWithError(http.StatusInternalServerError, error)
+	if err != nil {
+		log.Printf("Error listing games: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
 	}
 
 	gameList := make([]GameStatus, len(dbGameStatusList))
@@ -82,18 +83,36 @@ func (s Server) ListGames(c *gin.Context) {
 }
 
 func (s Server) AddPatron(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	dbPatron, err := s.queries.CreatePatron(c.Request.Context(), c.Params.ByName("name"))
+	if err != nil {
+		log.Printf("Error creating patron: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, ConvertToOpenAPIPatron(dbPatron))
 }
 
 func (s Server) DeletePatron(c *gin.Context, patronId string) {
-	//TODO implement me
-	panic("implement me")
+	err := s.queries.DeletePatron(c.Request.Context(), ConvertToPgTypeUUID(patronId))
+	if err != nil {
+		log.Printf("Error deleting patron: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) GetPatron(c *gin.Context, patronId string) {
-	//TODO implement me
-	panic("implement me")
+	dbPatron, err := s.queries.GetPatron(c.Request.Context(), ConvertToPgTypeUUID(patronId))
+	if err != nil {
+		log.Printf("Error getting patron: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, ConvertToOpenAPIPatron(dbPatron))
 }
 
 func (s Server) UpdatePatron(c *gin.Context, patronId string) {
@@ -102,6 +121,17 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 }
 
 func (s Server) ListPatrons(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	dbPatronList, err := s.queries.ListPatrons(c.Request.Context(), db.ListPatronsParams{
+		Limit:  999,
+		Offset: 0,
+	})
+	if err != nil {
+		log.Printf("Error listing patrons: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+	}
+	patronList := make([]Patron, len(dbPatronList))
+	for i, dbPatron := range dbPatronList {
+		patronList[i] = ConvertToOpenAPIPatron(dbPatron)
+	}
+	c.JSON(http.StatusOK, patronList)
 }

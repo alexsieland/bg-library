@@ -9,7 +9,7 @@ CREATE TABLE games (
 
 CREATE TABLE patrons (
     id UUID DEFAULT gen_random_uuid(),
-    full_name VARCHAR(100) NOT NULL,
+    full_name VARCHAR(100) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id)
