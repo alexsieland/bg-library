@@ -9,7 +9,7 @@ CREATE TABLE games (
 
 CREATE TABLE patrons (
     id UUID DEFAULT gen_random_uuid(),
-    full_name VARCHAR(100) NOT NULL,
+    full_name VARCHAR(100) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id)
@@ -19,7 +19,7 @@ CREATE TABLE transactions (
     id UUID DEFAULT gen_random_uuid(),
     game_id UUID REFERENCES games(id),
     patron_id UUID REFERENCES patrons(id),
-    checkout_timestamp TIMESTAMP DEFAULT NOW(),
+    checkout_timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
     checkin_timestamp TIMESTAMP,
     PRIMARY KEY (id)
 );
