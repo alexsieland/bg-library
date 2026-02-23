@@ -61,6 +61,15 @@ func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
 	}
 }
 
+func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
+	return LibraryTransaction{
+		GameId:    uuid.MustParse(dbTransaction.GameID.String()),
+		Id:        uuid.MustParse(dbTransaction.ID.String()),
+		PatronId:  uuid.MustParse(dbTransaction.PatronID.String()),
+		Timestamp: dbTransaction.CheckoutTimestamp.Time,
+	}
+}
+
 func FromGame(dbGame db.Game) Game {
 	return Game{
 		GameId: uuid.MustParse(dbGame.ID.String()),

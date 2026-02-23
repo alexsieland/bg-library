@@ -23,18 +23,44 @@ func NewServer() Server {
 }
 
 func (s Server) GetApiV1Health(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
+	if err != nil {
+		log.Printf("Error checking database health: %v", err)
+		c.Status(http.StatusServiceUnavailable)
+		return
+	}
+	c.Status(http.StatusOK)
 }
 
 func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
-	//TODO implement me
-	panic("implement me")
+	err := s.queries.CheckInGame(c.Request.Context(), ConvertToPgTypeUUID(params.TransactionId))
+	if err != nil {
+		log.Printf("Error checking in game: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) CheckOutGame(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	var jsonObject CheckOutGameJSONRequestBody
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		//TODO setup validation error
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	transaction, err := s.queries.CheckOutGame(c.Request.Context(), db.CheckOutGameParams{
+		GameID:   ConvertToPgTypeUUID(jsonObject.GameId.String()),
+		PatronID: ConvertToPgTypeUUID(jsonObject.PatronId.String()),
+	})
+	if err != nil {
+		log.Printf("Error checking out game: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusCreated, FromTransaction(transaction))
 }
 
 func (s Server) AddGame(c *gin.Context) {

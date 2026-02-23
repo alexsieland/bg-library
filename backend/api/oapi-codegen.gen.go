@@ -106,7 +106,7 @@ type LibraryTransaction struct {
 	PatronId openapi_types.UUID `json:"patronId"`
 
 	// Timestamp ISO 8601 timestamp when the transaction occurred in UTC
-	Timestamp *time.Time `json:"timestamp,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // Patron A library patron

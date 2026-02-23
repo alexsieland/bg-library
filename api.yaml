@@ -449,7 +449,7 @@ components:
         - id
         - patronId
         - gameId
-        - checkoutTimestamp
+        - timestamp
       properties:
         id:
           type: string
