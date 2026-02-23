@@ -1,12 +1,14 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type Server struct {
@@ -38,6 +40,10 @@ func validationError(c *gin.Context, errorDetails []ErrorDetail) {
 	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponseWithDetails(VALIDATIONERROR, "Validation error", errorDetails))
 }
 
+func conflict(c *gin.Context, message string) {
+	c.AbortWithStatusJSON(http.StatusConflict, NewErrorResponse(CONFLICT, message))
+}
+
 func (s Server) GetApiV1Health(c *gin.Context) {
 	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
 	if err != nil {
@@ -66,8 +72,7 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	var jsonObject CheckOutGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
-		//TODO setup validation error
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		malformedJson(c)
 		return
 	}
 
@@ -81,7 +86,7 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	}
 	if !gameStatus.CheckinTimestamp.Valid && gameStatus.PatronID.Valid {
 		if patronUUID == gameStatus.PatronID {
-			//Game is already checked out, so we return the current status of the game
+			//Game is already checked out by this patron, so we return the current status of the game
 			c.JSON(http.StatusCreated, LibraryTransaction{
 				GameId:    uuid.MustParse(gameStatus.GameID.String()),
 				Id:        uuid.MustParse(gameStatus.TransactionID.String()),
@@ -90,7 +95,7 @@ func (s Server) CheckOutGame(c *gin.Context) {
 			})
 			return
 		}
-		c.JSON(http.StatusConflict, gin.H{"error": "Game is already checked out"})
+		conflict(c, "Game is already checked out by another patron")
 		return
 	}
 
@@ -111,12 +116,13 @@ func (s Server) AddGame(c *gin.Context) {
 	var jsonObject AddGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
-		//TODO setup validation error
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		malformedJson(c)
 		return
 	}
-	if jsonObject.Title == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+
+	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
 		return
 	}
 
@@ -156,6 +162,10 @@ func (s Server) GetGame(c *gin.Context, gameId string) {
 	}
 	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
 		log.Printf("Error getting game: %v", err)
 		internalError(c, err)
 		return
@@ -183,6 +193,10 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
 		log.Printf("Error updating game: %v", err)
 		internalError(c, err)
 		return
@@ -312,6 +326,10 @@ func (s Server) GetPatron(c *gin.Context, patronId string) {
 	}
 	dbPatron, err := s.queries.GetPatron(c.Request.Context(), patronUUID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
 		log.Printf("Error getting patron: %v", err)
 		internalError(c, err)
 		return
@@ -338,6 +356,10 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 		FullName: jsonObject.Name,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
 		log.Printf("Error updating patron: %v", err)
 		internalError(c, err)
 		return
