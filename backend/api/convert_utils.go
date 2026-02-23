@@ -1,14 +1,16 @@
 package api
 
 import (
+	"strings"
 	"time"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/text/unicode/norm"
 )
 
-func ConvertToOpenAPIGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
+func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 	var checkedOutAt *time.Time
 	if dbGameStatus.CheckoutTimestamp.Valid {
 		checkedOutAt = &dbGameStatus.CheckoutTimestamp.Time
@@ -38,17 +40,31 @@ func dbGameStatusToOpenAPIPatron(dbGameStatus db.VwGameStatus) *Patron {
 	return nil
 }
 
-func ConvertToOpenAPIPatron(dbPatron db.VwLibraryPatron) Patron {
+func FromVwLibraryPatron(dbPatron db.VwLibraryPatron) Patron {
 	return Patron{
 		PatronId: uuid.MustParse(dbPatron.ID.String()),
 		Name:     dbPatron.FullName,
 	}
 }
 
-func ConvertToOpenAPIGame(dbPatron db.VwLibraryGame) Game {
+func FromPatron(dbPatron db.Patron) Patron {
+	return Patron{
+		PatronId: uuid.MustParse(dbPatron.ID.String()),
+		Name:     dbPatron.FullName,
+	}
+}
+
+func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
 	return Game{
-		GameId: uuid.MustParse(dbPatron.ID.String()),
-		Title:  dbPatron.Title,
+		GameId: uuid.MustParse(dbGame.ID.String()),
+		Title:  dbGame.Title,
+	}
+}
+
+func FromGame(dbGame db.Game) Game {
+	return Game{
+		GameId: uuid.MustParse(dbGame.ID.String()),
+		Title:  dbGame.Title,
 	}
 }
 
@@ -57,4 +73,8 @@ func ConvertToPgTypeUUID(str string) pgtype.UUID {
 		Bytes: uuid.MustParse(str),
 		Valid: true,
 	}
+}
+
+func SanitizeTitle(title string) string {
+	return norm.NFC.String(strings.ToLower(title))
 }

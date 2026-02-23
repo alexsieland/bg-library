@@ -7,7 +7,6 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Server struct {
@@ -39,13 +38,39 @@ func (s Server) CheckOutGame(c *gin.Context) {
 }
 
 func (s Server) AddGame(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	var jsonObject AddGameJSONRequestBody
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		//TODO setup validation error
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if jsonObject.Title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+		return
+	}
+
+	dbGame, err := s.queries.CreateGame(c.Request.Context(), db.CreateGameParams{
+		Title:          jsonObject.Title,
+		SanitizedTitle: SanitizeTitle(jsonObject.Title),
+	})
+	if err != nil {
+		log.Printf("Error creating game: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusCreated, FromGame(dbGame))
 }
 
 func (s Server) DeleteGame(c *gin.Context, gameId string) {
-	//TODO implement me
-	panic("implement me")
+	err := s.queries.DeleteGame(c.Request.Context(), ConvertToPgTypeUUID(gameId))
+	if err != nil {
+		log.Printf("Error deleting game: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func (Server) GetGame(c *gin.Context, gameId string) {
@@ -59,8 +84,29 @@ func (Server) GetGame(c *gin.Context, gameId string) {
 }
 
 func (s Server) UpdateGame(c *gin.Context, gameId string) {
-	//TODO implement me
-	panic("implement me")
+	var jsonObject UpdateGameJSONRequestBody
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		//TODO setup validation error
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if jsonObject.Title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+		return
+	}
+
+	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
+		ID:             ConvertToPgTypeUUID(gameId),
+		Title:          jsonObject.Title,
+		SanitizedTitle: SanitizeTitle(jsonObject.Title),
+	})
+	if err != nil {
+		log.Printf("Error updating game: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) ListGames(c *gin.Context) {
@@ -76,21 +122,32 @@ func (s Server) ListGames(c *gin.Context) {
 
 	gameList := make([]GameStatus, len(dbGameStatusList))
 	for i, dbGameStatus := range dbGameStatusList {
-		gameList[i] = ConvertToOpenAPIGameStatus(dbGameStatus)
+		gameList[i] = FromVwGameStatus(dbGameStatus)
 	}
 
 	c.JSON(http.StatusOK, GameList{Games: gameList})
 }
 
 func (s Server) AddPatron(c *gin.Context) {
-	dbPatron, err := s.queries.CreatePatron(c.Request.Context(), c.Params.ByName("name"))
+	var jsonObject AddPatronJSONRequestBody
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		//TODO setup validation error
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if jsonObject.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+	dbPatron, err := s.queries.CreatePatron(c.Request.Context(), jsonObject.Name)
 	if err != nil {
 		log.Printf("Error creating patron: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, ConvertToOpenAPIPatron(dbPatron))
+	c.JSON(http.StatusCreated, FromPatron(dbPatron))
 }
 
 func (s Server) DeletePatron(c *gin.Context, patronId string) {
@@ -112,12 +169,31 @@ func (s Server) GetPatron(c *gin.Context, patronId string) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ConvertToOpenAPIPatron(dbPatron))
+	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
 }
 
 func (s Server) UpdatePatron(c *gin.Context, patronId string) {
-	//TODO implement me
-	panic("implement me")
+	var jsonObject UpdatePatronJSONRequestBody
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		//TODO setup validation error
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if jsonObject.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+	err = s.queries.EditPatron(c.Request.Context(), db.EditPatronParams{
+		ID:       ConvertToPgTypeUUID(patronId),
+		FullName: jsonObject.Name,
+	})
+	if err != nil {
+		log.Printf("Error updating patron: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) ListPatrons(c *gin.Context) {
@@ -131,7 +207,7 @@ func (s Server) ListPatrons(c *gin.Context) {
 	}
 	patronList := make([]Patron, len(dbPatronList))
 	for i, dbPatron := range dbPatronList {
-		patronList[i] = ConvertToOpenAPIPatron(dbPatron)
+		patronList[i] = FromVwLibraryPatron(dbPatron)
 	}
 	c.JSON(http.StatusOK, patronList)
 }
