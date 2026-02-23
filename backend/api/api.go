@@ -51,15 +51,39 @@ func (s Server) CheckOutGame(c *gin.Context) {
 		return
 	}
 
+	gameId := ConvertToPgTypeUUID(jsonObject.GameId.String())
+	patronId := ConvertToPgTypeUUID(jsonObject.PatronId.String())
+	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), gameId)
+	if err != nil {
+		log.Printf("Error getting game status: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	if !gameStatus.CheckinTimestamp.Valid && gameStatus.PatronID.Valid {
+		if patronId == gameStatus.PatronID {
+			//Game is already checked out, so we return the current status of the game
+			c.JSON(http.StatusCreated, LibraryTransaction{
+				GameId:    uuid.MustParse(gameStatus.GameID.String()),
+				Id:        uuid.MustParse(gameStatus.TransactionID.String()),
+				PatronId:  uuid.MustParse(gameStatus.PatronID.String()),
+				Timestamp: gameStatus.CheckoutTimestamp.Time,
+			})
+			return
+		}
+		c.JSON(http.StatusConflict, gin.H{"error": "Game is already checked out"})
+		return
+	}
+
 	transaction, err := s.queries.CheckOutGame(c.Request.Context(), db.CheckOutGameParams{
-		GameID:   ConvertToPgTypeUUID(jsonObject.GameId.String()),
-		PatronID: ConvertToPgTypeUUID(jsonObject.PatronId.String()),
+		GameID:   gameId,
+		PatronID: patronId,
 	})
 	if err != nil {
 		log.Printf("Error checking out game: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+
 	c.JSON(http.StatusCreated, FromTransaction(transaction))
 }
 
