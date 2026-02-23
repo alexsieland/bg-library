@@ -195,7 +195,7 @@ func (q *Queries) GetPatron(ctx context.Context, id pgtype.UUID) (VwLibraryPatro
 }
 
 const listCheckedOutGames = `-- name: ListCheckedOutGames :many
-SELECT game_id, game_title, patron_id, patron_full_name, transaction_id, checkout_timestamp
+SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp
 FROM vw_game_status
 WHERE checkin_timestamp IS NULL
 ORDER BY sanitized_title
@@ -207,31 +207,24 @@ type ListCheckedOutGamesParams struct {
 	Offset int32
 }
 
-type ListCheckedOutGamesRow struct {
-	GameID            pgtype.UUID
-	GameTitle         string
-	PatronID          pgtype.UUID
-	PatronFullName    pgtype.Text
-	TransactionID     pgtype.UUID
-	CheckoutTimestamp pgtype.Timestamp
-}
-
-func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGamesParams) ([]ListCheckedOutGamesRow, error) {
+func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGamesParams) ([]VwGameStatus, error) {
 	rows, err := q.db.Query(ctx, listCheckedOutGames, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCheckedOutGamesRow
+	var items []VwGameStatus
 	for rows.Next() {
-		var i ListCheckedOutGamesRow
+		var i VwGameStatus
 		if err := rows.Scan(
 			&i.GameID,
 			&i.GameTitle,
+			&i.SanitizedTitle,
 			&i.PatronID,
 			&i.PatronFullName,
 			&i.TransactionID,
 			&i.CheckoutTimestamp,
+			&i.CheckinTimestamp,
 		); err != nil {
 			return nil, err
 		}
@@ -354,37 +347,37 @@ func (q *Queries) ListPatrons(ctx context.Context, arg ListPatronsParams) ([]VwL
 }
 
 const searchCheckedOutGames = `-- name: SearchCheckedOutGames :many
-SELECT game_id, game_title, patron_id, patron_full_name, transaction_id, checkout_timestamp
+SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp
 FROM vw_game_status
 WHERE checkin_timestamp IS NULL AND vw_game_status.sanitized_title ILIKE $1
 ORDER BY sanitized_title
+LIMIT $2 OFFSET $3
 `
 
-type SearchCheckedOutGamesRow struct {
-	GameID            pgtype.UUID
-	GameTitle         string
-	PatronID          pgtype.UUID
-	PatronFullName    pgtype.Text
-	TransactionID     pgtype.UUID
-	CheckoutTimestamp pgtype.Timestamp
+type SearchCheckedOutGamesParams struct {
+	SanitizedTitle string
+	Limit          int32
+	Offset         int32
 }
 
-func (q *Queries) SearchCheckedOutGames(ctx context.Context, sanitizedTitle string) ([]SearchCheckedOutGamesRow, error) {
-	rows, err := q.db.Query(ctx, searchCheckedOutGames, sanitizedTitle)
+func (q *Queries) SearchCheckedOutGames(ctx context.Context, arg SearchCheckedOutGamesParams) ([]VwGameStatus, error) {
+	rows, err := q.db.Query(ctx, searchCheckedOutGames, arg.SanitizedTitle, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SearchCheckedOutGamesRow
+	var items []VwGameStatus
 	for rows.Next() {
-		var i SearchCheckedOutGamesRow
+		var i VwGameStatus
 		if err := rows.Scan(
 			&i.GameID,
 			&i.GameTitle,
+			&i.SanitizedTitle,
 			&i.PatronID,
 			&i.PatronFullName,
 			&i.TransactionID,
 			&i.CheckoutTimestamp,
+			&i.CheckinTimestamp,
 		); err != nil {
 			return nil, err
 		}
@@ -399,12 +392,19 @@ func (q *Queries) SearchCheckedOutGames(ctx context.Context, sanitizedTitle stri
 const searchGameStatus = `-- name: SearchGameStatus :many
 SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp
 FROM vw_game_status
-WHERE sanitized_title ILIKE '$1'
+WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) SearchGameStatus(ctx context.Context) ([]VwGameStatus, error) {
-	rows, err := q.db.Query(ctx, searchGameStatus)
+type SearchGameStatusParams struct {
+	SanitizedTitle string
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusParams) ([]VwGameStatus, error) {
+	rows, err := q.db.Query(ctx, searchGameStatus, arg.SanitizedTitle, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -437,10 +437,17 @@ SELECT id, title, sanitized_title, created_at
 FROM vw_library_games
 WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) SearchGames(ctx context.Context, sanitizedTitle string) ([]VwLibraryGame, error) {
-	rows, err := q.db.Query(ctx, searchGames, sanitizedTitle)
+type SearchGamesParams struct {
+	SanitizedTitle string
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwLibraryGame, error) {
+	rows, err := q.db.Query(ctx, searchGames, arg.SanitizedTitle, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -467,12 +474,19 @@ func (q *Queries) SearchGames(ctx context.Context, sanitizedTitle string) ([]VwL
 const searchPatrons = `-- name: SearchPatrons :many
 SELECT id, full_name, created_at
 FROM vw_library_patrons
-WHERE full_name ILIKE '$1'
+WHERE full_name ILIKE $1
 ORDER BY full_name
+LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) SearchPatrons(ctx context.Context) ([]VwLibraryPatron, error) {
-	rows, err := q.db.Query(ctx, searchPatrons)
+type SearchPatronsParams struct {
+	FullName string
+	Limit    int32
+	Offset   int32
+}
+
+func (q *Queries) SearchPatrons(ctx context.Context, arg SearchPatronsParams) ([]VwLibraryPatron, error) {
+	rows, err := q.db.Query(ctx, searchPatrons, arg.FullName, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

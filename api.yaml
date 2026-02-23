@@ -52,6 +52,17 @@ paths:
         - games
       operationId: listGames
       summary: Get list of all games with check out status
+      parameters:
+        - in: query
+          name: checkedOut
+          schema:
+            type: boolean
+          description: Filter games by check out status (optional)
+        - in: query
+          name: title
+          schema:
+            type: string
+          description: Filter games by title (optional)
       responses:
         '200':
           description: List of games with checkout status successfully retrieved
@@ -172,7 +183,13 @@ paths:
       tags:
         - patrons
       operationId: listPatrons
-      summary: Get list of all games with check out status
+      summary: Get list of all patrons
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Filter patrons by name (optional)
       responses:
         '200':
           description: List of games with checkout status successfully retrieved

@@ -135,15 +135,72 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	c.Status(http.StatusNoContent)
 }
 
-func (s Server) ListGames(c *gin.Context) {
-	dbGameStatusList, err := s.queries.ListGamesStatus(c.Request.Context(), db.ListGamesStatusParams{
-		Limit:  999,
-		Offset: 0,
-	})
+func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {
+	var dbGameStatusList []db.VwGameStatus
+	if params.Title == nil {
+		var err error
+		dbGameStatusList, err = s.queries.ListCheckedOutGames(c.Request.Context(), db.ListCheckedOutGamesParams{
+			Limit:  999,
+			Offset: 0,
+		})
 
-	if err != nil {
-		log.Printf("Error listing games: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		if err != nil {
+			log.Printf("Error listing checked out games: %v", err)
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
+
+	} else {
+		var err error
+		dbGameStatusList, err = s.queries.SearchCheckedOutGames(c.Request.Context(), db.SearchCheckedOutGamesParams{
+			SanitizedTitle: SanitizeTitle(*params.Title),
+			Limit:          999,
+			Offset:         0,
+		})
+		if err != nil {
+			log.Printf("Error searching checked out games: %v", err)
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	gameList := make([]GameStatus, len(dbGameStatusList))
+	for i, dbGameStatus := range dbGameStatusList {
+		gameList[i] = FromVwGameStatus(dbGameStatus)
+	}
+
+	c.JSON(http.StatusOK, GameList{Games: gameList})
+}
+
+func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
+	if params.CheckedOut != nil && *params.CheckedOut {
+		s.listCheckedOutGames(c, params)
+		return
+	}
+	var dbGameStatusList []db.VwGameStatus
+	if params.Title == nil {
+		var err error
+		dbGameStatusList, err = s.queries.ListGamesStatus(c.Request.Context(), db.ListGamesStatusParams{
+			Limit:  999,
+			Offset: 0,
+		})
+
+		if err != nil {
+			log.Printf("Error listing games: %v", err)
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
+
+	} else {
+		var err error
+		dbGameStatusList, err = s.queries.SearchGameStatus(c.Request.Context(), db.SearchGameStatusParams{
+			SanitizedTitle: SanitizeTitle(*params.Title),
+			Limit:          999,
+			Offset:         0,
+		})
+		if err != nil {
+			log.Printf("Error searching games: %v", err)
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	gameList := make([]GameStatus, len(dbGameStatusList))
@@ -222,15 +279,34 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 	c.Status(http.StatusNoContent)
 }
 
-func (s Server) ListPatrons(c *gin.Context) {
-	dbPatronList, err := s.queries.ListPatrons(c.Request.Context(), db.ListPatronsParams{
-		Limit:  999,
-		Offset: 0,
-	})
-	if err != nil {
-		log.Printf("Error listing patrons: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
+	var dbPatronList []db.VwLibraryPatron
+	if params.Name == nil {
+		var err error
+		dbPatronList, err = s.queries.ListPatrons(c.Request.Context(), db.ListPatronsParams{
+			Limit:  999,
+			Offset: 0,
+		})
+		if err != nil {
+			log.Printf("Error listing patrons: %v", err)
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+	} else {
+		name := *params.Name
+		var err error
+		dbPatronList, err = s.queries.SearchPatrons(c.Request.Context(), db.SearchPatronsParams{
+			FullName: name,
+			Limit:    999,
+			Offset:   0,
+		})
+		if err != nil {
+			log.Printf("Error saerching patrons: %v", err)
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
 	}
+
 	patronList := make([]Patron, len(dbPatronList))
 	for i, dbPatron := range dbPatronList {
 		patronList[i] = FromVwLibraryPatron(dbPatron)
