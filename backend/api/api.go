@@ -26,6 +26,18 @@ func internalError(c *gin.Context, err error) {
 	c.AbortWithStatusJSON(http.StatusInternalServerError, NewInternalError(err))
 }
 
+func notFound(c *gin.Context) {
+	c.AbortWithStatusJSON(http.StatusNotFound, NewErrorResponse(NOTFOUND, "Resource not found"))
+}
+
+func malformedJson(c *gin.Context) {
+	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponse(MALFORMEDREQUEST, "JSON body is malformed"))
+}
+
+func validationError(c *gin.Context, errorDetails []ErrorDetail) {
+	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponseWithDetails(VALIDATIONERROR, "Validation error", errorDetails))
+}
+
 func (s Server) GetApiV1Health(c *gin.Context) {
 	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
 	if err != nil {
@@ -37,7 +49,11 @@ func (s Server) GetApiV1Health(c *gin.Context) {
 }
 
 func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
-	err := s.queries.CheckInGame(c.Request.Context(), ConvertToPgTypeUUID(params.TransactionId))
+	transactionUUID, errorDetails := ConvertToPgTypeUUID("TransactionId", params.TransactionId, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+	}
+	err := s.queries.CheckInGame(c.Request.Context(), transactionUUID)
 	if err != nil {
 		log.Printf("Error checking in game: %v", err)
 		internalError(c, err)
@@ -55,16 +71,16 @@ func (s Server) CheckOutGame(c *gin.Context) {
 		return
 	}
 
-	gameId := ConvertToPgTypeUUID(jsonObject.GameId.String())
-	patronId := ConvertToPgTypeUUID(jsonObject.PatronId.String())
-	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), gameId)
+	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", jsonObject.GameId.String(), []ErrorDetail{})
+	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", jsonObject.PatronId.String(), errorDetails)
+	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), gameUUID)
 	if err != nil {
 		log.Printf("Error getting game status: %v", err)
 		internalError(c, err)
 		return
 	}
 	if !gameStatus.CheckinTimestamp.Valid && gameStatus.PatronID.Valid {
-		if patronId == gameStatus.PatronID {
+		if patronUUID == gameStatus.PatronID {
 			//Game is already checked out, so we return the current status of the game
 			c.JSON(http.StatusCreated, LibraryTransaction{
 				GameId:    uuid.MustParse(gameStatus.GameID.String()),
@@ -79,8 +95,8 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	}
 
 	transaction, err := s.queries.CheckOutGame(c.Request.Context(), db.CheckOutGameParams{
-		GameID:   gameId,
-		PatronID: patronId,
+		GameID:   gameUUID,
+		PatronID: patronUUID,
 	})
 	if err != nil {
 		log.Printf("Error checking out game: %v", err)
@@ -117,7 +133,12 @@ func (s Server) AddGame(c *gin.Context) {
 }
 
 func (s Server) DeleteGame(c *gin.Context, gameId string) {
-	err := s.queries.DeleteGame(c.Request.Context(), ConvertToPgTypeUUID(gameId))
+	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	err := s.queries.DeleteGame(c.Request.Context(), gameUUID)
 	if err != nil {
 		log.Printf("Error deleting game: %v", err)
 		internalError(c, err)
@@ -127,31 +148,37 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 	c.Status(http.StatusNoContent)
 }
 
-func (Server) GetGame(c *gin.Context, gameId string) {
-	gameUuid, _ := uuid.Parse(gameId)
-	resp := Game{
-		GameId: gameUuid,
-		Title:  "Catan",
+func (s Server) GetGame(c *gin.Context, gameId string) {
+	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
 	}
-
-	c.JSON(http.StatusOK, resp)
+	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
+	if err != nil {
+		log.Printf("Error getting game: %v", err)
+		internalError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, FromVwLibraryGame(dbGame))
 }
 
 func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	var jsonObject UpdateGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
-		//TODO setup validation error
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		malformedJson(c)
 		return
 	}
-	if jsonObject.Title == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
+	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, errorDetails)
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
 		return
 	}
 
 	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
-		ID:             ConvertToPgTypeUUID(gameId),
+		ID:             gameUUID,
 		Title:          jsonObject.Title,
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
 	})
@@ -243,12 +270,12 @@ func (s Server) AddPatron(c *gin.Context) {
 	var jsonObject AddPatronJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
-		//TODO setup validation error
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		malformedJson(c)
 		return
 	}
-	if jsonObject.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
 		return
 	}
 	dbPatron, err := s.queries.CreatePatron(c.Request.Context(), jsonObject.Name)
@@ -262,7 +289,12 @@ func (s Server) AddPatron(c *gin.Context) {
 }
 
 func (s Server) DeletePatron(c *gin.Context, patronId string) {
-	err := s.queries.DeletePatron(c.Request.Context(), ConvertToPgTypeUUID(patronId))
+	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	err := s.queries.DeletePatron(c.Request.Context(), patronUUID)
 	if err != nil {
 		log.Printf("Error deleting patron: %v", err)
 		internalError(c, err)
@@ -273,7 +305,12 @@ func (s Server) DeletePatron(c *gin.Context, patronId string) {
 }
 
 func (s Server) GetPatron(c *gin.Context, patronId string) {
-	dbPatron, err := s.queries.GetPatron(c.Request.Context(), ConvertToPgTypeUUID(patronId))
+	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	dbPatron, err := s.queries.GetPatron(c.Request.Context(), patronUUID)
 	if err != nil {
 		log.Printf("Error getting patron: %v", err)
 		internalError(c, err)
@@ -287,16 +324,17 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 	var jsonObject UpdatePatronJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
-		//TODO setup validation error
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		malformedJson(c)
 		return
 	}
-	if jsonObject.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
+	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, errorDetails)
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
 		return
 	}
 	err = s.queries.EditPatron(c.Request.Context(), db.EditPatronParams{
-		ID:       ConvertToPgTypeUUID(patronId),
+		ID:       patronUUID,
 		FullName: jsonObject.Name,
 	})
 	if err != nil {

@@ -79,11 +79,36 @@ func FromGame(dbGame db.Game) Game {
 	}
 }
 
-func ConvertToPgTypeUUID(str string) pgtype.UUID {
-	return pgtype.UUID{
-		Bytes: uuid.MustParse(str),
-		Valid: true,
+// Validation Utils
+
+func ConvertToPgTypeUUID(fieldName string, str string, errorDetails []ErrorDetail) (pgtype.UUID, []ErrorDetail) {
+	dbUuid, err := uuid.Parse(str)
+	if err != nil {
+		return pgtype.UUID{}, append(errorDetails, ErrorDetail{
+			Field:   fieldName,
+			Message: "Invalid UUID format",
+		})
 	}
+	return pgtype.UUID{
+		Bytes: dbUuid,
+		Valid: true,
+	}, errorDetails
+}
+
+func ValidateStringLength(fieldName string, str string, minLength int, maxLength int, errorDetails []ErrorDetail) []ErrorDetail {
+	if minLength > 0 && str == "" {
+		return append(errorDetails, ErrorDetail{
+			Field:   fieldName,
+			Message: "Cannot be empty",
+		})
+	}
+	if len(str) < minLength || len(str) > maxLength {
+		return append(errorDetails, ErrorDetail{
+			Field:   fieldName,
+			Message: "Length must be between " + string(minLength) + " and " + string(maxLength),
+		})
+	}
+	return nil
 }
 
 func SanitizeTitle(title string) string {
