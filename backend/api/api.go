@@ -26,7 +26,9 @@ func (s Server) GetApiV1Health(c *gin.Context) {
 	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
 	if err != nil {
 		log.Printf("Error checking database health: %v", err)
-		c.Status(http.StatusServiceUnavailable)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Database is not available",
+		})
 		return
 	}
 	c.Status(http.StatusOK)
