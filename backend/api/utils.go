@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,7 +106,7 @@ func ValidateStringLength(fieldName string, str string, minLength int, maxLength
 	if len(str) < minLength || len(str) > maxLength {
 		return append(errorDetails, ErrorDetail{
 			Field:   fieldName,
-			Message: "Length must be between " + string(minLength) + " and " + string(maxLength),
+			Message: "Length must be between " + strconv.Itoa(minLength) + " and " + strconv.Itoa(maxLength),
 		})
 	}
 	return nil
