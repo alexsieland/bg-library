@@ -70,7 +70,7 @@ RETURNING *;
 -- name: CheckInGame :exec
 UPDATE transactions
 SET checkin_timestamp = now()
-WHERE id = $1;
+WHERE id = $1 AND checkin_timestamp IS NULL;
 
 -- name: ListGamesStatus :many
 SELECT *

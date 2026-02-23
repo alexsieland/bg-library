@@ -14,7 +14,7 @@ import (
 const checkInGame = `-- name: CheckInGame :exec
 UPDATE transactions
 SET checkin_timestamp = now()
-WHERE id = $1
+WHERE id = $1 AND checkin_timestamp IS NULL
 `
 
 func (q *Queries) CheckInGame(ctx context.Context, id pgtype.UUID) error {
