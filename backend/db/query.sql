@@ -8,7 +8,8 @@ LIMIT $1 OFFSET $2;
 SELECT *
 FROM vw_library_games
 WHERE sanitized_title ILIKE $1
-ORDER BY sanitized_title;
+ORDER BY sanitized_title
+LIMIT $2 OFFSET $3;
 
 -- name: GetGame :one
 SELECT *
@@ -39,8 +40,9 @@ LIMIT $1 OFFSET $2;
 -- name: SearchPatrons :many
 SELECT *
 FROM vw_library_patrons
-WHERE full_name ILIKE '$1'
-ORDER BY full_name;
+WHERE full_name ILIKE $1
+ORDER BY full_name
+LIMIT $2 OFFSET $3;
 
 -- name: GetPatron :one
 SELECT *
@@ -68,7 +70,7 @@ RETURNING *;
 -- name: CheckInGame :exec
 UPDATE transactions
 SET checkin_timestamp = now()
-WHERE id = $1;
+WHERE id = $1 AND checkin_timestamp IS NULL;
 
 -- name: ListGamesStatus :many
 SELECT *
@@ -79,8 +81,9 @@ LIMIT $1 OFFSET $2;
 -- name: SearchGameStatus :many
 SELECT *
 FROM vw_game_status
-WHERE sanitized_title ILIKE '$1'
-ORDER BY sanitized_title;
+WHERE sanitized_title ILIKE $1
+ORDER BY sanitized_title
+LIMIT $2 OFFSET $3;
 
 -- name: GetGameStatus :one
 SELECT *
@@ -88,14 +91,15 @@ FROM vw_game_status
 WHERE game_id = $1;
 
 -- name: ListCheckedOutGames :many
-SELECT game_id, game_title, patron_id, patron_full_name, transaction_id, checkout_timestamp
+SELECT *
 FROM vw_game_status
 WHERE checkin_timestamp IS NULL
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2;
 
 -- name: SearchCheckedOutGames :many
-SELECT game_id, game_title, patron_id, patron_full_name, transaction_id, checkout_timestamp
+SELECT *
 FROM vw_game_status
 WHERE checkin_timestamp IS NULL AND vw_game_status.sanitized_title ILIKE $1
-ORDER BY sanitized_title;
+ORDER BY sanitized_title
+LIMIT $2 OFFSET $3;

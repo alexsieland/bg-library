@@ -15,9 +15,12 @@ import (
 
 // Defines values for ErrorResponseErrorCode.
 const (
-	INTERNALERROR   ErrorResponseErrorCode = "INTERNAL_ERROR"
-	NOTFOUND        ErrorResponseErrorCode = "NOT_FOUND"
-	VALIDATIONERROR ErrorResponseErrorCode = "VALIDATION_ERROR"
+	CONFLICT           ErrorResponseErrorCode = "CONFLICT"
+	INTERNALERROR      ErrorResponseErrorCode = "INTERNAL_ERROR"
+	MALFORMEDREQUEST   ErrorResponseErrorCode = "MALFORMED_REQUEST"
+	NOTFOUND           ErrorResponseErrorCode = "NOT_FOUND"
+	SERVICEUNAVAILABLE ErrorResponseErrorCode = "SERVICE_UNAVAILABLE"
+	VALIDATIONERROR    ErrorResponseErrorCode = "VALIDATION_ERROR"
 )
 
 // CheckOutRequest Request payload for making a check in/out transaction
@@ -56,8 +59,8 @@ type ErrorResponse struct {
 		// Code Machine readable error code
 		Code ErrorResponseErrorCode `json:"code"`
 
-		// Details Array of specific field errors
-		Details *[]ErrorDetail `json:"details,omitempty"`
+		// Details Array of specific field errors. Empty if no specific errors
+		Details []ErrorDetail `json:"details"`
 
 		// Message Human-readable error message
 		Message string `json:"message"`
@@ -130,6 +133,21 @@ type CheckInGameParams struct {
 	TransactionId string `form:"transactionId" json:"transactionId"`
 }
 
+// ListGamesParams defines parameters for ListGames.
+type ListGamesParams struct {
+	// CheckedOut Filter games by check out status (optional)
+	CheckedOut *bool `form:"checkedOut,omitempty" json:"checkedOut,omitempty"`
+
+	// Title Filter games by title (optional)
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
+// ListPatronsParams defines parameters for ListPatrons.
+type ListPatronsParams struct {
+	// Name Filter patrons by name (optional)
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.
 type CheckOutGameJSONRequestBody = CheckOutRequest
 
@@ -170,7 +188,7 @@ type ServerInterface interface {
 	UpdateGame(c *gin.Context, gameId string)
 	// Get list of all games with check out status
 	// (GET /api/v1/library/games)
-	ListGames(c *gin.Context)
+	ListGames(c *gin.Context, params ListGamesParams)
 	// Add a patron
 	// (POST /api/v1/library/patron)
 	AddPatron(c *gin.Context)
@@ -183,9 +201,9 @@ type ServerInterface interface {
 	// Update an existing patron
 	// (PUT /api/v1/library/patron/{patronId})
 	UpdatePatron(c *gin.Context, patronId string)
-	// Get list of all games with check out status
+	// Get list of all patrons
 	// (GET /api/v1/library/patrons)
-	ListPatrons(c *gin.Context)
+	ListPatrons(c *gin.Context, params ListPatronsParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -344,6 +362,27 @@ func (siw *ServerInterfaceWrapper) UpdateGame(c *gin.Context) {
 // ListGames operation middleware
 func (siw *ServerInterfaceWrapper) ListGames(c *gin.Context) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListGamesParams
+
+	// ------------- Optional query parameter "checkedOut" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "checkedOut", c.Request.URL.Query(), &params.CheckedOut)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter checkedOut: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "title" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "title", c.Request.URL.Query(), &params.Title)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter title: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -351,7 +390,7 @@ func (siw *ServerInterfaceWrapper) ListGames(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListGames(c)
+	siw.Handler.ListGames(c, params)
 }
 
 // AddPatron operation middleware
@@ -442,6 +481,19 @@ func (siw *ServerInterfaceWrapper) UpdatePatron(c *gin.Context) {
 // ListPatrons operation middleware
 func (siw *ServerInterfaceWrapper) ListPatrons(c *gin.Context) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPatronsParams
+
+	// ------------- Optional query parameter "name" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "name", c.Request.URL.Query(), &params.Name)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter name: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -449,7 +501,7 @@ func (siw *ServerInterfaceWrapper) ListPatrons(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListPatrons(c)
+	siw.Handler.ListPatrons(c, params)
 }
 
 // GinServerOptions provides options for the Gin server.

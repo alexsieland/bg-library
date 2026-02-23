@@ -52,6 +52,17 @@ paths:
         - games
       operationId: listGames
       summary: Get list of all games with check out status
+      parameters:
+        - in: query
+          name: checkedOut
+          schema:
+            type: boolean
+          description: Filter games by check out status (optional)
+        - in: query
+          name: title
+          schema:
+            type: string
+          description: Filter games by title (optional)
       responses:
         '200':
           description: List of games with checkout status successfully retrieved
@@ -172,7 +183,13 @@ paths:
       tags:
         - patrons
       operationId: listPatrons
-      summary: Get list of all games with check out status
+      summary: Get list of all patrons
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Filter patrons by name (optional)
       responses:
         '200':
           description: List of games with checkout status successfully retrieved
@@ -313,6 +330,12 @@ paths:
                 $ref: '#/components/schemas/LibraryTransaction'
         '400':
           description: Game/Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Game already checked out to a different patron
           content:
             application/json:
               schema:
@@ -483,13 +506,17 @@ components:
           required:
             - code
             - message
+            - details
           properties:
             code:
               type: string
               enum:
                 - VALIDATION_ERROR
+                - SERVICE_UNAVAILABLE
                 - INTERNAL_ERROR
                 - NOT_FOUND
+                - CONFLICT
+                - MALFORMED_REQUEST
               description: Machine readable error code
               example: "VALIDATION_ERROR"
             message:
@@ -500,7 +527,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ErrorDetail'
-              description: Array of specific field errors
+              description: Array of specific field errors. Empty if no specific errors
       description: Response when errors occur
 
     ErrorDetail:
