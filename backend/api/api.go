@@ -22,13 +22,15 @@ func NewServer() Server {
 	}
 }
 
+func internalError(c *gin.Context, err error) {
+	c.AbortWithStatusJSON(http.StatusInternalServerError, NewInternalError(err))
+}
+
 func (s Server) GetApiV1Health(c *gin.Context) {
 	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
 	if err != nil {
 		log.Printf("Error checking database health: %v", err)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "Database is not available",
-		})
+		c.JSON(http.StatusServiceUnavailable, NewErrorResponse(SERVICEUNAVAILABLE, "Database is unavailable"))
 		return
 	}
 	c.Status(http.StatusOK)
@@ -38,7 +40,7 @@ func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
 	err := s.queries.CheckInGame(c.Request.Context(), ConvertToPgTypeUUID(params.TransactionId))
 	if err != nil {
 		log.Printf("Error checking in game: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -58,7 +60,7 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), gameId)
 	if err != nil {
 		log.Printf("Error getting game status: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 	if !gameStatus.CheckinTimestamp.Valid && gameStatus.PatronID.Valid {
@@ -82,7 +84,7 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	})
 	if err != nil {
 		log.Printf("Error checking out game: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 
@@ -108,7 +110,7 @@ func (s Server) AddGame(c *gin.Context) {
 	})
 	if err != nil {
 		log.Printf("Error creating game: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, FromGame(dbGame))
@@ -118,7 +120,7 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 	err := s.queries.DeleteGame(c.Request.Context(), ConvertToPgTypeUUID(gameId))
 	if err != nil {
 		log.Printf("Error deleting game: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 
@@ -155,7 +157,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	})
 	if err != nil {
 		log.Printf("Error updating game: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -172,7 +174,7 @@ func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {
 
 		if err != nil {
 			log.Printf("Error listing checked out games: %v", err)
-			c.AbortWithError(http.StatusInternalServerError, err)
+			internalError(c, err)
 		}
 
 	} else {
@@ -184,7 +186,7 @@ func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {
 		})
 		if err != nil {
 			log.Printf("Error searching checked out games: %v", err)
-			c.AbortWithError(http.StatusInternalServerError, err)
+			internalError(c, err)
 			return
 		}
 	}
@@ -212,7 +214,7 @@ func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
 
 		if err != nil {
 			log.Printf("Error listing games: %v", err)
-			c.AbortWithError(http.StatusInternalServerError, err)
+			internalError(c, err)
 		}
 
 	} else {
@@ -224,7 +226,7 @@ func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
 		})
 		if err != nil {
 			log.Printf("Error searching games: %v", err)
-			c.AbortWithError(http.StatusInternalServerError, err)
+			internalError(c, err)
 			return
 		}
 	}
@@ -252,7 +254,7 @@ func (s Server) AddPatron(c *gin.Context) {
 	dbPatron, err := s.queries.CreatePatron(c.Request.Context(), jsonObject.Name)
 	if err != nil {
 		log.Printf("Error creating patron: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 
@@ -263,7 +265,7 @@ func (s Server) DeletePatron(c *gin.Context, patronId string) {
 	err := s.queries.DeletePatron(c.Request.Context(), ConvertToPgTypeUUID(patronId))
 	if err != nil {
 		log.Printf("Error deleting patron: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 
@@ -274,7 +276,7 @@ func (s Server) GetPatron(c *gin.Context, patronId string) {
 	dbPatron, err := s.queries.GetPatron(c.Request.Context(), ConvertToPgTypeUUID(patronId))
 	if err != nil {
 		log.Printf("Error getting patron: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 
@@ -299,7 +301,7 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 	})
 	if err != nil {
 		log.Printf("Error updating patron: %v", err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+		internalError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -315,7 +317,7 @@ func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
 		})
 		if err != nil {
 			log.Printf("Error listing patrons: %v", err)
-			c.AbortWithError(http.StatusInternalServerError, err)
+			internalError(c, err)
 			return
 		}
 	} else {
@@ -328,7 +330,7 @@ func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
 		})
 		if err != nil {
 			log.Printf("Error saerching patrons: %v", err)
-			c.AbortWithError(http.StatusInternalServerError, err)
+			internalError(c, err)
 			return
 		}
 	}

@@ -10,6 +10,8 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+//Conversion Utils
+
 func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 	var checkedOutAt *time.Time
 	if dbGameStatus.CheckoutTimestamp.Valid {
@@ -86,4 +88,22 @@ func ConvertToPgTypeUUID(str string) pgtype.UUID {
 
 func SanitizeTitle(title string) string {
 	return norm.NFC.String(strings.ToLower(title))
+}
+
+// Error Utils
+
+func NewErrorResponseWithDetails(errorCode ErrorResponseErrorCode, message string, details []ErrorDetail) ErrorResponse {
+	resp := ErrorResponse{}
+	resp.Error.Code = errorCode
+	resp.Error.Message = message
+	resp.Error.Details = details
+	return resp
+}
+
+func NewErrorResponse(errorCode ErrorResponseErrorCode, message string) ErrorResponse {
+	return NewErrorResponseWithDetails(errorCode, message, []ErrorDetail{})
+}
+
+func NewInternalError(err error) ErrorResponse {
+	return NewErrorResponse(INTERNALERROR, err.Error())
 }

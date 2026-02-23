@@ -15,9 +15,12 @@ import (
 
 // Defines values for ErrorResponseErrorCode.
 const (
-	INTERNALERROR   ErrorResponseErrorCode = "INTERNAL_ERROR"
-	NOTFOUND        ErrorResponseErrorCode = "NOT_FOUND"
-	VALIDATIONERROR ErrorResponseErrorCode = "VALIDATION_ERROR"
+	CONFLICT           ErrorResponseErrorCode = "CONFLICT"
+	INTERNALERROR      ErrorResponseErrorCode = "INTERNAL_ERROR"
+	MALFORMEDREQUEST   ErrorResponseErrorCode = "MALFORMED_REQUEST"
+	NOTFOUND           ErrorResponseErrorCode = "NOT_FOUND"
+	SERVICEUNAVAILABLE ErrorResponseErrorCode = "SERVICE_UNAVAILABLE"
+	VALIDATIONERROR    ErrorResponseErrorCode = "VALIDATION_ERROR"
 )
 
 // CheckOutRequest Request payload for making a check in/out transaction
@@ -56,8 +59,8 @@ type ErrorResponse struct {
 		// Code Machine readable error code
 		Code ErrorResponseErrorCode `json:"code"`
 
-		// Details Array of specific field errors
-		Details *[]ErrorDetail `json:"details,omitempty"`
+		// Details Array of specific field errors. Empty if no specific errors
+		Details []ErrorDetail `json:"details"`
 
 		// Message Human-readable error message
 		Message string `json:"message"`

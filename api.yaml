@@ -506,13 +506,17 @@ components:
           required:
             - code
             - message
+            - details
           properties:
             code:
               type: string
               enum:
                 - VALIDATION_ERROR
+                - SERVICE_UNAVAILABLE
                 - INTERNAL_ERROR
                 - NOT_FOUND
+                - CONFLICT
+                - MALFORMED_REQUEST
               description: Machine readable error code
               example: "VALIDATION_ERROR"
             message:
@@ -523,7 +527,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ErrorDetail'
-              description: Array of specific field errors
+              description: Array of specific field errors. Empty if no specific errors
       description: Response when errors occur
 
     ErrorDetail:
