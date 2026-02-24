@@ -9,7 +9,9 @@ help:
 
 up:
 	@echo "Running generate and build-docker in backend/..."
-	@$(MAKE) -C backend generate build-docker
+	@$(MAKE) -C backend build-docker
+	@echo "Running build-docker in frontend/..."
+	@$(MAKE) -C frontend build-docker
 	@echo "Bringing up containers..."
 	@docker compose up -d
 
