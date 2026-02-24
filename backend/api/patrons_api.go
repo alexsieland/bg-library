@@ -45,7 +45,7 @@ func (s Server) DeletePatron(c *gin.Context, patronId string) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func (s Server) GetPatron(c *gin.Context, patronId string) {
@@ -94,7 +94,7 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 		internalError(c, err)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
