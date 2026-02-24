@@ -25,3 +25,14 @@ Use the following `make` commands from the project root to manage the applicatio
 - `make help`: Display available targets.
 
 For more detailed information on the backend, see [backend/README.md](backend/README.md).
+
+## Development
+
+### Pre-commit Hook
+To ensure consistent code formatting, a Git pre-commit hook is provided in the `scripts/` directory. This hook automatically runs `gofmt` and `goimports` on your staged files before each commit.
+
+To install the hook, run the following command from the project root:
+
+```bash
+ln -s ../../scripts/pre-commit-hook.sh .git/hooks/pre-commit
+```
