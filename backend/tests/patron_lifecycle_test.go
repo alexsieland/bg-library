@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -96,24 +94,12 @@ func TestPatronLifecycleWorkflow(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
 
 	// 6. Verify the Patron no longer appears in ListPatrons
-	// Note: According to the OpenAPI spec, ListPatrons returns PatronList, but the implementation
-	// is currently returning a raw array of Patron.
-	// This test will now use the raw Body to demonstrate the issue and verify deletion logic.
-
-	resp, err := http.Get(ts.URL + "/api/v1/library/patrons")
+	listResp, err := client.ListPatronsWithResponse(ctx, &api.ListPatronsParams{})
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	resp.Body.Close()
-
-	var actualPatrons []api.Patron
-	err = json.Unmarshal(body, &actualPatrons)
-	assert.NoError(t, err, "Current implementation returns a raw array, not PatronList")
+	assert.Equal(t, http.StatusOK, listResp.StatusCode())
 
 	found := false
-	for _, p := range actualPatrons {
+	for _, p := range listResp.JSON200.Patrons {
 		if p.PatronId == patronID {
 			found = true
 			break
@@ -122,16 +108,10 @@ func TestPatronLifecycleWorkflow(t *testing.T) {
 	assert.False(t, found, "Deleted patron should not be in the list")
 
 	// 7. Verify that searching for the deleted Patron's name via ListPatrons returns no results
-	resp, err = http.Get(ts.URL + "/api/v1/library/patrons?name=" + newName)
+	listRespSearch, err := client.ListPatronsWithResponse(ctx, &api.ListPatronsParams{
+		Name: &newName,
+	})
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, err = io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	resp.Body.Close()
-
-	var searchedPatrons []api.Patron
-	err = json.Unmarshal(body, &searchedPatrons)
-	assert.NoError(t, err)
-	assert.Len(t, searchedPatrons, 0, "Search should return no results for deleted patron")
+	assert.Equal(t, http.StatusOK, listRespSearch.StatusCode())
+	assert.Len(t, listRespSearch.JSON200.Patrons, 0, "Search should return no results for deleted patron")
 }
