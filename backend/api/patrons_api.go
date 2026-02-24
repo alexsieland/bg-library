@@ -114,12 +114,12 @@ func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
 		name := *params.Name
 		var err error
 		dbPatronList, err = s.queries.SearchPatrons(c.Request.Context(), db.SearchPatronsParams{
-			FullName: name,
+			FullName: "%" + name + "%",
 			Limit:    999,
 			Offset:   0,
 		})
 		if err != nil {
-			log.Printf("Error saerching patrons: %v", err)
+			log.Printf("Error searching patrons: %v", err)
 			internalError(c, err)
 			return
 		}
@@ -129,5 +129,5 @@ func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
 	for i, dbPatron := range dbPatronList {
 		patronList[i] = FromVwLibraryPatron(dbPatron)
 	}
-	c.JSON(http.StatusOK, patronList)
+	c.JSON(http.StatusOK, PatronList{Patrons: patronList})
 }

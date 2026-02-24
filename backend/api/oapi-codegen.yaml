@@ -3,4 +3,5 @@ package: api
 generate:
   models: true
   gin-server: true
+  client: true
 output: api/oapi-codegen.gen.go

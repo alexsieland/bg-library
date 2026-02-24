@@ -167,8 +167,8 @@ func TestValidationUtils(t *testing.T) {
 	t.Run("Should sanitize title correctly", func(t *testing.T) {
 		assert.Equal(t, "catan", SanitizeTitle("Catan"))
 		assert.Equal(t, "catan", SanitizeTitle("CATAN"))
-		// norm.NFC check (e.g., combined characters)
-		assert.Equal(t, "\u00e9", SanitizeTitle("\u0065\u0301")) // e + combining acute accent -> é
+		// norm.NFD check (e.g., combined characters)
+		assert.Equal(t, "e", SanitizeTitle("\u0065\u0301")) // e + combining acute accent -> e (accents removed)
 	})
 }
 

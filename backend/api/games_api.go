@@ -118,8 +118,9 @@ func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {
 
 	} else {
 		var err error
+		title := *params.Title
 		dbGameStatusList, err = s.queries.SearchCheckedOutGames(c.Request.Context(), db.SearchCheckedOutGamesParams{
-			SanitizedTitle: SanitizeTitle(*params.Title),
+			SanitizedTitle: "%" + SanitizeTitle(title) + "%",
 			Limit:          999,
 			Offset:         0,
 		})
@@ -158,8 +159,9 @@ func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
 
 	} else {
 		var err error
+		title := *params.Title
 		dbGameStatusList, err = s.queries.SearchGameStatus(c.Request.Context(), db.SearchGameStatusParams{
-			SanitizedTitle: SanitizeTitle(*params.Title),
+			SanitizedTitle: "%" + SanitizeTitle(title) + "%",
 			Limit:          999,
 			Offset:         0,
 		})

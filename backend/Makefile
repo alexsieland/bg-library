@@ -10,6 +10,7 @@ help:
 	@echo "  make format         - Format and simplify code using gofmt and goimports"
 	@echo "  make lint           - Check code formatting"
 	@echo "  make test           - Run all unit tests"
+	@echo "  make test-integration - Run integration tests"
 	@echo "  make help           - Display this help message"
 
 # Generate the go code for the database and API
@@ -48,3 +49,8 @@ lint:
 test:
 	@echo "Running unit tests..."
 	@go test -v ./... $(TEST_ARGS)
+
+# Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	@go test -v ./tests/... $(TEST_ARGS)

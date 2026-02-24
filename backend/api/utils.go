@@ -117,7 +117,14 @@ func ValidateStringLength(fieldName string, str string, minLength int, maxLength
 }
 
 func SanitizeTitle(title string) string {
-	return norm.NFC.String(strings.ToLower(title))
+	t := norm.NFD.String(strings.ToLower(title))
+	var result strings.Builder
+	for _, r := range t {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == ' ' || r == ':' || r == '-' {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }
 
 // Error Utils

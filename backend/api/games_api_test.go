@@ -274,7 +274,7 @@ func TestListGames(t *testing.T) {
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
 
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{SanitizeTitle(title), int32(999), int32(0)}).Return(mockRows, nil)
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{"%" + SanitizeTitle(title) + "%", int32(999), int32(0)}).Return(mockRows, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
