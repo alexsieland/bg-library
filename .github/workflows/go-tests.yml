@@ -19,6 +19,10 @@ jobs:
         cache: true
         cache-dependency-path: backend/go.sum
 
-    - name: Run Tests
+    - name: Run Unit Tests
       working-directory: ./backend
-      run: go test -v ./...
+      run: make test
+
+    - name: Run Integration Tests
+      working-directory: ./backend
+      run: make test-integration
