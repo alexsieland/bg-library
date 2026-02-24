@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"path/filepath"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
@@ -41,7 +42,7 @@ func conflict(c *gin.Context, message string) {
 	c.AbortWithStatusJSON(http.StatusConflict, NewErrorResponse(CONFLICT, message))
 }
 
-func (s Server) GetApiV1Health(c *gin.Context) {
+func (s Server) GetHealth(c *gin.Context) {
 	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
 	if err != nil {
 		log.Printf("Error checking database health: %v", err)
@@ -49,4 +50,12 @@ func (s Server) GetApiV1Health(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusOK)
+}
+
+func RegisterSwagger(r *gin.Engine) {
+	r.StaticFS("/swagger", http.Dir(filepath.Join("..", "swagger")))
+
+	r.GET("/swagger", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
+	})
 }
