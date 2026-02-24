@@ -104,11 +104,6 @@ func TestCheckoutWorkflow(t *testing.T) {
 	transactionID := transaction.Id
 
 	// 7. Verify game status is checked out
-	// Note: GetGame returns a Game object, but the integration test needs to check if it's checked out.
-	// Looking at the swagger/api.yaml (or the generated code), ListGames returns GameList which contains GameStatus.
-	// However, the requirement says "only reference the swagger/api.yaml file for endpoint information".
-	// Let's check the ListGames endpoint to verify status.
-
 	listGamesResp, err := client.ListGamesWithResponse(ctx, &api.ListGamesParams{
 		CheckedOut: func(b bool) *bool { return &b }(true),
 	})
