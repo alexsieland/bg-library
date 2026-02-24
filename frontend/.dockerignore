@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+
+# Git files
+.git
+.gitignore
+
+# Environment variables
+.env
+.env.*
+
+# General files
+src/generated
