@@ -129,8 +129,8 @@ type Patron struct {
 
 // PatronList List of patrons with check out info
 type PatronList struct {
-	// Games Array of patrons
-	Games *[]Patron `json:"games,omitempty"`
+	// Patrons Array of patrons
+	Patrons []Patron `json:"patrons"`
 }
 
 // CheckInGameParams defines parameters for CheckInGame.

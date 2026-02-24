@@ -119,7 +119,7 @@ func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
 			Offset:   0,
 		})
 		if err != nil {
-			log.Printf("Error saerching patrons: %v", err)
+			log.Printf("Error searching patrons: %v", err)
 			internalError(c, err)
 			return
 		}

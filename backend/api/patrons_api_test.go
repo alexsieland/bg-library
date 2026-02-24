@@ -313,11 +313,11 @@ func TestListPatrons(t *testing.T) {
 		server.ListPatrons(c, ListPatronsParams{})
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var response []Patron
+		var response PatronList
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response, 1)
-		assert.Equal(t, name, response[0].Name)
+		assert.Len(t, response.Patrons, 1)
+		assert.Equal(t, name, response.Patrons[0].Name)
 	})
 
 	t.Run("Should return 200 OK with searched patrons when name is provided", func(t *testing.T) {
