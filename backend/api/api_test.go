@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -9,60 +8,15 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-type MockDB struct {
-	ConnectFunc  func() error
-	CloseFunc    func()
-	ExecFunc     func(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error)
-	QueryFunc    func(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error)
-	QueryRowFunc func(ctx context.Context, s string, i ...interface{}) pgx.Row
-}
-
-func (m *MockDB) Connect() error {
-	if m.ConnectFunc != nil {
-		return m.ConnectFunc()
-	}
-	return nil
-}
-
-func (m *MockDB) Close() {
-	if m.CloseFunc != nil {
-		m.CloseFunc()
-	}
-}
-
-func (m *MockDB) Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error) {
-	return m.ExecFunc(ctx, s, i...)
-}
-
-func (m *MockDB) Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error) {
-	if m.QueryFunc != nil {
-		return m.QueryFunc(ctx, s, i...)
-	}
-	return nil, nil
-}
-
-func (m *MockDB) QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row {
-	if m.QueryRowFunc != nil {
-		return m.QueryRowFunc(ctx, s, i...)
-	}
-	return nil
-}
-
 func TestGetHealth(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	t.Run("Should return 200 OK when the database is healthy", func(t *testing.T) {
-		mockDB := &MockDB{
-			ExecFunc: func(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error) {
-				return pgconn.CommandTag{}, nil
-			},
-		}
-		server := Server{Database: mockDB}
+		server, mockDB := setupTestServer()
+		mockDB.On("Exec", mock.Anything, "SELECT 1;", mock.Anything).Return(pgconn.CommandTag{}, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -71,15 +25,12 @@ func TestGetHealth(t *testing.T) {
 		server.GetHealth(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+		mockDB.AssertExpectations(t)
 	})
 
 	t.Run("Should return 503 Service Unavailable when the database returns an error", func(t *testing.T) {
-		mockDB := &MockDB{
-			ExecFunc: func(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error) {
-				return pgconn.CommandTag{}, errors.New("db error")
-			},
-		}
-		server := Server{Database: mockDB}
+		server, mockDB := setupTestServer()
+		mockDB.On("Exec", mock.Anything, "SELECT 1;", mock.Anything).Return(pgconn.CommandTag{}, errors.New("db error"))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -89,6 +40,7 @@ func TestGetHealth(t *testing.T) {
 
 		assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 		assert.Contains(t, w.Body.String(), "Database is unavailable")
+		mockDB.AssertExpectations(t)
 	})
 }
 
