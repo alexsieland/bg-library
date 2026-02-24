@@ -20,6 +20,7 @@ func main() {
 
 	r := gin.Default()
 
+	api.RegisterSwagger(r)
 	api.RegisterHandlers(r, server)
 
 	// And we serve HTTP until the world ends.

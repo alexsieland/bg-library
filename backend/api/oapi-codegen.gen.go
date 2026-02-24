@@ -165,9 +165,6 @@ type UpdatePatronJSONRequestBody = CreatePatronRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
-	// (GET /api/v1/health)
-	GetApiV1Health(c *gin.Context)
 	// Check in a game
 	// (POST /api/v1/library/checkin)
 	CheckInGame(c *gin.Context, params CheckInGameParams)
@@ -204,6 +201,9 @@ type ServerInterface interface {
 	// Get list of all patrons
 	// (GET /api/v1/library/patrons)
 	ListPatrons(c *gin.Context, params ListPatronsParams)
+
+	// (GET /health)
+	GetHealth(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -214,19 +214,6 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
-
-// GetApiV1Health operation middleware
-func (siw *ServerInterfaceWrapper) GetApiV1Health(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetApiV1Health(c)
-}
 
 // CheckInGame operation middleware
 func (siw *ServerInterfaceWrapper) CheckInGame(c *gin.Context) {
@@ -504,6 +491,19 @@ func (siw *ServerInterfaceWrapper) ListPatrons(c *gin.Context) {
 	siw.Handler.ListPatrons(c, params)
 }
 
+// GetHealth operation middleware
+func (siw *ServerInterfaceWrapper) GetHealth(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetHealth(c)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -531,7 +531,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
-	router.GET(options.BaseURL+"/api/v1/health", wrapper.GetApiV1Health)
 	router.POST(options.BaseURL+"/api/v1/library/checkin", wrapper.CheckInGame)
 	router.POST(options.BaseURL+"/api/v1/library/checkout", wrapper.CheckOutGame)
 	router.POST(options.BaseURL+"/api/v1/library/game", wrapper.AddGame)
@@ -544,4 +543,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.GetPatron)
 	router.PUT(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.UpdatePatron)
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
+	router.GET(options.BaseURL+"/health", wrapper.GetHealth)
 }

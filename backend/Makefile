@@ -12,7 +12,7 @@ help:
 # Generate the go code for the database and API
 generate:
 	go tool sqlc -f db/sqlc.yaml generate
-	go tool oapi-codegen -config api/oapi-codegen.yaml ../api.yaml
+	go tool oapi-codegen -config api/oapi-codegen.yaml ../swagger/api.yaml
 
 # Build the Docker image for the API server locally
 build-docker:
