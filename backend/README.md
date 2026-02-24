@@ -30,9 +30,12 @@ A `Makefile` is provided in this directory to simplify common tasks:
 - `make format`: Formats and simplifies code using `gofmt` and `goimports`.
 - `make lint`: Checks code formatting (excluding generated files).
 - `make test`: Runs all unit tests.
+- `make test-integration`: Runs all integration tests (requires Docker).
 - `make help`: Displays available targets.
 
-### Running Unit Tests
+### Running Tests
+
+#### Unit Tests
 
 To run all unit tests for the backend:
 
@@ -40,10 +43,26 @@ To run all unit tests for the backend:
 make test
 ```
 
-To run a specific test, you can pass the `TEST_ARGS` variable:
+To run a specific unit test, you can pass the `TEST_ARGS` variable:
 
 ```bash
 make test TEST_ARGS="-run TestAddGame"
+```
+
+#### Integration Tests
+
+Integration tests use [testcontainers-go](https://golang.testcontainers.org/) to spin up a real PostgreSQL database in a Docker container. Ensure Docker is running before executing these tests.
+
+To run the integration tests:
+
+```bash
+make test-integration
+```
+
+To run a specific integration test, use the `TEST_ARGS` variable:
+
+```bash
+make test-integration TEST_ARGS="-run TestCheckoutWorkflow"
 ```
 
 ### Configuration
