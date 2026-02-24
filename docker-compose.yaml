@@ -3,6 +3,8 @@ services:
   frontend:
     image: alexsieland/bg-library-frontend:${APP_VERSION:-latest}
     restart: always
+    environment:
+      - NGINX_HOST={APP_HOST:-localhost}
     networks:
       - client-side
     ports:
