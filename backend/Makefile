@@ -9,6 +9,7 @@ help:
 	@echo "  make run            - Run the API server locally directly through go"
 	@echo "  make format         - Format and simplify code using gofmt and goimports"
 	@echo "  make lint           - Check code formatting"
+	@echo "  make test           - Run all unit tests"
 	@echo "  make help           - Display this help message"
 
 # Generate the go code for the database and API
@@ -42,3 +43,8 @@ format:
 lint:
 	@echo "Checking code formatting..."
 	@gofmt -s -l . | grep -v "gen.go" || true
+
+# Run unit tests (use TEST_ARGS="-run TestName" to run specific tests)
+test:
+	@echo "Running unit tests..."
+	@go test -v ./... $(TEST_ARGS)

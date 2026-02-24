@@ -27,7 +27,24 @@ A `Makefile` is provided in this directory to simplify common tasks:
 - `make build-docker`: Builds the local Docker image for the backend.
 - `make run`: Runs the API server locally directly using `go run main.go`. Make sure the database is running and accessible.
 - `make remove-docker`: Removes the local backend Docker image.
+- `make format`: Formats and simplifies code using `gofmt` and `goimports`.
+- `make lint`: Checks code formatting (excluding generated files).
+- `make test`: Runs all unit tests.
 - `make help`: Displays available targets.
+
+### Running Unit Tests
+
+To run all unit tests for the backend:
+
+```bash
+make test
+```
+
+To run a specific test, you can pass the `TEST_ARGS` variable:
+
+```bash
+make test TEST_ARGS="-run TestAddGame"
+```
 
 ### Configuration
 
