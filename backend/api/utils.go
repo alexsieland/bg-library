@@ -13,6 +13,10 @@ import (
 
 //Conversion Utils
 
+func pgUUIDToUUID(pgUUID pgtype.UUID) uuid.UUID {
+	return pgUUID.Bytes
+}
+
 func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 	var checkedOutAt *time.Time
 	if dbGameStatus.CheckoutTimestamp.Valid {
@@ -28,7 +32,7 @@ func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 
 func dbGameStatusToOpenAPIGame(dbGameStatus db.VwGameStatus) Game {
 	return Game{
-		GameId: uuid.MustParse(dbGameStatus.GameID.String()),
+		GameId: pgUUIDToUUID(dbGameStatus.GameID),
 		Title:  dbGameStatus.GameTitle,
 	}
 }
@@ -36,7 +40,7 @@ func dbGameStatusToOpenAPIGame(dbGameStatus db.VwGameStatus) Game {
 func dbGameStatusToOpenAPIPatron(dbGameStatus db.VwGameStatus) *Patron {
 	if dbGameStatus.PatronID.Valid && dbGameStatus.PatronFullName.Valid {
 		return &Patron{
-			PatronId: uuid.MustParse(dbGameStatus.GameID.String()),
+			PatronId: pgUUIDToUUID(dbGameStatus.PatronID),
 			Name:     dbGameStatus.PatronFullName.String,
 		}
 	}
@@ -45,37 +49,37 @@ func dbGameStatusToOpenAPIPatron(dbGameStatus db.VwGameStatus) *Patron {
 
 func FromVwLibraryPatron(dbPatron db.VwLibraryPatron) Patron {
 	return Patron{
-		PatronId: uuid.MustParse(dbPatron.ID.String()),
+		PatronId: pgUUIDToUUID(dbPatron.ID),
 		Name:     dbPatron.FullName,
 	}
 }
 
 func FromPatron(dbPatron db.Patron) Patron {
 	return Patron{
-		PatronId: uuid.MustParse(dbPatron.ID.String()),
+		PatronId: pgUUIDToUUID(dbPatron.ID),
 		Name:     dbPatron.FullName,
 	}
 }
 
 func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
 	return Game{
-		GameId: uuid.MustParse(dbGame.ID.String()),
+		GameId: pgUUIDToUUID(dbGame.ID),
 		Title:  dbGame.Title,
 	}
 }
 
 func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
 	return LibraryTransaction{
-		GameId:    uuid.MustParse(dbTransaction.GameID.String()),
-		Id:        uuid.MustParse(dbTransaction.ID.String()),
-		PatronId:  uuid.MustParse(dbTransaction.PatronID.String()),
+		GameId:    pgUUIDToUUID(dbTransaction.GameID),
+		Id:        pgUUIDToUUID(dbTransaction.ID),
+		PatronId:  pgUUIDToUUID(dbTransaction.PatronID),
 		Timestamp: dbTransaction.CheckoutTimestamp.Time,
 	}
 }
 
 func FromGame(dbGame db.Game) Game {
 	return Game{
-		GameId: uuid.MustParse(dbGame.ID.String()),
+		GameId: pgUUIDToUUID(dbGame.ID),
 		Title:  dbGame.Title,
 	}
 }

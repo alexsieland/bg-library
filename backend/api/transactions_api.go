@@ -13,6 +13,7 @@ func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
 	transactionUUID, errorDetails := ConvertToPgTypeUUID("TransactionId", params.TransactionId, []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
+		return
 	}
 	err := s.queries.CheckInGame(c.Request.Context(), transactionUUID)
 	if err != nil {
@@ -20,7 +21,7 @@ func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
 		internalError(c, err)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func (s Server) CheckOutGame(c *gin.Context) {

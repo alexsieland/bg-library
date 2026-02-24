@@ -49,7 +49,7 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func (s Server) GetGame(c *gin.Context, gameId string) {
@@ -99,7 +99,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 		internalError(c, err)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {

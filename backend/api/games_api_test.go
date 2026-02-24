@@ -1,0 +1,307 @@
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+func TestAddGame(t *testing.T) {
+	t.Run("Should return 201 Created when valid game is added", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		title := "Catan"
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(4).(*bool) = false
+		}).Return(nil)
+
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(AddGameJSONRequestBody{Title: title})
+		c.Request = httptest.NewRequest("POST", "/games", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.AddGame(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response Game
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, title, response.Title)
+		assert.Equal(t, gameID, response.GameId)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 400 Bad Request when JSON is malformed", func(t *testing.T) {
+		server, _ := setupTestServer()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games", bytes.NewBufferString("{invalid json}"))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.AddGame(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "JSON body is malformed")
+	})
+
+	t.Run("Should return 400 Bad Request when title is too long", func(t *testing.T) {
+		server, _ := setupTestServer()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(AddGameJSONRequestBody{Title: string(make([]byte, 101))})
+		c.Request = httptest.NewRequest("POST", "/games", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.AddGame(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
+	})
+
+	t.Run("Should return 500 Internal Server Error when DB returns error", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		title := "Catan"
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(AddGameJSONRequestBody{Title: title})
+		c.Request = httptest.NewRequest("POST", "/games", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.AddGame(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "db error")
+	})
+}
+
+func TestDeleteGame(t *testing.T) {
+	t.Run("Should return 204 No Content when game is deleted", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/games/"+gameID.String(), nil)
+		server.DeleteGame(c, gameID.String())
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 400 Bad Request when gameId is invalid UUID", func(t *testing.T) {
+		server, _ := setupTestServer()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		server.DeleteGame(c, "invalid-uuid")
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
+	})
+
+	t.Run("Should return 500 Internal Server Error when DB error occurs on delete", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, errors.New("db error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/games/"+gameID.String(), nil)
+		server.DeleteGame(c, gameID.String())
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "db error")
+	})
+}
+
+func TestGetGame(t *testing.T) {
+	t.Run("Should return 200 OK when game is found", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		title := "Catan"
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+		}).Return(nil)
+
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/games/"+gameID.String(), nil)
+		server.GetGame(c, gameID.String())
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response Game
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, title, response.Title)
+		assert.Equal(t, gameID, response.GameId)
+	})
+
+	t.Run("Should return 404 Not Found when game does not exist", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/games/"+gameID.String(), nil)
+		server.GetGame(c, gameID.String())
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestUpdateGame(t *testing.T) {
+	t.Run("Should return 204 No Content when game is updated", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		title := "Updated Catan"
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, title, SanitizeTitle(title)}).Return(pgconn.CommandTag{}, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(UpdateGameJSONRequestBody{Title: title})
+		c.Request = httptest.NewRequest("PUT", "/games/"+gameID.String(), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.UpdateGame(c, gameID.String())
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+	})
+
+	t.Run("Should return 404 Not Found when updating non-existent game", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		title := "Updated Catan"
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, title, SanitizeTitle(title)}).Return(pgconn.CommandTag{}, pgx.ErrNoRows)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(UpdateGameJSONRequestBody{Title: title})
+		c.Request = httptest.NewRequest("PUT", "/games/"+gameID.String(), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.UpdateGame(c, gameID.String())
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestListGames(t *testing.T) {
+	t.Run("Should return 200 OK with list of games when called without title", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		title := "Catan"
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.UUID) = pgtype.UUID{Valid: false}
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}
+			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Valid: false}
+			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(7).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+		}).Return(nil)
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{int32(999), int32(0)}).Return(mockRows, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/games", nil)
+		server.ListGames(c, ListGamesParams{})
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response GameList
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Games, 1)
+		assert.Equal(t, title, response.Games[0].Game.Title)
+	})
+
+	t.Run("Should return 200 OK with searched games when title is provided", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		title := "Catan"
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(false)
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{SanitizeTitle(title), int32(999), int32(0)}).Return(mockRows, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/games?title=Catan", nil)
+		server.ListGames(c, ListGamesParams{Title: &title})
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should call listCheckedOutGames when CheckedOut is true", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		checkedOut := true
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(false)
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{int32(999), int32(0)}).Return(mockRows, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/games?checkedOut=true", nil)
+		server.ListGames(c, ListGamesParams{CheckedOut: &checkedOut})
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockDB.AssertExpectations(t)
+	})
+}

@@ -1,16 +1,27 @@
 package api
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"path/filepath"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type DB interface {
+	Connect() error
+	Close()
+	Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error)
+	QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row
+}
+
 type Server struct {
-	Database *db.LibraryDatabase
+	Database DB
 	queries  *db.Queries
 }
 

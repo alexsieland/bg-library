@@ -12,8 +12,9 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/jackc/pgxutil v0.0.0-20231015020832-ec5434149869
 	github.com/oapi-codegen/runtime v1.1.2
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/text v0.29.0
 )
 
 require (
@@ -67,6 +68,7 @@ require (
 	github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86 // indirect
 	github.com/pingcap/log v1.1.0 // indirect
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20250324122243-d51e00e5bbf0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -77,6 +79,7 @@ require (
 	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/sqlc-dev/sqlc v1.30.0 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
@@ -95,7 +98,6 @@ require (
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
