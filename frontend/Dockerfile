@@ -7,9 +7,9 @@ COPY frontend/package*.json ./
 COPY swagger/api.yaml api.yaml
 RUN npm install
 
-COPY frontend .
+COPY frontend/ ./
 
-RUN npm openapi-typescript api.yaml --output src/generated/libray-api.d.ts
+RUN npx openapi-typescript api.yaml --output src/generated/api.d.ts
 RUN npm run build
 
 # Production stage

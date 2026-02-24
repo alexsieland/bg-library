@@ -12,7 +12,7 @@ help:
 
 generate:
 	@echo "Generating code for frontend..."
-	@npx openapi-typescript ../swagger/api.yaml --output src/generated/libray-api.d.ts
+	@npx openapi-typescript ../swagger/api.yaml --output src/generated/api.d.ts
 
 build-docker:
 	@echo "Building local Docker image for API server..."
