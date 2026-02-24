@@ -4,8 +4,14 @@
 package api
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -162,6 +168,1819 @@ type AddPatronJSONRequestBody = CreatePatronRequest
 
 // UpdatePatronJSONRequestBody defines body for UpdatePatron for application/json ContentType.
 type UpdatePatronJSONRequestBody = CreatePatronRequest
+
+// RequestEditorFn  is the function signature for the RequestEditor callback function
+type RequestEditorFn func(ctx context.Context, req *http.Request) error
+
+// Doer performs HTTP requests.
+//
+// The standard http.Client implements this interface.
+type HttpRequestDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// Client which conforms to the OpenAPI3 specification for this service.
+type Client struct {
+	// The endpoint of the server conforming to this interface, with scheme,
+	// https://api.deepmap.com for example. This can contain a path relative
+	// to the server, such as https://api.deepmap.com/dev-test, and all the
+	// paths in the swagger spec will be appended to the server.
+	Server string
+
+	// Doer for performing requests, typically a *http.Client with any
+	// customized settings, such as certificate chains.
+	Client HttpRequestDoer
+
+	// A list of callbacks for modifying requests which are generated before sending over
+	// the network.
+	RequestEditors []RequestEditorFn
+}
+
+// ClientOption allows setting custom parameters during construction
+type ClientOption func(*Client) error
+
+// Creates a new Client, with reasonable defaults
+func NewClient(server string, opts ...ClientOption) (*Client, error) {
+	// create a client with sane default values
+	client := Client{
+		Server: server,
+	}
+	// mutate client and add all optional params
+	for _, o := range opts {
+		if err := o(&client); err != nil {
+			return nil, err
+		}
+	}
+	// ensure the server URL always has a trailing slash
+	if !strings.HasSuffix(client.Server, "/") {
+		client.Server += "/"
+	}
+	// create httpClient, if not already present
+	if client.Client == nil {
+		client.Client = &http.Client{}
+	}
+	return &client, nil
+}
+
+// WithHTTPClient allows overriding the default Doer, which is
+// automatically created using http.Client. This is useful for tests.
+func WithHTTPClient(doer HttpRequestDoer) ClientOption {
+	return func(c *Client) error {
+		c.Client = doer
+		return nil
+	}
+}
+
+// WithRequestEditorFn allows setting up a callback function, which will be
+// called right before sending the request. This can be used to mutate the request.
+func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
+	return func(c *Client) error {
+		c.RequestEditors = append(c.RequestEditors, fn)
+		return nil
+	}
+}
+
+// The interface specification for the client above.
+type ClientInterface interface {
+	// CheckInGame request
+	CheckInGame(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CheckOutGameWithBody request with any body
+	CheckOutGameWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CheckOutGame(ctx context.Context, body CheckOutGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddGameWithBody request with any body
+	AddGameWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AddGame(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteGame request
+	DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGame request
+	GetGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGameWithBody request with any body
+	UpdateGameWithBody(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateGame(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListGames request
+	ListGames(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddPatronWithBody request with any body
+	AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AddPatron(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeletePatron request
+	DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPatron request
+	GetPatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePatronWithBody request with any body
+	UpdatePatronWithBody(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdatePatron(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPatrons request
+	ListPatrons(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetHealth request
+	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) CheckInGame(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCheckInGameRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CheckOutGameWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCheckOutGameRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CheckOutGame(ctx context.Context, body CheckOutGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCheckOutGameRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddGameWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddGameRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddGame(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddGameRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteGameRequest(c.Server, gameId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGameRequest(c.Server, gameId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateGameWithBody(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGameRequestWithBody(c.Server, gameId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateGame(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGameRequest(c.Server, gameId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListGames(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListGamesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPatronRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddPatron(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPatronRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeletePatronRequest(c.Server, patronId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetPatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPatronRequest(c.Server, patronId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePatronRequestWithBody(c.Server, patronId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdatePatron(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePatronRequest(c.Server, patronId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListPatrons(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPatronsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewCheckInGameRequest generates requests for CheckInGame
+func NewCheckInGameRequest(server string, params *CheckInGameParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/checkin")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "transactionId", runtime.ParamLocationQuery, params.TransactionId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCheckOutGameRequest calls the generic CheckOutGame builder with application/json body
+func NewCheckOutGameRequest(server string, body CheckOutGameJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCheckOutGameRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCheckOutGameRequestWithBody generates requests for CheckOutGame with any type of body
+func NewCheckOutGameRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/checkout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAddGameRequest calls the generic AddGame builder with application/json body
+func NewAddGameRequest(server string, body AddGameJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddGameRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAddGameRequestWithBody generates requests for AddGame with any type of body
+func NewAddGameRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/game")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteGameRequest generates requests for DeleteGame
+func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "gameId", runtime.ParamLocationPath, gameId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/game/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetGameRequest generates requests for GetGame
+func NewGetGameRequest(server string, gameId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "gameId", runtime.ParamLocationPath, gameId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/game/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateGameRequest calls the generic UpdateGame builder with application/json body
+func NewUpdateGameRequest(server string, gameId string, body UpdateGameJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateGameRequestWithBody(server, gameId, "application/json", bodyReader)
+}
+
+// NewUpdateGameRequestWithBody generates requests for UpdateGame with any type of body
+func NewUpdateGameRequestWithBody(server string, gameId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "gameId", runtime.ParamLocationPath, gameId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/game/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListGamesRequest generates requests for ListGames
+func NewListGamesRequest(server string, params *ListGamesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/games")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.CheckedOut != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "checkedOut", runtime.ParamLocationQuery, *params.CheckedOut); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Title != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "title", runtime.ParamLocationQuery, *params.Title); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddPatronRequest calls the generic AddPatron builder with application/json body
+func NewAddPatronRequest(server string, body AddPatronJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddPatronRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAddPatronRequestWithBody generates requests for AddPatron with any type of body
+func NewAddPatronRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patron")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeletePatronRequest generates requests for DeletePatron
+func NewDeletePatronRequest(server string, patronId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "patronId", runtime.ParamLocationPath, patronId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patron/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetPatronRequest generates requests for GetPatron
+func NewGetPatronRequest(server string, patronId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "patronId", runtime.ParamLocationPath, patronId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patron/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdatePatronRequest calls the generic UpdatePatron builder with application/json body
+func NewUpdatePatronRequest(server string, patronId string, body UpdatePatronJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdatePatronRequestWithBody(server, patronId, "application/json", bodyReader)
+}
+
+// NewUpdatePatronRequestWithBody generates requests for UpdatePatron with any type of body
+func NewUpdatePatronRequestWithBody(server string, patronId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "patronId", runtime.ParamLocationPath, patronId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patron/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListPatronsRequest generates requests for ListPatrons
+func NewListPatronsRequest(server string, params *ListPatronsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patrons")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Name != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, *params.Name); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetHealthRequest generates requests for GetHealth
+func NewGetHealthRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/health")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
+	for _, r := range c.RequestEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	for _, r := range additionalEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ClientWithResponses builds on ClientInterface to offer response payloads
+type ClientWithResponses struct {
+	ClientInterface
+}
+
+// NewClientWithResponses creates a new ClientWithResponses, which wraps
+// Client with return type handling
+func NewClientWithResponses(server string, opts ...ClientOption) (*ClientWithResponses, error) {
+	client, err := NewClient(server, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &ClientWithResponses{client}, nil
+}
+
+// WithBaseURL overrides the baseURL.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) error {
+		newBaseURL, err := url.Parse(baseURL)
+		if err != nil {
+			return err
+		}
+		c.Server = newBaseURL.String()
+		return nil
+	}
+}
+
+// ClientWithResponsesInterface is the interface specification for the client with responses above.
+type ClientWithResponsesInterface interface {
+	// CheckInGameWithResponse request
+	CheckInGameWithResponse(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*CheckInGameResponse, error)
+
+	// CheckOutGameWithBodyWithResponse request with any body
+	CheckOutGameWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CheckOutGameResponse, error)
+
+	CheckOutGameWithResponse(ctx context.Context, body CheckOutGameJSONRequestBody, reqEditors ...RequestEditorFn) (*CheckOutGameResponse, error)
+
+	// AddGameWithBodyWithResponse request with any body
+	AddGameWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddGameResponse, error)
+
+	AddGameWithResponse(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*AddGameResponse, error)
+
+	// DeleteGameWithResponse request
+	DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error)
+
+	// GetGameWithResponse request
+	GetGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*GetGameResponse, error)
+
+	// UpdateGameWithBodyWithResponse request with any body
+	UpdateGameWithBodyWithResponse(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
+
+	UpdateGameWithResponse(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
+
+	// ListGamesWithResponse request
+	ListGamesWithResponse(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*ListGamesResponse, error)
+
+	// AddPatronWithBodyWithResponse request with any body
+	AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error)
+
+	AddPatronWithResponse(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPatronResponse, error)
+
+	// DeletePatronWithResponse request
+	DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error)
+
+	// GetPatronWithResponse request
+	GetPatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*GetPatronResponse, error)
+
+	// UpdatePatronWithBodyWithResponse request with any body
+	UpdatePatronWithBodyWithResponse(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
+
+	UpdatePatronWithResponse(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
+
+	// ListPatronsWithResponse request
+	ListPatronsWithResponse(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*ListPatronsResponse, error)
+
+	// GetHealthWithResponse request
+	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
+}
+
+type CheckInGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r CheckInGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CheckInGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CheckOutGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *LibraryTransaction
+	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r CheckOutGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CheckOutGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AddGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Game
+	JSON400      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r AddGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Game
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListGamesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GameList
+}
+
+// Status returns HTTPResponse.Status
+func (r ListGamesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListGamesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AddPatronResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Patron
+	JSON400      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r AddPatronResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddPatronResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeletePatronResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeletePatronResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeletePatronResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetPatronResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Patron
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPatronResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPatronResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdatePatronResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdatePatronResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdatePatronResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListPatronsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PatronList
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPatronsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPatronsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetHealthResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON503      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetHealthResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetHealthResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// CheckInGameWithResponse request returning *CheckInGameResponse
+func (c *ClientWithResponses) CheckInGameWithResponse(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*CheckInGameResponse, error) {
+	rsp, err := c.CheckInGame(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCheckInGameResponse(rsp)
+}
+
+// CheckOutGameWithBodyWithResponse request with arbitrary body returning *CheckOutGameResponse
+func (c *ClientWithResponses) CheckOutGameWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CheckOutGameResponse, error) {
+	rsp, err := c.CheckOutGameWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCheckOutGameResponse(rsp)
+}
+
+func (c *ClientWithResponses) CheckOutGameWithResponse(ctx context.Context, body CheckOutGameJSONRequestBody, reqEditors ...RequestEditorFn) (*CheckOutGameResponse, error) {
+	rsp, err := c.CheckOutGame(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCheckOutGameResponse(rsp)
+}
+
+// AddGameWithBodyWithResponse request with arbitrary body returning *AddGameResponse
+func (c *ClientWithResponses) AddGameWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddGameResponse, error) {
+	rsp, err := c.AddGameWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddGameResponse(rsp)
+}
+
+func (c *ClientWithResponses) AddGameWithResponse(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*AddGameResponse, error) {
+	rsp, err := c.AddGame(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddGameResponse(rsp)
+}
+
+// DeleteGameWithResponse request returning *DeleteGameResponse
+func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error) {
+	rsp, err := c.DeleteGame(ctx, gameId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteGameResponse(rsp)
+}
+
+// GetGameWithResponse request returning *GetGameResponse
+func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*GetGameResponse, error) {
+	rsp, err := c.GetGame(ctx, gameId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGameResponse(rsp)
+}
+
+// UpdateGameWithBodyWithResponse request with arbitrary body returning *UpdateGameResponse
+func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
+	rsp, err := c.UpdateGameWithBody(ctx, gameId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGameResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateGameWithResponse(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
+	rsp, err := c.UpdateGame(ctx, gameId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGameResponse(rsp)
+}
+
+// ListGamesWithResponse request returning *ListGamesResponse
+func (c *ClientWithResponses) ListGamesWithResponse(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*ListGamesResponse, error) {
+	rsp, err := c.ListGames(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListGamesResponse(rsp)
+}
+
+// AddPatronWithBodyWithResponse request with arbitrary body returning *AddPatronResponse
+func (c *ClientWithResponses) AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error) {
+	rsp, err := c.AddPatronWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddPatronResponse(rsp)
+}
+
+func (c *ClientWithResponses) AddPatronWithResponse(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPatronResponse, error) {
+	rsp, err := c.AddPatron(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddPatronResponse(rsp)
+}
+
+// DeletePatronWithResponse request returning *DeletePatronResponse
+func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error) {
+	rsp, err := c.DeletePatron(ctx, patronId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeletePatronResponse(rsp)
+}
+
+// GetPatronWithResponse request returning *GetPatronResponse
+func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*GetPatronResponse, error) {
+	rsp, err := c.GetPatron(ctx, patronId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPatronResponse(rsp)
+}
+
+// UpdatePatronWithBodyWithResponse request with arbitrary body returning *UpdatePatronResponse
+func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
+	rsp, err := c.UpdatePatronWithBody(ctx, patronId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePatronResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdatePatronWithResponse(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
+	rsp, err := c.UpdatePatron(ctx, patronId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePatronResponse(rsp)
+}
+
+// ListPatronsWithResponse request returning *ListPatronsResponse
+func (c *ClientWithResponses) ListPatronsWithResponse(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*ListPatronsResponse, error) {
+	rsp, err := c.ListPatrons(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPatronsResponse(rsp)
+}
+
+// GetHealthWithResponse request returning *GetHealthResponse
+func (c *ClientWithResponses) GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error) {
+	rsp, err := c.GetHealth(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetHealthResponse(rsp)
+}
+
+// ParseCheckInGameResponse parses an HTTP response from a CheckInGameWithResponse call
+func ParseCheckInGameResponse(rsp *http.Response) (*CheckInGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CheckInGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCheckOutGameResponse parses an HTTP response from a CheckOutGameWithResponse call
+func ParseCheckOutGameResponse(rsp *http.Response) (*CheckOutGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CheckOutGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest LibraryTransaction
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddGameResponse parses an HTTP response from a AddGameWithResponse call
+func ParseAddGameResponse(rsp *http.Response) (*AddGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Game
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteGameResponse parses an HTTP response from a DeleteGameWithResponse call
+func ParseDeleteGameResponse(rsp *http.Response) (*DeleteGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGameResponse parses an HTTP response from a GetGameWithResponse call
+func ParseGetGameResponse(rsp *http.Response) (*GetGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Game
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateGameResponse parses an HTTP response from a UpdateGameWithResponse call
+func ParseUpdateGameResponse(rsp *http.Response) (*UpdateGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListGamesResponse parses an HTTP response from a ListGamesWithResponse call
+func ParseListGamesResponse(rsp *http.Response) (*ListGamesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListGamesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GameList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddPatronResponse parses an HTTP response from a AddPatronWithResponse call
+func ParseAddPatronResponse(rsp *http.Response) (*AddPatronResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddPatronResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Patron
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeletePatronResponse parses an HTTP response from a DeletePatronWithResponse call
+func ParseDeletePatronResponse(rsp *http.Response) (*DeletePatronResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeletePatronResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPatronResponse parses an HTTP response from a GetPatronWithResponse call
+func ParseGetPatronResponse(rsp *http.Response) (*GetPatronResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPatronResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Patron
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdatePatronResponse parses an HTTP response from a UpdatePatronWithResponse call
+func ParseUpdatePatronResponse(rsp *http.Response) (*UpdatePatronResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdatePatronResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPatronsResponse parses an HTTP response from a ListPatronsWithResponse call
+func ParseListPatronsResponse(rsp *http.Response) (*ListPatronsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPatronsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PatronList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetHealthResponse parses an HTTP response from a GetHealthWithResponse call
+func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetHealthResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
