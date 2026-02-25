@@ -1,12 +1,25 @@
 # bg-library
 
-A board game library management system.
+A full-stack board game library management system designed for conventions and festivals.
+
+## Key Features
+- Board game search and management.
+- Patron management
+- Simple checkout and check-in workflow.
 
 ## Project Structure
 
+- `frontend/`: Svelte frontend source code.
 - `backend/`: Go backend source code and related tools.
 - `swagger/`: API specification and UI.
 - `docker-compose.yaml`: Docker Compose configuration for the entire stack.
+
+## Project Documentation
+- [API Documentation](swagger/index.html)
+- [Project Overview](docs/project-overview.md)
+- [Functional Requirements](docs/functional-requirements.md)
+- [Coding Guidelines](docs/coding-guidelines.md)
+- [Testing Guidelines](docs/testing-guidelines.md)
 
 ## Getting Started
 
@@ -24,7 +37,8 @@ Use the following `make` commands from the project root to manage the applicatio
 - `make clean`: Stop the containers and remove the database volumes (useful for a fresh start).
 - `make help`: Display available targets.
 
-For more detailed information on the backend, see [backend/README.md](backend/README.md).
+For more detailed information on the frontend, see [frontend/README.md](frontend/README.md).
+For more detailed information on the backend, see [backend/README.md](backend/README.md)
 
 ## Development
 
