@@ -6,6 +6,8 @@
   export let lastValueRef: { v: string };
   export let cancelKey: number = 0;
 
+  export let minLength: number = 0;
+
   let timer: ReturnType<typeof setTimeout>;
 
   $: {
@@ -15,6 +17,8 @@
     clearTimeout(timer);
     if (value === lastValueRef.v) {
       // no change since last trigger
+    } else if (value.length > 0 && value.length < minLength) {
+      // too short, don't trigger
     } else {
       timer = setTimeout(() => {
         lastValueRef.v = value;
