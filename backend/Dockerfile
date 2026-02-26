@@ -4,10 +4,13 @@ FROM golang:1.25.7
 
 WORKDIR /usr/src/app
 
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-COPY . .
+ENV IS_DOCKER=true
+
+COPY backend/ ./
+COPY swagger/ ./swagger/
 
 RUN go build -v -o /usr/local/bin/app ./
 
