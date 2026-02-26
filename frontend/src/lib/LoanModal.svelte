@@ -1,0 +1,177 @@
+<script lang="ts">
+  import { Modal, Button, Input, Label, Listgroup, ListgroupItem, Spinner } from 'flowbite-svelte';
+  import type { paths, components, operations } from '../generated/library-api';
+  import { getBackendUrl } from './config';
+  import Debounce from './snippets/debounce.svelte';
+
+  export let open = false;
+  export let game: components["schemas"]["Game"] | null = null;
+  export let onLoanSuccess: () => void = () => {};
+
+  let patronName = '';
+  let patrons: components["schemas"]["Patron"][] = [];
+  let loading = false;
+  let loaning = false;
+  let error: string | null = null;
+  let lastValueRef = { v: '' };
+
+  // This is used by the Debounce snippet to skip updates if we manually trigger a search
+  let cancelKey = 0;
+
+  async function searchPatrons(name: string) {
+    if (name.length < 3) {
+      patrons = [];
+      return;
+    }
+    loading = true;
+    error = null;
+    try {
+      const endpoint: keyof paths = '/api/v1/library/patrons';
+      const url = new URL(endpoint, getBackendUrl());
+      url.searchParams.append('name', name);
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error('Failed to search patrons');
+      const data: components["schemas"]["PatronList"] = await response.json();
+      // Only return the first 5 patrons
+      patrons = data.patrons.slice(0, 5);
+    } catch (e) {
+      console.error('Error searching patrons:', e);
+      error = e instanceof Error ? e.message : 'Search failed';
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleLoan() {
+    if (!game || !patronName.trim()) return;
+    loaning = true;
+    error = null;
+    try {
+      // 1. Check if patron exists
+      let patron = patrons.find(p => p.name.toLowerCase() === patronName.trim().toLowerCase());
+      
+      if (!patron) {
+        // If not in the current search results, we should try to find them exactly
+        // or just proceed to create them if they aren't found.
+        // The requirement says: "If the user with that name exists in the database, initiate a checkout event... If no user exists, add the patron first"
+        // To be safe, we should probably check the backend for an exact match if not in list.
+        const endpoint: keyof paths = '/api/v1/library/patrons';
+        const searchUrl = new URL(endpoint, getBackendUrl());
+        searchUrl.searchParams.append('name', patronName.trim());
+        const searchRes = await fetch(searchUrl.toString());
+        if (searchRes.ok) {
+          const searchData: components["schemas"]["PatronList"] = await searchRes.json();
+          patron = searchData.patrons.find(p => p.name.toLowerCase() === patronName.trim().toLowerCase());
+        }
+      }
+
+      let patronId: string;
+      if (!patron) {
+        // 2. Add patron
+        const endpoint: keyof paths = '/api/v1/library/patron';
+        const addRes = await fetch(new URL(endpoint, getBackendUrl()).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: patronName.trim() } as components["schemas"]["CreatePatronRequest"])
+        });
+        if (!addRes.ok) throw new Error('Failed to create patron');
+        const newPatron: components["schemas"]["Patron"] = await addRes.json();
+        patronId = newPatron.patronId;
+      } else {
+        patronId = patron.patronId;
+      }
+
+      // 3. Initiate checkout
+      const endpoint: keyof paths = '/api/v1/library/checkout';
+      const checkoutRes = await fetch(new URL(endpoint, getBackendUrl()).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: game.gameId,
+          patronId: patronId
+        } as components["schemas"]["CheckOutRequest"])
+      });
+      if (!checkoutRes.ok) {
+        const errData = await checkoutRes.json();
+        throw new Error(errData.message || 'Failed to checkout game');
+      }
+
+      onLoanSuccess();
+      open = false;
+      patronName = '';
+      patrons = [];
+    } catch (e) {
+      console.error('Error during loan process:', e);
+      error = e instanceof Error ? e.message : 'Loan process failed';
+    } finally {
+      loaning = false;
+    }
+  }
+
+  function selectPatron(patron: components["schemas"]["Patron"]) {
+    patronName = patron.name;
+    patrons = [];
+    lastValueRef.v = patronName;
+    cancelKey++;
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      handleLoan();
+    }
+  }
+</script>
+
+<Modal bind:open title={`Loan Game: ${game?.title || ''}`} size="xs" autoclose={false} class="w-full">
+  <div class="space-y-4">
+    <div>
+      <Label for="patronName" class="mb-2">Patron Name</Label>
+      <div class="relative">
+        <Input 
+          id="patronName" 
+          placeholder="Enter patron name" 
+          bind:value={patronName} 
+          onkeydown={handleKeydown}
+          autocomplete="off"
+        />
+        {#if loading}
+          <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+            <Spinner size="4" />
+          </div>
+        {/if}
+      </div>
+      
+      {#if patrons.length > 0}
+        <ul class="absolute z-50 w-full mt-1 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          {#each patrons as patron}
+            <li>
+              <button 
+                type="button" 
+                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                onclick={() => selectPatron(patron)}
+              >
+                {patron.name}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
+
+    {#if error}
+      <p class="text-sm text-red-500">{error}</p>
+    {/if}
+
+    <div class="flex justify-end space-x-2">
+      <Button color="alternative" onclick={() => (open = false)}>Cancel</Button>
+      <Button onclick={handleLoan} disabled={loaning || !patronName.trim()}>
+        {#if loaning}
+          <Spinner size="4" class="me-2" />
+        {/if}
+        Loan
+      </Button>
+    </div>
+  </div>
+</Modal>
+
+<Debounce value={patronName} onTrigger={searchPatrons} delay={2000} minLength={3} {lastValueRef} {cancelKey} />

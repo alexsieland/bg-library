@@ -2,9 +2,14 @@
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Badge, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import { apiClient, type GameList } from './api-client';
+  import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   
+  import LoanModal from './LoanModal.svelte';
+
   let searchQuery = '';
+  let loanModalOpen = false;
+  let selectedGame: components["schemas"]["Game"] | null = null;
 
   let gameList: GameList = { games: [] };
   let error: string | null = null;
@@ -30,8 +35,10 @@
     fetchGames();
   });
 
-  function handleCheckout(gameId: string) {
-    console.log('Initiating checkout for game:', gameId);
+  function handleCheckout(game: components["schemas"]["Game"]) {
+    console.log('Initiating checkout for game:', game.gameId);
+    selectedGame = game;
+    loanModalOpen = true;
   }
 
   function handleSearch(query: string) {
@@ -44,6 +51,8 @@
 <div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
   <SearchBar bind:searchQuery placeholder="Search games..." onSearch={handleSearch} />
 </div>
+
+<LoanModal bind:open={loanModalOpen} game={selectedGame} onLoanSuccess={fetchGames} />
 
 {#if loading && gameList.games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
@@ -72,7 +81,7 @@
           <TableBodyCell>
             {#if !gameStatus.patron}
               <Button
-                onclick={() => handleCheckout(gameStatus.game.gameId)}
+                onclick={() => handleCheckout(gameStatus.game)}
                 color="primary"
                 size="sm"
               >
