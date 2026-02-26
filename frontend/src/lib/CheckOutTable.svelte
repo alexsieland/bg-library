@@ -1,16 +1,18 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Badge, Button } from 'flowbite-svelte';
+  import SearchBar from './SearchBar.svelte';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { getBackendUrl } from './config';
   
-  export let searchQuery = '';
+  let searchQuery = '';
 
   let gameList: components["schemas"]["GameList"] = { games: [] };
   let error: string | null = null;
   let loading = true;
 
   async function fetchGames() {
+    console.log('fetchGames called with query:', searchQuery);
     loading = true;
     error = null;
     try {
@@ -18,12 +20,15 @@
       if (searchQuery) {
         url.searchParams.append('title', searchQuery);
       }
+      console.log('Fetching from URL:', url.toString());
       
       const response = await fetch(url.toString());
+      console.log('Response received:', response.status, response.statusText);
       if (!response.ok) {
         throw new Error(`Failed to fetch games: ${response.statusText}`);
       }
       gameList = await response.json();
+      console.log('Fetched games:', gameList.games.length);
     } catch (e) {
       error = e instanceof Error ? e.message : 'An unknown error occurred';
       console.error('Error fetching games:', e);
@@ -33,28 +38,24 @@
   }
 
   onMount(() => {
+    console.log('CheckOutTable mounted');
     fetchGames();
   });
-
-  let firstLoad = true;
-  let fetchTimeout: ReturnType<typeof setTimeout>;
-  $: if (searchQuery !== undefined) {
-    if (firstLoad) {
-      firstLoad = false;
-    } else {
-      clearTimeout(fetchTimeout);
-      if (searchQuery.length === 0 || searchQuery.length >= 3) {
-        fetchTimeout = setTimeout(() => {
-          fetchGames();
-        }, 2000);
-      }
-    }
-  }
 
   function handleCheckout(gameId: string) {
     console.log('Initiating checkout for game:', gameId);
   }
+
+  function handleSearch(query: string) {
+    console.log('handleSearch in CheckOutTable:', query);
+    searchQuery = query;
+    fetchGames();
+  }
 </script>
+
+<div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+  <SearchBar bind:searchQuery placeholder="Search games..." onSearch={handleSearch} />
+</div>
 
 {#if loading && gameList.games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
