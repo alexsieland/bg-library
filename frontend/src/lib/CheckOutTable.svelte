@@ -19,7 +19,6 @@
   <TableHead>
     <TableHeadCell>Game Title</TableHeadCell>
     <TableHeadCell>Borrower</TableHeadCell>
-    <TableHeadCell>Checked Out At</TableHeadCell>
     <TableHeadCell>Action</TableHeadCell>
   </TableHead>
   <TableBody class="divide-y">
@@ -36,20 +35,13 @@
           {/if}
         </TableBodyCell>
         <TableBodyCell>
-          {#if game.checkedOutAt}
-            <span class="text-sm text-slate-500 dark:text-slate-400">{new Date(game.checkedOutAt).toLocaleString()}</span>
-          {:else}
-            <span class="text-sm text-slate-500 dark:text-slate-400">N/A</span>
-          {/if}
-        </TableBodyCell>
-        <TableBodyCell>
           {#if !game.patronName}
             <Button
               on:click={() => handleCheckout(game.gameId)}
               color="primary"
               size="sm"
             >
-              Check Out
+              Loan
             </Button>
           {:else}
             <Button
@@ -57,7 +49,7 @@
               color="alternative"
               size="sm"
             >
-              Check Out
+              Loan
             </Button>
           {/if}
         </TableBodyCell>

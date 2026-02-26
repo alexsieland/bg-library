@@ -1,7 +1,7 @@
 <script lang="ts">
   import AppNavbar from './lib/AppNavbar.svelte';
   import SearchBar from './lib/SearchBar.svelte';
-  import GameTable from './lib/GameTable.svelte';
+  import CheckOutTable from './lib/CheckOutTable.svelte';
 
   let searchQuery = '';
   let showOnlyAvailable = false;
@@ -38,7 +38,7 @@
     <SearchBar bind:searchQuery placeholder="Search games..." />
 
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <GameTable games={filteredGames} />
+      <CheckOutTable games={filteredGames} />
     </div>
   </main>
 </div>
