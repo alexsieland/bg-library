@@ -19,6 +19,7 @@ services:
       - DB_PASSWORD
       - DB_NAME
       - GIN_MODE
+      - CORS_ALLOWED_ORIGIN=*
     networks:
       - server-side
       - client-side
@@ -54,7 +55,9 @@ services:
       start_period: 40s
 
 networks:
-  client-side: {}
+  client-side: {
+    driver: bridge
+  }
   server-side: {}
 
 volumes:

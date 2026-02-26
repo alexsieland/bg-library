@@ -45,6 +45,7 @@ The frontend is a Svelte application built with Vite and TypeScript.
 - **Component Structure**: Keep Svelte components small and focused. Use props for data flow and events/callbacks for communication.
 - **Styling**: (Insert preferred styling method here, e.g., Tailwind or CSS modules, if applicable).
 - **API Communication**: Create centralized API utility functions that handle fetching and error state management, leveraging the generated types for request/response payloads.
+- **Search Sanitization**: The frontend sends raw search strings to the backend. All sanitization, including accent folding and case-insensitivity, is handled by the backend API.
 
 ## 3. Persistence Layer (PostgreSQL, sqlc)
 
@@ -66,4 +67,4 @@ The project uses PostgreSQL for data storage, with `sqlc` for generating type-sa
     - Use descriptive names for `sqlc` queries (e.g., `-- name: GetGame :one`).
 - **Indexes**: Ensure appropriate indexes are created for columns used in filters and joins (e.g., `idx_game_titles` on `sanitized_title`).
 - **Migrations**: (Currently using `schema.sql` for initialization. If a migration tool is added, document it here).
-- **Sanitization**: Use the `SanitizeTitle` helper in Go for title-based searches to ensure consistent behavior with the database indexes.
+- **Sanitization**: Use the `SanitizeTitle` helper in Go for title-based searches to ensure consistent behavior with the database indexes. The backend is solely responsible for this; the frontend sends raw query strings.

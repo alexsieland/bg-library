@@ -1,47 +1,30 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import AppNavbar from './lib/AppNavbar.svelte';
+  import SearchBar from './lib/SearchBar.svelte';
+  import CheckOutTable from './lib/CheckOutTable.svelte';
+
+  let searchQuery = '';
 </script>
 
-<main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+  <AppNavbar activeTab="checkout" />
 
-  <div class="card">
-    <Counter />
-  </div>
+  <main class="container mx-auto px-4 py-8 space-y-8">
+    <div class="space-y-2">
+      <h1 class="text-3xl text-center font-bold text-slate-900 dark:text-slate-100 ">Checkout Games</h1>
+    </div>
 
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
+    <SearchBar bind:searchQuery placeholder="Search games..." />
 
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
-</main>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <CheckOutTable {searchQuery} />
+    </div>
+  </main>
+</div>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
+  :global(body) {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 </style>
