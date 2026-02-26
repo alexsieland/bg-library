@@ -65,9 +65,12 @@ func (s Server) GetHealth(c *gin.Context) {
 }
 
 func RegisterSwagger(r *gin.Engine) {
-	if os.Getenv("IS_DOCKER") != "true" {
-		r.StaticFS("/swagger", http.Dir(filepath.Join("..", "swagger")))
+	swaggerDir := filepath.Join("..", "swagger")
+	if os.Getenv("IS_DOCKER") == "true" {
+		swaggerDir = "swagger"
 	}
+
+	r.StaticFS("/swagger", http.Dir(swaggerDir))
 
 	r.GET("/swagger", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
