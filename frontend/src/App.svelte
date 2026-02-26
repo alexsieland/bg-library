@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Header from './lib/Header.svelte';
+  import AppNavbar from './lib/AppNavbar.svelte';
   import SearchBar from './lib/SearchBar.svelte';
   import GameTable from './lib/GameTable.svelte';
 
@@ -28,15 +28,14 @@
 </script>
 
 <div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
-  <Header activeTab="checkout" />
+  <AppNavbar activeTab="checkout" />
 
   <main class="container mx-auto px-4 py-8 space-y-8">
     <div class="space-y-2">
-      <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Checkout Games</h1>
-      <p class="text-slate-600 dark:text-slate-400">Search the catalog and manage game loans for patrons.</p>
+      <h1 class="text-3xl text-center font-bold text-slate-900 dark:text-slate-100 ">Checkout Games</h1>
     </div>
 
-    <SearchBar bind:searchQuery />
+    <SearchBar bind:searchQuery placeholder="Search games..." />
 
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
       <GameTable games={filteredGames} />

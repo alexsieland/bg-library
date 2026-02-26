@@ -28,18 +28,18 @@
         <TableBodyCell>
           {#if game.patronName}
             <div class="flex flex-col">
-              <Badge color="red" class="w-fit">Checked Out</Badge>
+              <Badge color="rose" class="w-fit">Checked Out</Badge>
               <span class="text-sm text-slate-500 dark:text-slate-400 mt-1">to {game.patronName}</span>
             </div>
           {:else}
-            <Badge color="green" class="w-fit">Available</Badge>
+            <Badge color="emerald" class="w-fit">Available</Badge>
           {/if}
         </TableBodyCell>
         <TableBodyCell>
           {#if !game.patronName}
             <Button
               on:click={() => handleCheckout(game.gameId)}
-              color="blue"
+              color="primary"
               size="sm"
             >
               Check Out
