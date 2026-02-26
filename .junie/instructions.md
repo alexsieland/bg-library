@@ -8,6 +8,7 @@ This project contains comprehensive documentation that defines the architecture,
 - **[Functional Requirements](../docs/functional-requirements.md)**: Detailed description of user roles, core workflows (Checkout/Check-in), and future feature goals.
 - **[Coding Guidelines](../docs/coding-guidelines.md)**: Standards for backend (Go/Gin/sqlc/oapi-codegen), frontend (Svelte/TypeScript), and persistence layers (PostgreSQL).
 - **[Testing Guidelines](../docs/testing-guidelines.md)**: Standards for unit and integration testing, including naming conventions and tools like `testcontainers-go`, `Vitest`, and `Playwright`.
+- **[Frontend Style Guide](../docs/frontend-styleguide.md)**: Standards for the visual identity and UI of the application, including Material Design, color palette, accessibility, and responsiveness.
 
 ## Key Principles
 
