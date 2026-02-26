@@ -23,7 +23,7 @@ const mockGamesResponse = {
   games: [
     {
       game: { gameId: '1', title: 'Catan' },
-      patron: null
+      patron: undefined
     },
     {
       game: { gameId: '2', title: 'Ticket to Ride' },
