@@ -15,10 +15,11 @@
   }
 </script>
 
-<Table shadow hoverable={true}>
+<Table shadow hoverable={true} class="w-full">
   <TableHead>
     <TableHeadCell>Game Title</TableHeadCell>
-    <TableHeadCell>Status</TableHeadCell>
+    <TableHeadCell>Borrower</TableHeadCell>
+    <TableHeadCell>Checked Out At</TableHeadCell>
     <TableHeadCell>Action</TableHeadCell>
   </TableHead>
   <TableBody class="divide-y">
@@ -28,11 +29,17 @@
         <TableBodyCell>
           {#if game.patronName}
             <div class="flex flex-col">
-              <Badge color="rose" class="w-fit">Checked Out</Badge>
-              <span class="text-sm text-slate-500 dark:text-slate-400 mt-1">to {game.patronName}</span>
+              <Badge large border color="rose" class="w-fit">{game.patronName}</Badge>
             </div>
           {:else}
-            <Badge color="emerald" class="w-fit">Available</Badge>
+            <Badge large color="emerald" class="w-fit">Available</Badge>
+          {/if}
+        </TableBodyCell>
+        <TableBodyCell>
+          {#if game.checkedOutAt}
+            <span class="text-sm text-slate-500 dark:text-slate-400">{new Date(game.checkedOutAt).toLocaleString()}</span>
+          {:else}
+            <span class="text-sm text-slate-500 dark:text-slate-400">N/A</span>
           {/if}
         </TableBodyCell>
         <TableBodyCell>
@@ -50,7 +57,7 @@
               color="alternative"
               size="sm"
             >
-              Unavailable
+              Check Out
             </Button>
           {/if}
         </TableBodyCell>
