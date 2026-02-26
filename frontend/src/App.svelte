@@ -4,7 +4,6 @@
   import CheckOutTable from './lib/CheckOutTable.svelte';
 
   let searchQuery = '';
-  let showOnlyAvailable = false;
 </script>
 
 <div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -18,7 +17,7 @@
     <SearchBar bind:searchQuery placeholder="Search games..." />
 
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <CheckOutTable {searchQuery} {showOnlyAvailable} />
+      <CheckOutTable {searchQuery} />
     </div>
   </main>
 </div>

@@ -36,8 +36,19 @@
     fetchGames();
   });
 
+  let firstLoad = true;
+  let fetchTimeout: ReturnType<typeof setTimeout>;
   $: if (searchQuery !== undefined) {
-    fetchGames();
+    if (firstLoad) {
+      firstLoad = false;
+    } else {
+      clearTimeout(fetchTimeout);
+      if (searchQuery.length === 0 || searchQuery.length >= 3) {
+        fetchTimeout = setTimeout(() => {
+          fetchGames();
+        }, 2000);
+      }
+    }
   }
 
   function handleCheckout(gameId: string) {
