@@ -22,7 +22,7 @@ generate:
 # Build the Docker image for the API server locally
 build-docker:
 	@echo "Building local Docker image for API server..."
-	docker build -t alexsieland/bg-library-backend:dev .
+	cd .. && docker build -f backend/Dockerfile -t alexsieland/bg-library-backend:dev .
 
 # Remove the local Docker image for the API server locally
 remove-docker:
