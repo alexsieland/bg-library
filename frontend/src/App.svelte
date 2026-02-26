@@ -1,47 +1,52 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import Header from './lib/Header.svelte';
+  import SearchBar from './lib/SearchBar.svelte';
+  import GameTable from './lib/GameTable.svelte';
+
+  let searchQuery = '';
+  let showOnlyAvailable = false;
+
+  // Dummy data representing the "Game Discovery and Search" integration test data
+  const dummyGames = [
+    { gameId: '1', title: 'Catan' },
+    { gameId: '2', title: 'Catan: Seafarers' },
+    { gameId: '3', title: 'Gloomhaven', patronName: 'Alice Smith' },
+    { gameId: '4', title: 'Everdell' },
+    { gameId: '5', title: 'Bärenpark' },
+    { gameId: '6', title: 'Root', patronName: 'Bob Smith' },
+    { gameId: '7', title: 'Spirit Island' },
+    { gameId: '8', title: 'Wingspan' },
+    { gameId: '9', title: 'Terraforming Mars', patronName: 'Charlie Brown' },
+    { gameId: '10', title: 'Azul' }
+  ];
+
+  $: filteredGames = dummyGames.filter(game => {
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesAvailable = showOnlyAvailable ? !game.patronName : true;
+    return matchesSearch && matchesAvailable;
+  });
 </script>
 
-<main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+  <Header activeTab="checkout" />
 
-  <div class="card">
-    <Counter />
-  </div>
+  <main class="container mx-auto px-4 py-8 space-y-8">
+    <div class="space-y-2">
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Checkout Games</h1>
+      <p class="text-slate-600 dark:text-slate-400">Search the catalog and manage game loans for patrons.</p>
+    </div>
 
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
+    <SearchBar bind:searchQuery />
 
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
-</main>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <GameTable games={filteredGames} />
+    </div>
+  </main>
+</div>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
+  :global(body) {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 </style>

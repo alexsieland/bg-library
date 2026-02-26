@@ -45,7 +45,7 @@ Based on the API specification and existing workflows, the following core featur
 
 ### 2.4 Discovery and Search
 *   **Game Search**: Users can search for games by title.
-    *   **Accent Folding**: Searches must be resilient to accents (e.g., searching for "barenpark" should find "Bärenpark").
+    *   **Accent Folding**: Searches are resilient to accents (e.g., searching for "barenpark" finds "Bärenpark"). This sanitization is handled entirely by the backend.
 *   **Patron Search**: Librarians can search for patrons by name to facilitate quick checkouts.
 *   **Filtering**: Ability to filter the game list by status (e.g., show only checked-out games).
 
