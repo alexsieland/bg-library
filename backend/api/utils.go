@@ -30,6 +30,18 @@ func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 		transactionId = &id
 	}
 
+	// If the game is currently checked in, we return the game status with a null patron and transaction ID.
+	// We still include the checkout timestamp of the most recent transaction for that game.
+	// This allows clients to determine how long a game has been checked in, even if it's not currently checked out.
+	if dbGameStatus.CheckinTimestamp.Valid {
+		return GameStatus{
+			CheckedOutAt:  checkedOutAt,
+			Game:          dbGameStatusToOpenAPIGame(dbGameStatus),
+			Patron:        nil,
+			TransactionId: nil,
+		}
+	}
+
 	return GameStatus{
 		CheckedOutAt:  checkedOutAt,
 		Game:          dbGameStatusToOpenAPIGame(dbGameStatus),
