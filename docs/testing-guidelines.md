@@ -1,4 +1,6 @@
-# Testing Guidelines
+### API Usage Guidelines
+- **Frontend API**: ALWAYS use the pre-generated API types and schemas located at `frontend/src/generated/library-api.d.ts`. NEVER attempt to generate your own frontend API types or interfaces.
+- **Backend API**: Rely on the OpenAPI specification and generated Go code in `backend/api/oapi-codegen.gen.go`.
 
 This document outlines the testing strategy, tools, and best practices for the board game library project.
 
