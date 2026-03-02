@@ -1,11 +1,11 @@
 declare global {
   interface Window {
     CONFIG: {
-      BACKEND_URL: string;
+      API_URL: string;
     };
   }
 }
 
 export const getBackendUrl = () => {
-  return window.CONFIG?.BACKEND_URL || 'http://localhost:8080';
+  return window.CONFIG?.API_URL || 'http://localhost:8080';
 };

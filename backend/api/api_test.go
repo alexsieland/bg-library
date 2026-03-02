@@ -111,6 +111,6 @@ func TestRegisterSwagger(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusMovedPermanently, w.Code)
-		assert.Equal(t, "/swagger/index.html", w.Header().Get("Location"))
+		assert.Equal(t, "/swagger/", w.Header().Get("Location"))
 	})
 }

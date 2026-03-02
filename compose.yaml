@@ -1,12 +1,16 @@
-name: bg-library
+version: '3.8'
 services:
   frontend:
     image: alexsieland/bg-library-frontend:${APP_VERSION:-latest}
     restart: always
     environment:
-      - NGINX_HOST={APP_HOST:-localhost}
+      - BACKEND_PORT
+      - EXPOSE_SWAGGER_UI=true
+      - API_URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}
+      - NGINX_HOST=${APP_HOST:-localhost}
+      - SERVICE_NAME=nginx
     networks:
-      - client-side
+      - bg-library_frontend_nw
     ports:
       - ${FRONTEND_PORT:-80}:80
   backend:
@@ -20,11 +24,10 @@ services:
       - DB_NAME
       - GIN_MODE
       - CORS_ALLOWED_ORIGIN=*
+      - API_URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}
     networks:
-      - server-side
-      - client-side
-    ports:
-      - ${BACKEND_PORT:-8080}:8080
+      - bg-library_backend_nw
+      - bg-library_frontend_nw
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -32,7 +35,8 @@ services:
       retries: 5
       start_period: 40s
     depends_on:
-      - db
+      db:
+        condition: service_healthy
   db:
     image: postgres:18.2
     restart: always
@@ -41,9 +45,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
     networks:
-      - server-side
-    ports:
-      - ${DB_PORT:-5432}:5432
+      - bg-library_backend_nw
     volumes:
       - db-data:/var/lib/postgresql/18/data
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -55,10 +57,12 @@ services:
       start_period: 40s
 
 networks:
-  client-side: {
+  bg-library_backend_nw: {
     driver: bridge
   }
-  server-side: {}
+  bg-library_frontend_nw: {
+    driver: bridge
+  }
 
 volumes:
   backend-cache: {}
