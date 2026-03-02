@@ -28,8 +28,6 @@ services:
     networks:
       - bg-library_backend_nw
       - bg-library_frontend_nw
-    ports:
-      - ${BACKEND_PORT:-8080}:8080
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -48,8 +46,6 @@ services:
       - POSTGRES_DB=${DB_NAME}
     networks:
       - bg-library_backend_nw
-    ports:
-      - ${DB_PORT:-5432}:5432
     volumes:
       - db-data:/var/lib/postgresql/18/data
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
