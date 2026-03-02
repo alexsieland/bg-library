@@ -18,14 +18,10 @@ services:
     restart: always
     environment:
       - URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}/swagger/api.yaml
-#      - URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}
     networks:
       - bg-library_frontend_nw
     depends_on:
       - backend
-    ports:
-      - "81:8080"
-      - "82:80"
   backend:
     image: alexsieland/bg-library-backend:${APP_VERSION:-latest}
     restart: always
