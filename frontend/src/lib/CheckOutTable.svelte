@@ -1,13 +1,12 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Badge, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
-  import type { components } from '../generated/library-api';
+  import { apiClient, type GameList } from './api-client';
   import { onMount } from 'svelte';
-  import { getBackendUrl } from './config';
   
   let searchQuery = '';
 
-  let gameList: components["schemas"]["GameList"] = { games: [] };
+  let gameList: GameList = { games: [] };
   let error: string | null = null;
   let loading = true;
 
@@ -16,18 +15,7 @@
     loading = true;
     error = null;
     try {
-      const url = new URL('/api/v1/library/games', getBackendUrl());
-      if (searchQuery) {
-        url.searchParams.append('title', searchQuery);
-      }
-      console.log('Fetching from URL:', url.toString());
-      
-      const response = await fetch(url.toString());
-      console.log('Response received:', response.status, response.statusText);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch games: ${response.statusText}`);
-      }
-      gameList = await response.json();
+      gameList = await apiClient.listGames({ title: searchQuery || undefined });
       console.log('Fetched games:', gameList.games.length);
     } catch (e) {
       error = e instanceof Error ? e.message : 'An unknown error occurred';

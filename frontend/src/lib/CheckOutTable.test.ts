@@ -1,17 +1,29 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import CheckOutTable from './CheckOutTable.svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { apiClient } from './api-client';
 
 // Mock getBackendUrl to return a consistent URL
 vi.mock('./config', () => ({
   getBackendUrl: () => 'http://localhost:8080'
 }));
 
+// Mock apiClient
+vi.mock('./api-client', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    apiClient: {
+      listGames: vi.fn(),
+    }
+  };
+});
+
 const mockGamesResponse = {
   games: [
     {
       game: { gameId: '1', title: 'Catan' },
-      patron: null
+      patron: undefined
     },
     {
       game: { gameId: '2', title: 'Ticket to Ride' },
@@ -22,21 +34,18 @@ const mockGamesResponse = {
 
 describe('CheckOutTable', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
+    vi.clearAllMocks();
     // Suppress console.logs during tests
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('Should fetch games on mount', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => mockGamesResponse
-    });
+    vi.mocked(apiClient.listGames).mockResolvedValue(mockGamesResponse);
 
     render(CheckOutTable);
 
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/library/games'));
+    expect(apiClient.listGames).toHaveBeenCalled();
     
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
@@ -46,7 +55,7 @@ describe('CheckOutTable', () => {
 
   it('Should show loading state initially', async () => {
     // Return a promise that doesn't resolve immediately
-    (fetch as any).mockReturnValue(new Promise(() => {}));
+    vi.mocked(apiClient.listGames).mockReturnValue(new Promise(() => {}));
 
     render(CheckOutTable);
 
@@ -54,10 +63,7 @@ describe('CheckOutTable', () => {
   });
 
   it('Should display "Available" badge for games without a patron', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => mockGamesResponse
-    });
+    vi.mocked(apiClient.listGames).mockResolvedValue(mockGamesResponse);
 
     render(CheckOutTable);
 
@@ -67,10 +73,7 @@ describe('CheckOutTable', () => {
   });
 
   it('Should display patron name for checked out games', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => mockGamesResponse
-    });
+    vi.mocked(apiClient.listGames).mockResolvedValue(mockGamesResponse);
 
     render(CheckOutTable);
 
@@ -80,28 +83,22 @@ describe('CheckOutTable', () => {
   });
 
   it('Should show error message when fetch fails', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: false,
-      statusText: 'Internal Server Error'
-    });
+    vi.mocked(apiClient.listGames).mockRejectedValue(new Error('Internal Server Error'));
 
     render(CheckOutTable);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to fetch games: Internal Server Error')).toBeInTheDocument();
+      expect(screen.getByText('Internal Server Error')).toBeInTheDocument();
     });
   });
 
   it('Should call fetch with title param when searching', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => ({ games: [] })
-    });
+    vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
 
     render(CheckOutTable);
     
     // Wait for initial fetch
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
 
     const input = screen.getByRole('searchbox');
     await fireEvent.input(input, { target: { value: 'catan' } });
@@ -110,7 +107,7 @@ describe('CheckOutTable', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining('title=catan'));
+      expect(apiClient.listGames).toHaveBeenCalledWith(expect.objectContaining({ title: 'catan' }));
     });
   });
 });
