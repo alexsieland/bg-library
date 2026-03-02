@@ -6,5 +6,8 @@ envsubst '$BACKEND_PORT $EXPOSE_SWAGGER_UI $NGINX_HOST' < /etc/nginx/conf.d/ngin
 # Inject API_URL into config.js
 envsubst '$API_URL' < /usr/share/nginx/html/config.js.template > /usr/share/nginx/html/config.js
 
+# Remove the template file after use
+rm /usr/share/nginx/html/config.js.template
+
 # Start nginx in the foreground
 nginx -g 'daemon off;'
