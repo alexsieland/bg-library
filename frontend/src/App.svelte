@@ -2,6 +2,7 @@
   import AppNavbar from './lib/AppNavbar.svelte';
   import CheckOutTable from './lib/CheckOutTable.svelte';
   import CheckInTable from './lib/CheckInTable.svelte';
+  import AdminView from './lib/AdminView.svelte';
   import ToastContainer from './lib/ToastContainer.svelte';
 
   let activeTab: 'checkout' | 'checkin' | 'admin' = 'checkout';
@@ -33,7 +34,7 @@
       {:else if activeTab === 'checkin'}
         <CheckInTable />
       {:else}
-        <div class="p-12 text-center text-slate-500">Admin view coming soon...</div>
+        <AdminView />
       {/if}
     </div>
   </main>
