@@ -1,6 +1,7 @@
 <script lang="ts">
   import AppNavbar from './lib/AppNavbar.svelte';
   import CheckOutTable from './lib/CheckOutTable.svelte';
+  import ToastContainer from './lib/ToastContainer.svelte';
 </script>
 
 <div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -16,6 +17,8 @@
     </div>
   </main>
 </div>
+
+<ToastContainer />
 
 <style>
   :global(body) {
