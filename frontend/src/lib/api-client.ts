@@ -84,8 +84,12 @@ class ApiClient {
   }
 
   // Patrons
-  async listPatrons(): Promise<components["schemas"]["PatronList"]> {
-    const res = await this.client.GET('/api/v1/library/patrons');
+  async listPatrons(query?: operations["listPatrons"]["parameters"]["query"]): Promise<components["schemas"]["PatronList"]> {
+    const res = await this.client.GET('/api/v1/library/patrons',{
+      params: {
+        query: query
+      }
+    });
     return this.handleResponse(res);
   }
 

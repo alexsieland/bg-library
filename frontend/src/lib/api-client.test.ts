@@ -137,16 +137,17 @@ describe('ApiClient', () => {
   });
 
   describe('Patrons API', () => {
-    it('listPatrons should call the correct URL', async () => {
+    it('listPatrons should call the correct URL with query params', async () => {
       vi.mocked(fetch).mockResolvedValue(mockResponse(200, { patrons: [] }));
 
-      await apiClient.listPatrons();
+      await apiClient.listPatrons({ name: 'John Smith'});
 
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
       const url = new URL(request.url);
       expect(url.pathname).toBe('/api/v1/library/patrons');
+      expect(url.searchParams.get('name')).toBe('John Smith');
     });
 
     it('addPatron should make a POST request', async () => {
