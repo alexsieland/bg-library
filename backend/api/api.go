@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
@@ -83,9 +84,30 @@ func RegisterSwagger(r *gin.Engine) {
 		c.Next()
 	})
 
-	swaggerGroup.StaticFS("", http.Dir(swaggerDir))
+	// Serve api.yaml with dynamic server URL
+	swaggerGroup.GET("/api.yaml", func(c *gin.Context) {
+		swaggerFile := filepath.Join(swaggerDir, "api.yaml")
+		content, err := os.ReadFile(swaggerFile)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, NewInternalError(err))
+			return
+		}
 
-	r.GET("/swagger", func(c *gin.Context) {
+		// Get the server URL from environment variable, default to http://localhost:8080
+		serverURL := os.Getenv("API_URL")
+		if serverURL == "" {
+			serverURL = "http://localhost:8080"
+		}
+
+		// Replace the placeholder in the YAML
+		yamlContent := string(content)
+		yamlContent = strings.ReplaceAll(yamlContent, "${API_URL}", serverURL)
+
+		c.Header("Content-Type", "application/yaml")
+		c.String(http.StatusOK, yamlContent)
+	})
+
+	swaggerGroup.GET("/index.html", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
 	})
 }

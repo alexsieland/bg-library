@@ -3,7 +3,7 @@ info:
   title: BG Library
   version: "1.0"
 servers:
-  - url: ${API_URL:-http://localhost:8080}
+  - url: ${API_URL}
     description: Dynamic Server
 paths:
   /health:
