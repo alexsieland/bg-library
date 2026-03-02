@@ -197,7 +197,7 @@ func (q *Queries) GetPatron(ctx context.Context, id pgtype.UUID) (VwLibraryPatro
 const listCheckedOutGames = `-- name: ListCheckedOutGames :many
 SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp
 FROM vw_game_status
-WHERE checkin_timestamp IS NULL
+WHERE checkin_timestamp IS NULL AND checkout_timestamp IS NOT NULL
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2
 `

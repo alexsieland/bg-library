@@ -93,7 +93,7 @@ WHERE game_id = $1;
 -- name: ListCheckedOutGames :many
 SELECT *
 FROM vw_game_status
-WHERE checkin_timestamp IS NULL
+WHERE checkin_timestamp IS NULL AND checkout_timestamp IS NOT NULL
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2;
 

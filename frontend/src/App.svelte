@@ -1,19 +1,40 @@
 <script lang="ts">
   import AppNavbar from './lib/AppNavbar.svelte';
   import CheckOutTable from './lib/CheckOutTable.svelte';
+  import CheckInTable from './lib/CheckInTable.svelte';
   import ToastContainer from './lib/ToastContainer.svelte';
+
+  let activeTab: 'checkout' | 'checkin' | 'admin' = 'checkout';
+
+  function handleTabChange(tab: 'checkout' | 'checkin' | 'admin') {
+    activeTab = tab;
+  }
 </script>
 
 <div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
-  <AppNavbar activeTab="checkout" />
+  <AppNavbar {activeTab} onTabChange={handleTabChange} />
 
   <main class="container mx-auto px-4 py-8 space-y-8">
     <div class="space-y-2">
-      <h1 class="text-3xl text-center font-bold text-slate-900 dark:text-slate-100 ">Checkout Games</h1>
+      <h1 class="text-3xl text-center font-bold text-slate-900 dark:text-slate-100 ">
+        {#if activeTab === 'checkout'}
+          Checkout Games
+        {:else if activeTab === 'checkin'}
+          Check In Games
+        {:else}
+          Admin
+        {/if}
+      </h1>
     </div>
 
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <CheckOutTable />
+      {#if activeTab === 'checkout'}
+        <CheckOutTable />
+      {:else if activeTab === 'checkin'}
+        <CheckInTable />
+      {:else}
+        <div class="p-12 text-center text-slate-500">Admin view coming soon...</div>
+      {/if}
     </div>
   </main>
 </div>

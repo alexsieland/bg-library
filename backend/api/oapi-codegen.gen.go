@@ -101,6 +101,9 @@ type GameStatus struct {
 
 	// Patron A library patron
 	Patron *Patron `json:"patron,omitempty"`
+
+	// TransactionId Transaction ID
+	TransactionId *openapi_types.UUID `json:"transactionId,omitempty"`
 }
 
 // LibraryTransaction Request payload for making a check in/out transaction

@@ -353,6 +353,11 @@ components:
           $ref: "#/components/schemas/Game"
         patron:
           $ref: "#/components/schemas/Patron"
+        transactionId:
+          type: string
+          format: uuid
+          description: Transaction ID
+          example: "f13bb82c-18dd-4a94-a878-44ca6706e2d9"
         checkedOutAt:
           type: string
           format: date-time

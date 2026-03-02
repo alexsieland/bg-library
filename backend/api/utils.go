@@ -8,6 +8,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -23,10 +24,28 @@ func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 		checkedOutAt = &dbGameStatus.CheckoutTimestamp.Time
 	}
 
+	var transactionId *types.UUID
+	if dbGameStatus.TransactionID.Valid {
+		id := types.UUID(dbGameStatus.TransactionID.Bytes)
+		transactionId = &id
+	}
+
+	// If the game is currently checked in, we return the game status with a null checkedOutAt, patron, and transaction ID.
+	// This is because the game is no longer checked out.
+	if dbGameStatus.CheckinTimestamp.Valid {
+		return GameStatus{
+			CheckedOutAt:  nil,
+			Game:          dbGameStatusToOpenAPIGame(dbGameStatus),
+			Patron:        nil,
+			TransactionId: nil,
+		}
+	}
+
 	return GameStatus{
-		CheckedOutAt: checkedOutAt,
-		Game:         dbGameStatusToOpenAPIGame(dbGameStatus),
-		Patron:       dbGameStatusToOpenAPIPatron(dbGameStatus),
+		CheckedOutAt:  checkedOutAt,
+		Game:          dbGameStatusToOpenAPIGame(dbGameStatus),
+		Patron:        dbGameStatusToOpenAPIPatron(dbGameStatus),
+		TransactionId: transactionId,
 	}
 }
 
