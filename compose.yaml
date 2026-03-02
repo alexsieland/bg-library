@@ -4,14 +4,29 @@ services:
     image: alexsieland/bg-library-frontend:${APP_VERSION:-latest}
     restart: always
     environment:
+      - BACKEND_PORT
+      - EXPOSE_SWAGGER_UI=true
+      - API_URL=http://
       - NGINX_HOST=${APP_HOST:-localhost}
-      - EXPOSE_SWAGGER=true
-      - API_URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-8080}
-      - BACKEND_PORT=${BACKEND_PORT:-8080}
+      - SERVICE_NAME=nginx
     networks:
       - bg-library_frontend_nw
     ports:
       - ${FRONTEND_PORT:-80}:80
+    volumes:
+      - ./frontend/nginx.tmpl:/etc/nginx/conf.d/nginx.conf.template:ro
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.32.0
+    restart: always
+    environment:
+      - SWAGGER_JSON=http://backend:${BACKEND_PORT:-8080}/swagger/api.yaml
+      - URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-8080}
+    networks:
+      - bg-library_frontend_nw
+    depends_on:
+      - backend
+    ports:
+      - "81:8080"
   backend:
     image: alexsieland/bg-library-backend:${APP_VERSION:-latest}
     restart: always
