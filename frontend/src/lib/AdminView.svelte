@@ -35,7 +35,8 @@
 <div class="p-6 space-y-8">
   <section class="max-w-2xl">
     <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Add Games</h2>
-    <div class="flex items-end space-x-2">
+    <div class="flex items-center space-x-2">
+      <Label for="gameTitle" class="whitespace-nowrap">Game Title</Label>
       <div class="flex-grow">
         <Input
           id="gameTitle" 
