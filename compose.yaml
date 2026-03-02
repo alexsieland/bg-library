@@ -7,6 +7,7 @@ services:
       - NGINX_HOST=${APP_HOST:-localhost}
       - BACKEND_URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}
       - EXPOSE_SWAGGER=true
+      - BACKEND_PORT=${BACKEND_PORT:-8080}
     networks:
       - bg-library_frontend_nw
     ports:

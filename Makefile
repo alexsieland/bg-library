@@ -4,6 +4,7 @@ help:
 	@echo "Available targets:"
 	@echo "  make up          - Build and start the containers"
 	@echo "  make down        - Stop the containers"
+	@echo "  make build       - Build the Docker images without starting containers"
 	@echo "  make clean       - Clean docker volumes (will stop containers if they are running)"
 	@echo "  make help        - display this message"
 
@@ -17,7 +18,13 @@ up:
 
 down:
 	@echo "Stopping containers..."
-	@docker compose down
+	@docker compose
+
+build:
+	@echo "Running build-docker in backend/..."
+	@$(MAKE) -C backend build-docker
+	@echo "Running build-docker in frontend/..."
+	@$(MAKE) -C frontend build-docker
 
 clean:
 	@echo "Stopping containers and removing volumes..."
