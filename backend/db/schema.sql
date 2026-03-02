@@ -4,14 +4,16 @@ CREATE TABLE games (
     sanitized_title VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    barcode VARCHAR(48) UNIQUE,
     PRIMARY KEY (id)
 );
 
 CREATE TABLE patrons (
     id UUID DEFAULT gen_random_uuid(),
-    full_name VARCHAR(100) UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    barcode VARCHAR(48) UNIQUE,
     PRIMARY KEY (id)
 );
 

@@ -38,4 +38,4 @@ lint:
 
 test:
 	@echo "Running tests..."
-	@npx run
+	npm run test

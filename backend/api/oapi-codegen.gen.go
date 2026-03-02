@@ -46,12 +46,18 @@ type CheckOutRequest struct {
 
 // CreateGameRequest Request payload for creating a new game
 type CreateGameRequest struct {
+	// Barcode The barcode of the game
+	Barcode *string `json:"barcode,omitempty"`
+
 	// Title The name of the board game
 	Title string `json:"title"`
 }
 
 // CreatePatronRequest Request payload for creating a new patron
 type CreatePatronRequest struct {
+	// Barcode The barcode of the patron
+	Barcode *string `json:"barcode,omitempty"`
+
 	// Name The name of the patron
 	Name string `json:"name"`
 }
@@ -276,6 +282,9 @@ type ClientInterface interface {
 
 	AddGame(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetGameByBarcode request
+	GetGameByBarcode(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteGame request
 	DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -299,6 +308,9 @@ type ClientInterface interface {
 	AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	AddPatron(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPatronByBarcode request
+	GetPatronByBarcode(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeletePatron request
 	DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -373,6 +385,18 @@ func (c *Client) AddGameWithBody(ctx context.Context, contentType string, body i
 
 func (c *Client) AddGame(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddGameRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetGameByBarcode(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGameByBarcodeRequest(c.Server, gameBarcode)
 	if err != nil {
 		return nil, err
 	}
@@ -481,6 +505,18 @@ func (c *Client) AddPatronWithBody(ctx context.Context, contentType string, body
 
 func (c *Client) AddPatron(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddPatronRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetPatronByBarcode(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPatronByBarcodeRequest(c.Server, patronBarcode)
 	if err != nil {
 		return nil, err
 	}
@@ -712,6 +748,40 @@ func NewAddGameRequestWithBody(server string, contentType string, body io.Reader
 	return req, nil
 }
 
+// NewGetGameByBarcodeRequest generates requests for GetGameByBarcode
+func NewGetGameByBarcodeRequest(server string, gameBarcode string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "gameBarcode", runtime.ParamLocationPath, gameBarcode)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/game/barcode/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeleteGameRequest generates requests for DeleteGame
 func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
 	var err error
@@ -728,7 +798,7 @@ func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/v1/library/game/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/library/game/id/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -762,7 +832,7 @@ func NewGetGameRequest(server string, gameId string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/v1/library/game/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/library/game/id/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -807,7 +877,7 @@ func NewUpdateGameRequestWithBody(server string, gameId string, contentType stri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/v1/library/game/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/library/game/id/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -968,6 +1038,40 @@ func NewAddPatronRequestWithBody(server string, contentType string, body io.Read
 	return req, nil
 }
 
+// NewGetPatronByBarcodeRequest generates requests for GetPatronByBarcode
+func NewGetPatronByBarcodeRequest(server string, patronBarcode string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "patronBarcode", runtime.ParamLocationPath, patronBarcode)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patron/barcode/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeletePatronRequest generates requests for DeletePatron
 func NewDeletePatronRequest(server string, patronId string) (*http.Request, error) {
 	var err error
@@ -984,7 +1088,7 @@ func NewDeletePatronRequest(server string, patronId string) (*http.Request, erro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/v1/library/patron/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/library/patron/id/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1018,7 +1122,7 @@ func NewGetPatronRequest(server string, patronId string) (*http.Request, error) 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/v1/library/patron/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/library/patron/id/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1063,7 +1167,7 @@ func NewUpdatePatronRequestWithBody(server string, patronId string, contentType 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/v1/library/patron/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/library/patron/id/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1251,6 +1355,9 @@ type ClientWithResponsesInterface interface {
 
 	AddGameWithResponse(ctx context.Context, body AddGameJSONRequestBody, reqEditors ...RequestEditorFn) (*AddGameResponse, error)
 
+	// GetGameByBarcodeWithResponse request
+	GetGameByBarcodeWithResponse(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*GetGameByBarcodeResponse, error)
+
 	// DeleteGameWithResponse request
 	DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error)
 
@@ -1274,6 +1381,9 @@ type ClientWithResponsesInterface interface {
 	AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error)
 
 	AddPatronWithResponse(ctx context.Context, body AddPatronJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPatronResponse, error)
+
+	// GetPatronByBarcodeWithResponse request
+	GetPatronByBarcodeWithResponse(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*GetPatronByBarcodeResponse, error)
 
 	// DeletePatronWithResponse request
 	DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error)
@@ -1361,6 +1471,29 @@ func (r AddGameResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r AddGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetGameByBarcodeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Game
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGameByBarcodeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGameByBarcodeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1497,6 +1630,29 @@ func (r AddPatronResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r AddPatronResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetPatronByBarcodeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Patron
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPatronByBarcodeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPatronByBarcodeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1681,6 +1837,15 @@ func (c *ClientWithResponses) AddGameWithResponse(ctx context.Context, body AddG
 	return ParseAddGameResponse(rsp)
 }
 
+// GetGameByBarcodeWithResponse request returning *GetGameByBarcodeResponse
+func (c *ClientWithResponses) GetGameByBarcodeWithResponse(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*GetGameByBarcodeResponse, error) {
+	rsp, err := c.GetGameByBarcode(ctx, gameBarcode, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGameByBarcodeResponse(rsp)
+}
+
 // DeleteGameWithResponse request returning *DeleteGameResponse
 func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error) {
 	rsp, err := c.DeleteGame(ctx, gameId, reqEditors...)
@@ -1757,6 +1922,15 @@ func (c *ClientWithResponses) AddPatronWithResponse(ctx context.Context, body Ad
 		return nil, err
 	}
 	return ParseAddPatronResponse(rsp)
+}
+
+// GetPatronByBarcodeWithResponse request returning *GetPatronByBarcodeResponse
+func (c *ClientWithResponses) GetPatronByBarcodeWithResponse(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*GetPatronByBarcodeResponse, error) {
+	rsp, err := c.GetPatronByBarcode(ctx, patronBarcode, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPatronByBarcodeResponse(rsp)
 }
 
 // DeletePatronWithResponse request returning *DeletePatronResponse
@@ -1922,6 +2096,39 @@ func ParseAddGameResponse(rsp *http.Response) (*AddGameResponse, error) {
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGameByBarcodeResponse parses an HTTP response from a GetGameByBarcodeWithResponse call
+func ParseGetGameByBarcodeResponse(rsp *http.Response) (*GetGameByBarcodeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGameByBarcodeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Game
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -2106,6 +2313,39 @@ func ParseAddPatronResponse(rsp *http.Response) (*AddPatronResponse, error) {
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPatronByBarcodeResponse parses an HTTP response from a GetPatronByBarcodeWithResponse call
+func ParseGetPatronByBarcodeResponse(rsp *http.Response) (*GetPatronByBarcodeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPatronByBarcodeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Patron
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -2300,14 +2540,17 @@ type ServerInterface interface {
 	// Add a game
 	// (POST /api/v1/library/game)
 	AddGame(c *gin.Context)
+	// Get a game from a barcode
+	// (GET /api/v1/library/game/barcode/{gameBarcode})
+	GetGameByBarcode(c *gin.Context, gameBarcode string)
 	// Soft delete a game
-	// (DELETE /api/v1/library/game/{gameId})
+	// (DELETE /api/v1/library/game/id/{gameId})
 	DeleteGame(c *gin.Context, gameId string)
 	// Get a game
-	// (GET /api/v1/library/game/{gameId})
+	// (GET /api/v1/library/game/id/{gameId})
 	GetGame(c *gin.Context, gameId string)
 	// Update an existing game
-	// (PUT /api/v1/library/game/{gameId})
+	// (PUT /api/v1/library/game/id/{gameId})
 	UpdateGame(c *gin.Context, gameId string)
 	// Get list of all games with check out status
 	// (GET /api/v1/library/games)
@@ -2318,14 +2561,17 @@ type ServerInterface interface {
 	// Add a patron
 	// (POST /api/v1/library/patron)
 	AddPatron(c *gin.Context)
+	// Get a patron from a barcode
+	// (GET /api/v1/library/patron/barcode/{patronBarcode})
+	GetPatronByBarcode(c *gin.Context, patronBarcode string)
 	// Soft delete a patron
-	// (DELETE /api/v1/library/patron/{patronId})
+	// (DELETE /api/v1/library/patron/id/{patronId})
 	DeletePatron(c *gin.Context, patronId string)
 	// Get a patron
-	// (GET /api/v1/library/patron/{patronId})
+	// (GET /api/v1/library/patron/id/{patronId})
 	GetPatron(c *gin.Context, patronId string)
 	// Update an existing patron
-	// (PUT /api/v1/library/patron/{patronId})
+	// (PUT /api/v1/library/patron/id/{patronId})
 	UpdatePatron(c *gin.Context, patronId string)
 	// Get list of all patrons
 	// (GET /api/v1/library/patrons)
@@ -2404,6 +2650,30 @@ func (siw *ServerInterfaceWrapper) AddGame(c *gin.Context) {
 	}
 
 	siw.Handler.AddGame(c)
+}
+
+// GetGameByBarcode operation middleware
+func (siw *ServerInterfaceWrapper) GetGameByBarcode(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "gameBarcode" -------------
+	var gameBarcode string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "gameBarcode", c.Param("gameBarcode"), &gameBarcode, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter gameBarcode: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetGameByBarcode(c, gameBarcode)
 }
 
 // DeleteGame operation middleware
@@ -2536,6 +2806,30 @@ func (siw *ServerInterfaceWrapper) AddPatron(c *gin.Context) {
 	}
 
 	siw.Handler.AddPatron(c)
+}
+
+// GetPatronByBarcode operation middleware
+func (siw *ServerInterfaceWrapper) GetPatronByBarcode(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "patronBarcode" -------------
+	var patronBarcode string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "patronBarcode", c.Param("patronBarcode"), &patronBarcode, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter patronBarcode: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetPatronByBarcode(c, patronBarcode)
 }
 
 // DeletePatron operation middleware
@@ -2692,15 +2986,17 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/library/checkin", wrapper.CheckInGame)
 	router.POST(options.BaseURL+"/api/v1/library/checkout", wrapper.CheckOutGame)
 	router.POST(options.BaseURL+"/api/v1/library/game", wrapper.AddGame)
-	router.DELETE(options.BaseURL+"/api/v1/library/game/:gameId", wrapper.DeleteGame)
-	router.GET(options.BaseURL+"/api/v1/library/game/:gameId", wrapper.GetGame)
-	router.PUT(options.BaseURL+"/api/v1/library/game/:gameId", wrapper.UpdateGame)
+	router.GET(options.BaseURL+"/api/v1/library/game/barcode/:gameBarcode", wrapper.GetGameByBarcode)
+	router.DELETE(options.BaseURL+"/api/v1/library/game/id/:gameId", wrapper.DeleteGame)
+	router.GET(options.BaseURL+"/api/v1/library/game/id/:gameId", wrapper.GetGame)
+	router.PUT(options.BaseURL+"/api/v1/library/game/id/:gameId", wrapper.UpdateGame)
 	router.GET(options.BaseURL+"/api/v1/library/games", wrapper.ListGames)
 	router.POST(options.BaseURL+"/api/v1/library/games", wrapper.BulkAddGames)
 	router.POST(options.BaseURL+"/api/v1/library/patron", wrapper.AddPatron)
-	router.DELETE(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.DeletePatron)
-	router.GET(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.GetPatron)
-	router.PUT(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.UpdatePatron)
+	router.GET(options.BaseURL+"/api/v1/library/patron/barcode/:patronBarcode", wrapper.GetPatronByBarcode)
+	router.DELETE(options.BaseURL+"/api/v1/library/patron/id/:patronId", wrapper.DeletePatron)
+	router.GET(options.BaseURL+"/api/v1/library/patron/id/:patronId", wrapper.GetPatron)
+	router.PUT(options.BaseURL+"/api/v1/library/patron/id/:patronId", wrapper.UpdatePatron)
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
 	router.POST(options.BaseURL+"/api/v1/library/patrons", wrapper.BulkAddPatrons)
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth)

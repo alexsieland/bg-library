@@ -47,7 +47,7 @@ func (q *Queries) CheckOutGame(ctx context.Context, arg CheckOutGameParams) (Tra
 
 const createGame = `-- name: CreateGame :one
 INSERT INTO games ( title, sanitized_title ) VALUES ( $1, $2 )
-RETURNING id, title, sanitized_title, created_at, deleted
+RETURNING id, title, sanitized_title, created_at, deleted, barcode
 `
 
 type CreateGameParams struct {
@@ -64,13 +64,14 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, e
 		&i.SanitizedTitle,
 		&i.CreatedAt,
 		&i.Deleted,
+		&i.Barcode,
 	)
 	return i, err
 }
 
 const createPatron = `-- name: CreatePatron :one
 INSERT INTO patrons ( full_name ) VALUES ( $1 )
-RETURNING id, full_name, created_at, deleted
+RETURNING id, full_name, created_at, deleted, barcode
 `
 
 func (q *Queries) CreatePatron(ctx context.Context, fullName string) (Patron, error) {
@@ -81,6 +82,7 @@ func (q *Queries) CreatePatron(ctx context.Context, fullName string) (Patron, er
 		&i.FullName,
 		&i.CreatedAt,
 		&i.Deleted,
+		&i.Barcode,
 	)
 	return i, err
 }
