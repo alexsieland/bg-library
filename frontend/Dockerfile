@@ -25,7 +25,7 @@ ENV BACKEND_PORT=8080
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/nginx.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

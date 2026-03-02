@@ -13,8 +13,6 @@ services:
       - bg-library_frontend_nw
     ports:
       - ${FRONTEND_PORT:-80}:80
-    volumes:
-      - ./frontend/nginx.tmpl:/etc/nginx/conf.d/nginx.conf.template:ro
   swagger-ui:
     image: swaggerapi/swagger-ui:v5.32.0
     restart: always
