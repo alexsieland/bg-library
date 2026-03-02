@@ -3,6 +3,7 @@
   import { apiClient } from './api-client';
   import type { components } from '../generated/library-api';
   import Debounce from './snippets/debounce.svelte';
+  import { toasts } from './toast-store';
 
   export let open = false;
   export let game: components["schemas"]["Game"] | null = null;
@@ -62,13 +63,16 @@
       // 3. Initiate checkout
       await apiClient.checkOutGame(game.gameId, patronId);
 
+      toasts.add(`Successfully loaned ${game.title} to ${patronName.trim()}`, 'success');
       onLoanSuccess();
       open = false;
       patronName = '';
       patrons = [];
     } catch (e) {
       console.error('Error during loan process:', e);
-      error = e instanceof Error ? e.message : 'Loan process failed';
+      const errorMessage = e instanceof Error ? e.message : 'Loan process failed';
+      error = errorMessage;
+      toasts.add(`Failed to loan game: ${errorMessage}`, 'error');
     } finally {
       loaning = false;
     }

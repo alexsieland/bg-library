@@ -4,6 +4,7 @@
   import { apiClient, type GameList } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
+  import { toasts } from './toast-store';
   
   import LoanModal from './LoanModal.svelte';
 
@@ -23,7 +24,9 @@
       gameList = await apiClient.listGames({ title: searchQuery || undefined });
       console.log('Fetched games:', gameList.games.length);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'An unknown error occurred';
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      error = errorMessage;
+      toasts.add(`Failed to load games: ${errorMessage}`, 'error');
       console.error('Error fetching games:', e);
     } finally {
       loading = false;
