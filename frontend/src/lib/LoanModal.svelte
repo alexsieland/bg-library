@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Modal, Button, Input, Label, Listgroup, ListgroupItem, Spinner } from 'flowbite-svelte';
-  import type { paths, components, operations } from '../generated/library-api';
-  import { getBackendUrl } from './config';
+  import { apiClient } from './api-client';
+  import type { components } from '../generated/library-api';
   import Debounce from './snippets/debounce.svelte';
 
   export let open = false;
@@ -26,13 +26,7 @@
     loading = true;
     error = null;
     try {
-      const endpoint: keyof paths = '/api/v1/library/patrons';
-      const url = new URL(endpoint, getBackendUrl());
-      url.searchParams.append('name', name);
-      const response = await fetch(url.toString());
-      if (!response.ok) throw new Error('Failed to search patrons');
-      const data: components["schemas"]["PatronList"] = await response.json();
-      // Only return the first 5 patrons
+      const data = await apiClient.listPatrons({ name });
       patrons = data.patrons.slice(0, 5);
     } catch (e) {
       console.error('Error searching patrons:', e);
@@ -51,50 +45,22 @@
       let patron = patrons.find(p => p.name.toLowerCase() === patronName.trim().toLowerCase());
       
       if (!patron) {
-        // If not in the current search results, we should try to find them exactly
-        // or just proceed to create them if they aren't found.
-        // The requirement says: "If the user with that name exists in the database, initiate a checkout event... If no user exists, add the patron first"
-        // To be safe, we should probably check the backend for an exact match if not in list.
-        const endpoint: keyof paths = '/api/v1/library/patrons';
-        const searchUrl = new URL(endpoint, getBackendUrl());
-        searchUrl.searchParams.append('name', patronName.trim());
-        const searchRes = await fetch(searchUrl.toString());
-        if (searchRes.ok) {
-          const searchData: components["schemas"]["PatronList"] = await searchRes.json();
-          patron = searchData.patrons.find(p => p.name.toLowerCase() === patronName.trim().toLowerCase());
-        }
+        // If not in the current search results, try to find the exact patron from backend
+        const searchData = await apiClient.listPatrons({ name: patronName.trim() });
+        patron = searchData.patrons.find(p => p.name.toLowerCase() === patronName.trim().toLowerCase());
       }
 
       let patronId: string;
       if (!patron) {
         // 2. Add patron
-        const endpoint: keyof paths = '/api/v1/library/patron';
-        const addRes = await fetch(new URL(endpoint, getBackendUrl()).toString(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: patronName.trim() } as components["schemas"]["CreatePatronRequest"])
-        });
-        if (!addRes.ok) throw new Error('Failed to create patron');
-        const newPatron: components["schemas"]["Patron"] = await addRes.json();
+        const newPatron = await apiClient.addPatron({ name: patronName.trim() });
         patronId = newPatron.patronId;
       } else {
         patronId = patron.patronId;
       }
 
       // 3. Initiate checkout
-      const endpoint: keyof paths = '/api/v1/library/checkout';
-      const checkoutRes = await fetch(new URL(endpoint, getBackendUrl()).toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gameId: game.gameId,
-          patronId: patronId
-        } as components["schemas"]["CheckOutRequest"])
-      });
-      if (!checkoutRes.ok) {
-        const errData = await checkoutRes.json();
-        throw new Error(errData.message || 'Failed to checkout game');
-      }
+      await apiClient.checkOutGame(game.gameId, patronId);
 
       onLoanSuccess();
       open = false;

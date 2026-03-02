@@ -1,13 +1,27 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import LoanModal from './LoanModal.svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { apiClient } from './api-client';
 
 vi.mock('./config', () => ({
   getBackendUrl: () => 'http://localhost:8080'
 }));
 
+// Mock apiClient
+vi.mock('./api-client', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    apiClient: {
+      listPatrons: vi.fn(),
+      addPatron: vi.fn(),
+      checkOutGame: vi.fn(),
+    }
+  };
+});
+
 const mockGame = { gameId: 'g1', title: 'Catan' };
-const mockPatrons = {
+const mockPatronData = {
   patrons: [
     { patronId: 'p1', name: 'Alice' },
     { patronId: 'p2', name: 'Bob' }
@@ -16,15 +30,17 @@ const mockPatrons = {
 
 describe('LoanModal', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
+    vi.clearAllMocks();
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('Should search patrons when typing 3 or more characters', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => mockPatrons
+    vi.mocked(apiClient.listPatrons).mockImplementation(async (params) => {
+      if (params?.name === 'Ali') {
+        return { patrons: [{ patronId: 'p1', name: 'Alice' }] };
+      }
+      return { patrons: [] };
     });
 
     render(LoanModal, { open: true, game: mockGame });
@@ -34,12 +50,13 @@ describe('LoanModal', () => {
 
     // Wait for debounce (2000ms in component)
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/library/patrons?name=Ali'));
+      expect(apiClient.listPatrons).toHaveBeenCalledWith({ name: 'Ali' });
     }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
-      expect(screen.getByText('Bob')).toBeInTheDocument();
+      // Bob should NOT be in the document because we now filter at the backend,
+      // and we will mock the return value to ONLY include Alice if name 'Ali' is passed.
     });
   });
 
@@ -47,9 +64,11 @@ describe('LoanModal', () => {
     const manyPatrons = {
       patrons: Array.from({ length: 10 }, (_, i) => ({ patronId: `${i}`, name: `Patron ${i}` }))
     };
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => manyPatrons
+    vi.mocked(apiClient.listPatrons).mockImplementation(async (params) => {
+      if (params?.name === 'Patron') {
+        return manyPatrons;
+      }
+      return { patrons: [] };
     });
 
     render(LoanModal, { open: true, game: mockGame });
@@ -58,27 +77,19 @@ describe('LoanModal', () => {
     await fireEvent.input(input, { target: { value: 'Patron' } });
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalled();
+      expect(apiClient.listPatrons).toHaveBeenCalledWith({ name: 'Patron' });
+      // After it's called, the list should be displayed.
+      expect(screen.getByText('Patron 0')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    await waitFor(() => {
-      const allButtons = screen.getAllByRole('button');
-      const patronButtons = allButtons.filter(b => b.textContent?.includes('Patron'));
-      expect(patronButtons.length).toBe(5);
-    });
+    const allButtons = screen.getAllByRole('button', { hidden: true });
+    const patronButtons = allButtons.filter(b => b.textContent?.trim().startsWith('Patron'));
+    expect(patronButtons.length).toBe(5);
   });
 
   it('Should checkout to existing patron when selected', async () => {
-    // 1. Search fetch
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockPatrons
-    });
-    // 2. Checkout fetch
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 't1' })
-    });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue(mockPatronData);
+    vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     const onLoanSuccess = vi.fn();
     render(LoanModal, { open: true, game: mockGame, onLoanSuccess });
@@ -95,38 +106,23 @@ describe('LoanModal', () => {
     await fireEvent.click(loanButton);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/library/checkout'),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ gameId: 'g1', patronId: 'p1' })
-        })
-      );
+      expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p1');
     });
     expect(onLoanSuccess).toHaveBeenCalled();
   });
 
   it('Should create new patron and checkout if not found', async () => {
-    // 1. Search fetch (no exact match)
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ patrons: [] })
+    // 1. Initial search (returns nothing matching 'Charlie')
+    vi.mocked(apiClient.listPatrons).mockImplementation(async (params) => {
+      if (params?.name === 'Charlie') {
+        return { patrons: [] };
+      }
+      return { patrons: [] };
     });
-    // 2. Exact match check (no match)
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ patrons: [] })
-    });
-    // 3. Create patron
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ patronId: 'p-new', name: 'Charlie' })
-    });
-    // 4. Checkout
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 't-new' })
-    });
+    // 2. Create patron
+    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p-new', name: 'Charlie' });
+    // 3. Checkout
+    vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     render(LoanModal, { open: true, game: mockGame });
 
@@ -137,22 +133,12 @@ describe('LoanModal', () => {
     await fireEvent.click(loanButton);
 
     await waitFor(() => {
+      // Verify listPatrons call with name
+      expect(apiClient.listPatrons).toHaveBeenCalledWith({ name: 'Charlie' });
       // Verify Create Patron call
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/library/patron'),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ name: 'Charlie' })
-        })
-      );
+      expect(apiClient.addPatron).toHaveBeenCalledWith({ name: 'Charlie' });
       // Verify Checkout call
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/library/checkout'),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ gameId: 'g1', patronId: 'p-new' })
-        })
-      );
+      expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p-new');
     });
   });
 });
