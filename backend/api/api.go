@@ -70,7 +70,20 @@ func RegisterSwagger(r *gin.Engine) {
 		swaggerDir = "swagger"
 	}
 
-	r.StaticFS("/swagger", http.Dir(swaggerDir))
+	// Add CORS headers middleware for swagger endpoints
+	swaggerGroup := r.Group("/swagger")
+	swaggerGroup.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
+
+	swaggerGroup.StaticFS("", http.Dir(swaggerDir))
 
 	r.GET("/swagger", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")

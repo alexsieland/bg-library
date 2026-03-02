@@ -28,7 +28,21 @@ server {
         if ($should_expose_swagger != "true") {
             return 404;
         }
-        proxy_pass http://swagger-ui:80/swagger;
+        proxy_pass http://swagger-ui:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Handle swagger yaml routing
+    location /swagger/api.yaml {
+        set $should_expose_swagger "${EXPOSE_SWAGGER_UI}";
+        if ($should_expose_swagger != "true") {
+            return 404;
+        }
+        proxy_pass http://backend:8080/swagger/api.yaml;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

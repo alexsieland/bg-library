@@ -18,7 +18,7 @@ up:
 
 down:
 	@echo "Stopping containers..."
-	@docker compose
+	@docker compose down
 
 build:
 	@echo "Running build-docker in backend/..."
