@@ -18,9 +18,9 @@ RUN npm prune --production
 # Production stage
 FROM nginx:stable-alpine
 
-ENV BACKEND_URL=http://localhost:8080
 ENV EXPOSE_SWAGGER_UI=false
 ENV BACKEND_PORT=8080
+ENV API_URL=http://localhost:8080
 
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
