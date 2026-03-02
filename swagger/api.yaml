@@ -500,6 +500,12 @@ components:
           maxLength: 100
           description: The name of the board game
           example: "Catan"
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 48
+          description: The barcode of the game
+          example: "9780307455925"
 
     CreateGameRequest:
       type: object
@@ -525,7 +531,6 @@ components:
       required:
         - patronId
         - name
-        - createdAt
       description: A library patron
       properties:
         patronId:
@@ -539,6 +544,12 @@ components:
           maxLength: 100
           description: The name of the patron
           example: "John Smith"
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 48
+          description: The barcode of the patron
+          example: "9780307455925"
 
     CreatePatronRequest:
       type: object

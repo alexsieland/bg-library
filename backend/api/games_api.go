@@ -11,6 +11,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (s Server) AddGame(c *gin.Context) {
@@ -140,6 +141,26 @@ func (s Server) GetGame(c *gin.Context, gameId string) {
 		return
 	}
 	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error getting game: %v", err)
+		internalError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, FromVwLibraryGame(dbGame))
+}
+
+func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
+	errorDetails := ValidateStringLength("GameBarcode", gameBarcode, 1, 48, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	var barcode = pgtype.Text{String: gameBarcode, Valid: true}
+	dbGame, err := s.queries.GetGameByBarcode(c.Request.Context(), barcode)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)

@@ -90,6 +90,9 @@ type ErrorResponseErrorCode string
 
 // Game A game in the library
 type Game struct {
+	// Barcode The barcode of the game
+	Barcode *string `json:"barcode,omitempty"`
+
 	// GameId Game ID
 	GameId openapi_types.UUID `json:"gameId"`
 
@@ -135,6 +138,9 @@ type LibraryTransaction struct {
 
 // Patron A library patron
 type Patron struct {
+	// Barcode The barcode of the patron
+	Barcode *string `json:"barcode,omitempty"`
+
 	// Name The name of the patron
 	Name string `json:"name"`
 

@@ -48,11 +48,13 @@ type VwLibraryGame struct {
 	ID             pgtype.UUID
 	Title          string
 	SanitizedTitle string
+	Barcode        pgtype.Text
 	CreatedAt      pgtype.Timestamp
 }
 
 type VwLibraryPatron struct {
 	ID        pgtype.UUID
 	FullName  string
+	Barcode   pgtype.Text
 	CreatedAt pgtype.Timestamp
 }

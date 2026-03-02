@@ -144,7 +144,7 @@ func (q *Queries) EditPatron(ctx context.Context, arg EditPatronParams) error {
 }
 
 const getGame = `-- name: GetGame :one
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 WHERE id = $1
 `
@@ -156,6 +156,26 @@ func (q *Queries) GetGame(ctx context.Context, id pgtype.UUID) (VwLibraryGame, e
 		&i.ID,
 		&i.Title,
 		&i.SanitizedTitle,
+		&i.Barcode,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getGameByBarcode = `-- name: GetGameByBarcode :one
+SELECT id, title, sanitized_title, barcode, created_at
+FROM vw_library_games
+WHERE barcode = $1
+`
+
+func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) (VwLibraryGame, error) {
+	row := q.db.QueryRow(ctx, getGameByBarcode, barcode)
+	var i VwLibraryGame
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.SanitizedTitle,
+		&i.Barcode,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -184,7 +204,7 @@ func (q *Queries) GetGameStatus(ctx context.Context, gameID pgtype.UUID) (VwGame
 }
 
 const getPatron = `-- name: GetPatron :one
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
 WHERE id = $1
 `
@@ -192,7 +212,30 @@ WHERE id = $1
 func (q *Queries) GetPatron(ctx context.Context, id pgtype.UUID) (VwLibraryPatron, error) {
 	row := q.db.QueryRow(ctx, getPatron, id)
 	var i VwLibraryPatron
-	err := row.Scan(&i.ID, &i.FullName, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.Barcode,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPatronByBarcode = `-- name: GetPatronByBarcode :one
+SELECT id, full_name, barcode, created_at
+FROM vw_library_patrons
+WHERE barcode = $1
+`
+
+func (q *Queries) GetPatronByBarcode(ctx context.Context, barcode pgtype.Text) (VwLibraryPatron, error) {
+	row := q.db.QueryRow(ctx, getPatronByBarcode, barcode)
+	var i VwLibraryPatron
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.Barcode,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
@@ -239,7 +282,7 @@ func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGam
 }
 
 const listGames = `-- name: ListGames :many
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2
@@ -263,6 +306,7 @@ func (q *Queries) ListGames(ctx context.Context, arg ListGamesParams) ([]VwLibra
 			&i.ID,
 			&i.Title,
 			&i.SanitizedTitle,
+			&i.Barcode,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -317,7 +361,7 @@ func (q *Queries) ListGamesStatus(ctx context.Context, arg ListGamesStatusParams
 }
 
 const listPatrons = `-- name: ListPatrons :many
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
 ORDER BY full_name
 LIMIT $1 OFFSET $2
@@ -337,7 +381,12 @@ func (q *Queries) ListPatrons(ctx context.Context, arg ListPatronsParams) ([]VwL
 	var items []VwLibraryPatron
 	for rows.Next() {
 		var i VwLibraryPatron
-		if err := rows.Scan(&i.ID, &i.FullName, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.FullName,
+			&i.Barcode,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -435,7 +484,7 @@ func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusPara
 }
 
 const searchGames = `-- name: SearchGames :many
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
@@ -461,6 +510,7 @@ func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwL
 			&i.ID,
 			&i.Title,
 			&i.SanitizedTitle,
+			&i.Barcode,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -474,7 +524,7 @@ func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwL
 }
 
 const searchPatrons = `-- name: SearchPatrons :many
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
 WHERE full_name ILIKE $1
 ORDER BY full_name
@@ -496,7 +546,12 @@ func (q *Queries) SearchPatrons(ctx context.Context, arg SearchPatronsParams) ([
 	var items []VwLibraryPatron
 	for rows.Next() {
 		var i VwLibraryPatron
-		if err := rows.Scan(&i.ID, &i.FullName, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.FullName,
+			&i.Barcode,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

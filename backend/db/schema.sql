@@ -45,12 +45,12 @@ ON patrons(deleted)
 WHERE deleted IS NOT NULL;
 
 CREATE VIEW vw_library_games AS
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM games
 WHERE deleted IS FALSE;
 
 CREATE VIEW vw_library_patrons AS
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM patrons
 WHERE deleted IS FALSE;
 

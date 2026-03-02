@@ -16,6 +16,11 @@ SELECT *
 FROM vw_library_games
 WHERE id = $1;
 
+-- name: GetGameByBarcode :one
+SELECT *
+FROM vw_library_games
+WHERE barcode = $1;
+
 -- name: CreateGame :one
 INSERT INTO games ( title, sanitized_title ) VALUES ( $1, $2 )
 RETURNING *;
@@ -48,6 +53,11 @@ LIMIT $2 OFFSET $3;
 SELECT *
 FROM vw_library_patrons
 WHERE id = $1;
+
+-- name: GetPatronByBarcode :one
+SELECT *
+FROM vw_library_patrons
+WHERE barcode = $1;
 
 -- name: CreatePatron :one
 INSERT INTO patrons ( full_name ) VALUES ( $1 )

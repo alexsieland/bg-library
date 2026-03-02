@@ -11,6 +11,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (s Server) AddPatron(c *gin.Context) {
@@ -146,6 +147,26 @@ func (s Server) GetPatron(c *gin.Context, patronId string) {
 		return
 	}
 
+	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
+}
+
+func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
+	errorDetails := ValidateStringLength("PatronBarcode", patronBarcode, 1, 48, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	var barcode = pgtype.Text{String: patronBarcode, Valid: true}
+	dbPatron, err := s.queries.GetPatronByBarcode(c.Request.Context(), barcode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error getting patron: %v", err)
+		internalError(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
 }
 
