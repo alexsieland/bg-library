@@ -88,56 +88,57 @@
   }
 </script>
 
-<Modal bind:open title={`Loan Game: ${game?.title || ''}`} size="xs" autoclose={false} class="w-full">
-  <div class="space-y-4">
-    <div>
-      <Label for="patronName" class="mb-2">Patron Name</Label>
-      <div class="relative">
-        <Input 
-          id="patronName" 
-          placeholder="Enter patron name" 
-          bind:value={patronName} 
-          onkeydown={handleKeydown}
-          autocomplete="off"
-        />
-        {#if loading}
-          <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-            <Spinner size="4" />
-          </div>
+<Modal bind:open title={`Loan Game: ${game?.title || ''}`} size="md" autoclose={false} class="w-full">
+  <div class="space-y-4 min-h-[300px]">
+    <div class="flex items-end space-x-2">
+      <div class="flex-grow relative">
+        <Label for="patronName" class="mb-2">Patron Name</Label>
+        <div class="relative">
+          <Input 
+            id="patronName" 
+            placeholder="Enter patron name" 
+            bind:value={patronName} 
+            onkeydown={handleKeydown}
+            autocomplete="off"
+            maxlength={100}
+            class="w-full"
+          />
+          {#if loading}
+            <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+              <Spinner size="4" />
+            </div>
+          {/if}
+        </div>
+        
+        {#if patrons.length > 0}
+          <ul class="absolute z-50 w-full mt-1 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            {#each patrons as patron}
+              <li>
+                <button 
+                  type="button" 
+                  class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  onclick={() => selectPatron(patron)}
+                >
+                  {patron.name}
+                </button>
+              </li>
+            {/each}
+          </ul>
         {/if}
       </div>
-      
-      {#if patrons.length > 0}
-        <ul class="absolute z-50 w-full mt-1 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          {#each patrons as patron}
-            <li>
-              <button 
-                type="button" 
-                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                onclick={() => selectPatron(patron)}
-              >
-                {patron.name}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
 
-    {#if error}
-      <p class="text-sm text-red-500">{error}</p>
-    {/if}
-
-    <div class="flex justify-end space-x-2">
-      <Button color="alternative" onclick={() => (open = false)}>Cancel</Button>
-      <Button onclick={handleLoan} disabled={loaning || !patronName.trim()}>
+      <Button onclick={handleLoan} disabled={loaning || !patronName.trim()} class="mb-0">
         {#if loaning}
           <Spinner size="4" class="me-2" />
         {/if}
         Loan
       </Button>
     </div>
+
+    {#if error}
+      <p class="text-sm text-red-500">{error}</p>
+    {/if}
   </div>
 </Modal>
 
-<Debounce value={patronName} onTrigger={searchPatrons} delay={2000} minLength={3} {lastValueRef} {cancelKey} />
+<Debounce value={patronName} onTrigger={searchPatrons} delay={300} minLength={3} {lastValueRef} {cancelKey} />

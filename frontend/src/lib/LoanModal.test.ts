@@ -48,10 +48,10 @@ describe('LoanModal', () => {
     const input = screen.getByPlaceholderText('Enter patron name');
     await fireEvent.input(input, { target: { value: 'Ali' } });
 
-    // Wait for debounce (2000ms in component)
+    // Wait for debounce (300ms in component)
     await waitFor(() => {
       expect(apiClient.listPatrons).toHaveBeenCalledWith({ name: 'Ali' });
-    }, { timeout: 3000 });
+    }, { timeout: 1000 });
 
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
@@ -80,7 +80,7 @@ describe('LoanModal', () => {
       expect(apiClient.listPatrons).toHaveBeenCalledWith({ name: 'Patron' });
       // After it's called, the list should be displayed.
       expect(screen.getByText('Patron 0')).toBeInTheDocument();
-    }, { timeout: 3000 });
+    }, { timeout: 1000 });
 
     const allButtons = screen.getAllByRole('button', { hidden: true });
     const patronButtons = allButtons.filter(b => b.textContent?.trim().startsWith('Patron'));
