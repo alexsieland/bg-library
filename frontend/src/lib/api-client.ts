@@ -125,9 +125,13 @@ class ApiClient {
   }
 
   // Transactions
-  async checkOutGame(request: CheckOutRequest): Promise<LibraryTransaction> {
+  async checkOutGame(gameId: string, patronId: string): Promise<LibraryTransaction> {
+    const reqBody: CheckOutRequest = {
+      gameId,
+      patronId
+    }
     const res = await this.client.POST('/api/v1/library/checkout', {
-      body: request
+      body: reqBody
     });
     return this.handleResponse(res);
   }

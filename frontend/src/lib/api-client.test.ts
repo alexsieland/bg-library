@@ -212,7 +212,7 @@ describe('ApiClient', () => {
       const checkoutRequest = { gameId: 'g1', patronId: 'p1' };
       vi.mocked(fetch).mockResolvedValue(mockResponse(201, { transactionId: 't1', ...checkoutRequest }));
 
-      const result = await apiClient.checkOutGame(checkoutRequest as any);
+      const result = await apiClient.checkOutGame(checkoutRequest.gameId as string, checkoutRequest.patronId as string);
 
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
