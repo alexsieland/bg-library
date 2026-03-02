@@ -25,8 +25,9 @@ ENV API_URL=http://localhost:8080
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-COPY frontend/nginx.conf.template /etc/nginx/conf.d/nginx.conf.template
+COPY frontend/nginx.conf /etc/nginx/conf.d/nginx.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY frontend/public/config.js.template /usr/share/nginx/html/config.js.template
 
 EXPOSE 80
 
