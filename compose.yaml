@@ -13,17 +13,6 @@ services:
       - bg-library_frontend_nw
     ports:
       - ${FRONTEND_PORT:-80}:80
-  swagger-ui:
-    image: swaggerapi/swagger-ui:v5.32.0
-    restart: always
-    environment:
-      - SWAGGER_JSON=http://backend:${BACKEND_PORT:-8080}/swagger/api.yaml
-      - URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}
-      - SWAGGER_JSON_URL=http://${APP_HOST:-localhost}:${FRONTEND_PORT:-80}
-    networks:
-      - bg-library_frontend_nw
-    depends_on:
-      - backend
   backend:
     image: alexsieland/bg-library-backend:${APP_VERSION:-latest}
     restart: always

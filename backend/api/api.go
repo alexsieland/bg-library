@@ -71,21 +71,8 @@ func RegisterSwagger(r *gin.Engine) {
 		swaggerDir = "swagger"
 	}
 
-	// Add CORS headers middleware for swagger endpoints
-	swaggerGroup := r.Group("/swagger")
-	swaggerGroup.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-		c.Next()
-	})
-
 	// Serve api.yaml with dynamic server URL
-	swaggerGroup.GET("/api.yaml", func(c *gin.Context) {
+	r.GET("/swagger/api.yaml", func(c *gin.Context) {
 		swaggerFile := filepath.Join(swaggerDir, "api.yaml")
 		content, err := os.ReadFile(swaggerFile)
 		if err != nil {
@@ -107,7 +94,14 @@ func RegisterSwagger(r *gin.Engine) {
 		c.String(http.StatusOK, yamlContent)
 	})
 
-	swaggerGroup.GET("/index.html", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
+	// Serve the index.html file itself from disk so relative URLs inside it resolve correctly
+	r.GET("/swagger/", func(c *gin.Context) {
+		indexPath := filepath.Join(swaggerDir, "index.html")
+		if _, err := os.Stat(indexPath); err == nil {
+			c.File(indexPath)
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, NewInternalError(err))
+		}
 	})
 }
