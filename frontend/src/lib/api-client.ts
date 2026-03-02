@@ -1,4 +1,5 @@
-import type { components, operations } from '../generated/library-api';
+import createClient from 'openapi-fetch';
+import type { paths, components, operations } from '../generated/library-api';
 import { getBackendUrl } from './config';
 
 export type Game = components["schemas"]["Game"];
@@ -12,121 +13,138 @@ export type LibraryTransaction = components["schemas"]["LibraryTransaction"];
 export type ErrorResponse = components["schemas"]["ErrorResponse"];
 
 class ApiClient {
-  private baseUrl: string;
+  private client!: ReturnType<typeof createClient<paths>>;
 
   constructor() {
-    this.baseUrl = getBackendUrl();
+    this.init();
   }
 
-  private async request<T>(path: string, options?: RequestInit): Promise<T> {
-    const url = new URL(path, this.baseUrl);
-    const response = await fetch(url.toString(), {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
-
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        // ignore
+  public init() {
+    this.client = createClient<paths>({
+      baseUrl: getBackendUrl(),
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+        return fetch(input, init);
       }
-      throw new Error(errorData?.message || `Request failed with status ${response.status}`);
-    }
+    });
+  }
 
-    if (response.status === 204) {
+  private async handleResponse<T>(response: any): Promise<T> {
+    if (response.error) {
+      throw new Error(response.error.message || `Request failed with status ${response.response?.status}`);
+    }
+    if (response.response && response.response.status === 204) {
       return {} as T;
     }
-
-    return response.json();
+    return (response.data ?? {}) as T;
   }
 
   // Games
   async listGames(query?: operations["listGames"]["parameters"]["query"]): Promise<GameList> {
-    const path = new URL('/api/v1/library/games', this.baseUrl);
-    if (query) {
-      if (query.title) path.searchParams.append('title', query.title);
-      if (query.checkedOut !== undefined) path.searchParams.append('checkedOut', String(query.checkedOut));
-    }
-    return this.request<GameList>(path.pathname + path.search);
+    const res = await this.client.GET('/api/v1/library/games', {
+      params: {
+        query: query
+      }
+    });
+    return this.handleResponse(res);
   }
 
   async addGame(game: CreateGameRequest): Promise<Game> {
-    return this.request<Game>('/api/v1/library/game', {
-      method: 'POST',
-      body: JSON.stringify(game),
+    const res = await this.client.POST('/api/v1/library/game', {
+      body: game
     });
+    return this.handleResponse(res);
   }
 
   async getGame(gameId: string): Promise<Game> {
-    return this.request<Game>(`/api/v1/library/game/${gameId}`);
+    const res = await this.client.GET('/api/v1/library/game/{gameId}', {
+      params: {
+        path: { gameId }
+      }
+    });
+    return this.handleResponse(res);
   }
 
   async updateGame(gameId: string, game: CreateGameRequest): Promise<void> {
-    return this.request<void>(`/api/v1/library/game/${gameId}`, {
-      method: 'PUT',
-      body: JSON.stringify(game),
+    const res = await this.client.PUT('/api/v1/library/game/{gameId}', {
+      params: {
+        path: { gameId }
+      },
+      body: game
     });
+    return this.handleResponse(res);
   }
 
   async deleteGame(gameId: string): Promise<void> {
-    return this.request<void>(`/api/v1/library/game/${gameId}`, {
-      method: 'DELETE',
+    const res = await this.client.DELETE('/api/v1/library/game/{gameId}', {
+      params: {
+        path: { gameId }
+      }
     });
+    return this.handleResponse(res);
   }
 
   // Patrons
   async listPatrons(): Promise<components["schemas"]["PatronList"]> {
-    return this.request<components["schemas"]["PatronList"]>('/api/v1/library/patrons');
+    const res = await this.client.GET('/api/v1/library/patrons');
+    return this.handleResponse(res);
   }
 
   async addPatron(patron: CreatePatronRequest): Promise<Patron> {
-    return this.request<Patron>('/api/v1/library/patron', {
-      method: 'POST',
-      body: JSON.stringify(patron),
+    const res = await this.client.POST('/api/v1/library/patron', {
+      body: patron
     });
+    return this.handleResponse(res);
   }
 
   async getPatron(patronId: string): Promise<Patron> {
-    return this.request<Patron>(`/api/v1/library/patron/${patronId}`);
+    const res = await this.client.GET('/api/v1/library/patron/{patronId}', {
+      params: {
+        path: { patronId }
+      }
+    });
+    return this.handleResponse(res);
   }
 
   async updatePatron(patronId: string, patron: CreatePatronRequest): Promise<void> {
-    return this.request<void>(`/api/v1/library/patron/${patronId}`, {
-      method: 'PUT',
-      body: JSON.stringify(patron),
+    const res = await this.client.PUT('/api/v1/library/patron/{patronId}', {
+      params: {
+        path: { patronId }
+      },
+      body: patron
     });
+    return this.handleResponse(res);
   }
 
   async deletePatron(patronId: string): Promise<void> {
-    return this.request<void>(`/api/v1/library/patron/${patronId}`, {
-      method: 'DELETE',
+    const res = await this.client.DELETE('/api/v1/library/patron/{patronId}', {
+      params: {
+        path: { patronId }
+      }
     });
+    return this.handleResponse(res);
   }
 
   // Transactions
   async checkOutGame(request: CheckOutRequest): Promise<LibraryTransaction> {
-    return this.request<LibraryTransaction>('/api/v1/library/checkout', {
-      method: 'POST',
-      body: JSON.stringify(request),
+    const res = await this.client.POST('/api/v1/library/checkout', {
+      body: request
     });
+    return this.handleResponse(res);
   }
 
   async checkInGame(transactionId: string): Promise<void> {
-    const path = new URL('/api/v1/library/checkin', this.baseUrl);
-    path.searchParams.append('transactionId', transactionId);
-    return this.request<void>(path.pathname + path.search, {
-      method: 'POST',
+    const res = await this.client.POST('/api/v1/library/checkin', {
+      params: {
+        query: { transactionId }
+      }
     });
+    return this.handleResponse(res);
   }
 
   // Health
   async health(): Promise<void> {
-    return this.request<void>('/health');
+    const res = await this.client.GET('/health');
+    return this.handleResponse(res);
   }
 }
 
