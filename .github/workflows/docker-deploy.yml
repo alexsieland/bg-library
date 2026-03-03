@@ -3,7 +3,7 @@ on:
   workflow_run:
     workflows: ["Backend Tests", "Frontend Tests"]
     types: [completed]
-    branches: [main]
+    branches: [main, correct-docker-deploy-issue]
   workflow_dispatch:
     inputs:
       ref:
