@@ -1,4 +1,3 @@
-          file: ./backend/db/Dockerfile
 name: Docker Build and Push
 on:
   workflow_run:
