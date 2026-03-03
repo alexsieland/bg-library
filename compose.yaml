@@ -6,7 +6,7 @@ services:
     environment:
       - BACKEND_PORT=8080
       - EXPOSE_SWAGGER_UI=true
-      - API_URL=$(API_URL:-http://localhost:80)
+      - API_URL=${API_URL:-http://localhost:80}
       - NGINX_HOST=${APP_HOST:-localhost}
       - SERVICE_NAME=nginx
     networks:
@@ -19,12 +19,12 @@ services:
     environment:
       - DB_PORT=5432
       - DB_HOST=db
-      - DB_USER
-      - DB_PASSWORD
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_NAME=librarydb
       - GIN_MODE=release
       - CORS_ALLOWED_ORIGIN=*
-      - API_URL=$(API_URL:-http://localhost:80)
+      - API_URL=${API_URL:-http://localhost:80}
     networks:
       - bg-library_backend_nw
       - bg-library_frontend_nw
@@ -42,18 +42,18 @@ services:
     image: postgres:18.2
     restart: always
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
       - POSTGRES_DB=${DB_NAME:-librarydb}
     networks:
       - bg-library_backend_nw
     ports:
       - ${DB_PORT:-5432}:5432
     volumes:
-      - db-data:/var/lib/postgresql/18/data
+      - db-data:/var/lib/postgresql
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${DB_USER}"]
+      test: ["CMD", "pg_isready", "-U", "${DB_USER:-postgres}"]
       interval: 30s
       timeout: 10s
       retries: 5
