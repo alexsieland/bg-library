@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -352,5 +353,205 @@ func TestListPatrons(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
+	})
+}
+
+func TestBulkAddPatrons(t *testing.T) {
+	t.Run("Should return 201 Created with imported count when valid CSV is provided", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		patronID1 := uuid.New()
+		patronID2 := uuid.New()
+		name1 := "John Doe"
+		name2 := "Jane Smith"
+
+		// CSV content: "John Doe"\n"Jane Smith"
+		csvContent := name1 + "\n" + name2
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		// First patron
+		mockRow1 := new(MockRow)
+		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID1, Valid: true}
+			*args.Get(1).(*string) = name1
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name1}).Return(mockRow1)
+
+		// Second patron
+		mockRow2 := new(MockRow)
+		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID2, Valid: true}
+			*args.Get(1).(*string) = name2
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name2}).Return(mockRow2)
+
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, response.Imported)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should skip invalid records and continue processing when validation fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		patronID := uuid.New()
+		validName := "John Doe"
+		invalidName := "" // Empty name should fail validation
+
+		csvContent := validName + "\n" + invalidName
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		// Only the valid patron
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
+			*args.Get(1).(*string) = validName
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validName}).Return(mockRow)
+
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, response.Imported)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when transaction fails to begin", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		csvContent := "John Doe"
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(nil, errors.New("transaction error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "transaction error")
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when DB error occurs during insert", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		name := "John Doe"
+		csvContent := name
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
+		mockTx.On("Rollback", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "db error")
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when transaction commit fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		patronID := uuid.New()
+		name := "John Doe"
+		csvContent := name
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
+			*args.Get(1).(*string) = name
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
+
+		mockTx.On("Commit", mock.Anything).Return(errors.New("commit error"))
+		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "commit error")
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should handle empty CSV and return 201 with zero imported", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		csvContent := ""
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, response.Imported)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }

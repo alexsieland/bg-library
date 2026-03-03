@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -303,5 +304,209 @@ func TestListGames(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		mockDB.AssertExpectations(t)
+	})
+}
+
+func TestBulkAddGames(t *testing.T) {
+	t.Run("Should return 201 Created with imported count when valid CSV is provided", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID1 := uuid.New()
+		gameID2 := uuid.New()
+		title1 := "Catan"
+		title2 := "Ticket to Ride"
+
+		// CSV content: "Catan"\n"Ticket to Ride"
+		csvContent := title1 + "\n" + title2
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		// First game
+		mockRow1 := new(MockRow)
+		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID1, Valid: true}
+			*args.Get(1).(*string) = title1
+			*args.Get(2).(*string) = SanitizeTitle(title1)
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(4).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title1, SanitizeTitle(title1)}).Return(mockRow1)
+
+		// Second game
+		mockRow2 := new(MockRow)
+		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID2, Valid: true}
+			*args.Get(1).(*string) = title2
+			*args.Get(2).(*string) = SanitizeTitle(title2)
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(4).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title2, SanitizeTitle(title2)}).Return(mockRow2)
+
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddGames(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, response.Imported)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should skip invalid records and continue processing when validation fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		validTitle := "Catan"
+		invalidTitle := "" // Empty title should fail validation
+
+		csvContent := validTitle + "\n" + invalidTitle
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		// Only the valid game
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = validTitle
+			*args.Get(2).(*string) = SanitizeTitle(validTitle)
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(4).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validTitle, SanitizeTitle(validTitle)}).Return(mockRow)
+
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddGames(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, response.Imported)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when transaction fails to begin", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		csvContent := "Catan"
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(nil, errors.New("transaction error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddGames(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "transaction error")
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when DB error occurs during insert", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		title := "Catan"
+		csvContent := title
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
+		mockTx.On("Rollback", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddGames(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "db error")
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when transaction commit fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		title := "Catan"
+		csvContent := title
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(4).(*bool) = false
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
+
+		mockTx.On("Commit", mock.Anything).Return(errors.New("commit error"))
+		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddGames(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "commit error")
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should handle empty CSV and return 201 with zero imported", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		csvContent := ""
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/games/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddGames(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, response.Imported)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }
