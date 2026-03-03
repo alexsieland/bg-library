@@ -3,7 +3,7 @@ on:
   workflow_run:
     workflows: ["Backend Tests", "Frontend Tests"]
     types: [completed]
-    branches: [main, correct-docker-deploy-issue]
+    branches: [main, correct-docker-deploy-issue, clean-up-compose]
   workflow_dispatch:
     inputs:
       ref:
@@ -43,7 +43,9 @@ jobs:
             // Handle manual workflow_dispatch trigger
             if (context.eventName === 'workflow_dispatch') {
               const skipCheck = '${{ github.event.inputs.skip_tests_check }}' === 'true';
-              const ref = '${{ github.event.inputs.ref }}' || 'main';
+              // Use the input ref if provided, otherwise use the ref that triggered the workflow
+              const inputRef = '${{ github.event.inputs.ref }}';
+              const ref = inputRef || '${{ github.ref_name }}';
               if (skipCheck) {
                 console.log('Skipping tests check (manual override)');
                 shouldBuild = true;
@@ -178,17 +180,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.check-tests.outputs.commit_sha }}
-      - name: Debug - List files
-        run: |
-          echo "=== Listing backend/db directory ==="
-          ls -la backend/db/
-          echo ""
-          echo "=== Checking for required files ==="
-          test -f backend/db/Dockerfile && echo "✓ Dockerfile exists" || echo "✗ Dockerfile missing"
-          test -f backend/db/schema.sql && echo "✓ schema.sql exists" || echo "✗ schema.sql missing"
-          echo ""
-          echo "=== Dockerfile contents ==="
-          cat backend/db/Dockerfile
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GitHub Container Registry
