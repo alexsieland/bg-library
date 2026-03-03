@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Dockerfile for PostgreSQL with schema initialization
 FROM postgres:18.2
 
