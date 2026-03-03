@@ -1,5 +1,7 @@
 PHONY: help generate build-docker remove-docker run format lint test
 
+export GHCR_USERNAME ?= alexsieland
+
 help:
 	@echo "Available commands:"
 	@echo "  generate       - Generate TypeScript types from OpenAPI spec"
@@ -16,11 +18,11 @@ generate:
 
 build-docker:
 	@echo "Building local Docker image for API server..."
-	cd .. && docker build -f frontend/Dockerfile -t ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-frontend:dev .
+	cd .. && docker build -f frontend/Dockerfile -t ghcr.io/${GHCR_USERNAME}/bg-library-frontend:dev .
 
 remove-docker:
 	@echo "Removing local Docker image for API server..."
-	docker rmi ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-frontend:dev
+	docker rmi ghcr.io/${GHCR_USERNAME}/bg-library-frontend:dev
 
 run:
 	@echo "Running frontend locally..."
