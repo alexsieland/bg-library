@@ -29,6 +29,12 @@ const (
 	VALIDATIONERROR    ErrorResponseErrorCode = "VALIDATION_ERROR"
 )
 
+// BulkAddResponse Response for bulk add operations
+type BulkAddResponse struct {
+	// Imported Number of records imported successfully
+	Imported int `json:"imported"`
+}
+
 // CheckOutRequest Request payload for making a check in/out transaction
 type CheckOutRequest struct {
 	// GameId Game ID
@@ -151,11 +157,17 @@ type ListGamesParams struct {
 	Title *string `form:"title,omitempty" json:"title,omitempty"`
 }
 
+// BulkAddGamesTextBody defines parameters for BulkAddGames.
+type BulkAddGamesTextBody = []byte
+
 // ListPatronsParams defines parameters for ListPatrons.
 type ListPatronsParams struct {
 	// Name Filter patrons by name (optional)
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
+
+// BulkAddPatronsTextBody defines parameters for BulkAddPatrons.
+type BulkAddPatronsTextBody = []byte
 
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.
 type CheckOutGameJSONRequestBody = CheckOutRequest
@@ -166,11 +178,17 @@ type AddGameJSONRequestBody = CreateGameRequest
 // UpdateGameJSONRequestBody defines body for UpdateGame for application/json ContentType.
 type UpdateGameJSONRequestBody = CreateGameRequest
 
+// BulkAddGamesTextRequestBody defines body for BulkAddGames for text/plain ContentType.
+type BulkAddGamesTextRequestBody = BulkAddGamesTextBody
+
 // AddPatronJSONRequestBody defines body for AddPatron for application/json ContentType.
 type AddPatronJSONRequestBody = CreatePatronRequest
 
 // UpdatePatronJSONRequestBody defines body for UpdatePatron for application/json ContentType.
 type UpdatePatronJSONRequestBody = CreatePatronRequest
+
+// BulkAddPatronsTextRequestBody defines body for BulkAddPatrons for text/plain ContentType.
+type BulkAddPatronsTextRequestBody = BulkAddPatronsTextBody
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -275,6 +293,8 @@ type ClientInterface interface {
 	// BulkAddGamesWithBody request with any body
 	BulkAddGamesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	BulkAddGamesWithTextBody(ctx context.Context, body BulkAddGamesTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddPatronWithBody request with any body
 	AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -296,6 +316,8 @@ type ClientInterface interface {
 
 	// BulkAddPatronsWithBody request with any body
 	BulkAddPatronsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	BulkAddPatronsWithTextBody(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -433,6 +455,18 @@ func (c *Client) BulkAddGamesWithBody(ctx context.Context, contentType string, b
 	return c.Client.Do(req)
 }
 
+func (c *Client) BulkAddGamesWithTextBody(ctx context.Context, body BulkAddGamesTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBulkAddGamesRequestWithTextBody(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddPatronRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -519,6 +553,18 @@ func (c *Client) ListPatrons(ctx context.Context, params *ListPatronsParams, req
 
 func (c *Client) BulkAddPatronsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBulkAddPatronsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BulkAddPatronsWithTextBody(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBulkAddPatronsRequestWithTextBody(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -846,6 +892,13 @@ func NewListGamesRequest(server string, params *ListGamesParams) (*http.Request,
 	return req, nil
 }
 
+// NewBulkAddGamesRequestWithTextBody calls the generic BulkAddGames builder with text/plain body
+func NewBulkAddGamesRequestWithTextBody(server string, body BulkAddGamesTextRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyReader = strings.NewReader(string(body))
+	return NewBulkAddGamesRequestWithBody(server, "text/plain", bodyReader)
+}
+
 // NewBulkAddGamesRequestWithBody generates requests for BulkAddGames with any type of body
 func NewBulkAddGamesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -1079,6 +1132,13 @@ func NewListPatronsRequest(server string, params *ListPatronsParams) (*http.Requ
 	return req, nil
 }
 
+// NewBulkAddPatronsRequestWithTextBody calls the generic BulkAddPatrons builder with text/plain body
+func NewBulkAddPatronsRequestWithTextBody(server string, body BulkAddPatronsTextRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyReader = strings.NewReader(string(body))
+	return NewBulkAddPatronsRequestWithBody(server, "text/plain", bodyReader)
+}
+
 // NewBulkAddPatronsRequestWithBody generates requests for BulkAddPatrons with any type of body
 func NewBulkAddPatronsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -1208,6 +1268,8 @@ type ClientWithResponsesInterface interface {
 	// BulkAddGamesWithBodyWithResponse request with any body
 	BulkAddGamesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddGamesResponse, error)
 
+	BulkAddGamesWithTextBodyWithResponse(ctx context.Context, body BulkAddGamesTextRequestBody, reqEditors ...RequestEditorFn) (*BulkAddGamesResponse, error)
+
 	// AddPatronWithBodyWithResponse request with any body
 	AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error)
 
@@ -1229,6 +1291,8 @@ type ClientWithResponsesInterface interface {
 
 	// BulkAddPatronsWithBodyWithResponse request with any body
 	BulkAddPatronsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error)
+
+	BulkAddPatronsWithTextBodyWithResponse(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error)
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
@@ -1396,6 +1460,7 @@ func (r ListGamesResponse) StatusCode() int {
 type BulkAddGamesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON201      *BulkAddResponse
 	JSON400      *ErrorResponse
 }
 
@@ -1531,6 +1596,7 @@ func (r ListPatronsResponse) StatusCode() int {
 type BulkAddPatronsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON201      *BulkAddResponse
 	JSON400      *ErrorResponse
 }
 
@@ -1668,6 +1734,14 @@ func (c *ClientWithResponses) BulkAddGamesWithBodyWithResponse(ctx context.Conte
 	return ParseBulkAddGamesResponse(rsp)
 }
 
+func (c *ClientWithResponses) BulkAddGamesWithTextBodyWithResponse(ctx context.Context, body BulkAddGamesTextRequestBody, reqEditors ...RequestEditorFn) (*BulkAddGamesResponse, error) {
+	rsp, err := c.BulkAddGamesWithTextBody(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBulkAddGamesResponse(rsp)
+}
+
 // AddPatronWithBodyWithResponse request with arbitrary body returning *AddPatronResponse
 func (c *ClientWithResponses) AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error) {
 	rsp, err := c.AddPatronWithBody(ctx, contentType, body, reqEditors...)
@@ -1732,6 +1806,14 @@ func (c *ClientWithResponses) ListPatronsWithResponse(ctx context.Context, param
 // BulkAddPatronsWithBodyWithResponse request with arbitrary body returning *BulkAddPatronsResponse
 func (c *ClientWithResponses) BulkAddPatronsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error) {
 	rsp, err := c.BulkAddPatronsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBulkAddPatronsResponse(rsp)
+}
+
+func (c *ClientWithResponses) BulkAddPatronsWithTextBodyWithResponse(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error) {
+	rsp, err := c.BulkAddPatronsWithTextBody(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1978,6 +2060,13 @@ func ParseBulkAddGamesResponse(rsp *http.Response) (*BulkAddGamesResponse, error
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest BulkAddResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2155,6 +2244,13 @@ func ParseBulkAddPatronsResponse(rsp *http.Response) (*BulkAddPatronsResponse, e
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest BulkAddResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

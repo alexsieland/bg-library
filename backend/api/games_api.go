@@ -52,76 +52,69 @@ func (s Server) insertGame(c *gin.Context, title string, errorDetails []ErrorDet
 }
 
 func (s Server) BulkAddGames(c *gin.Context) {
-	var csvReader *csv.Reader
 	decodedReader := base64.NewDecoder(base64.StdEncoding, c.Request.Body)
-	csvReader = csv.NewReader(decodedReader)
-	if csvReader != nil {
-		tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
-		if tx == nil {
-			log.Printf("Error creating transaction: %v", err)
-			internalError(c, err)
-			return
-		}
+	csvReader := csv.NewReader(decodedReader)
 
-		if err != nil {
-			derr := tx.Rollback(c.Request.Context())
-			if derr != nil {
-				log.Printf("Error rolling back transaction: %v", derr)
-				internalError(c, derr)
-				return
-			}
-		}
-
-		var errorDetails []ErrorDetail
-		for {
-			record, err := csvReader.Read()
-			if err == io.EOF {
-				break
-			}
-			if len(record) == 0 {
-				continue
-			}
-			title := record[0]
-
-			_, err = s.insertGame(c, title, errorDetails, nil)
-			if errors.Is(err, errValidation) {
-				continue
-			}
-			if err != nil {
-				log.Printf("Error adding game: %v", err)
-				derr := tx.Rollback(c.Request.Context())
-				if derr != nil {
-					log.Printf("Error rolling back transaction: %v", derr)
-					internalError(c, derr)
-					return
-				}
-				internalError(c, err)
-				return
-			}
-		}
-
-		if len(errorDetails) > 0 {
-			derr := tx.Rollback(c.Request.Context())
-			if derr != nil {
-				log.Printf("Error rolling back transaction: %v", derr)
-				internalError(c, derr)
-				return
-			}
-			validationError(c, errorDetails)
-			return
-		}
-		err = tx.Commit(c.Request.Context())
-		if err != nil {
-			derr := tx.Rollback(c.Request.Context())
-			if derr != nil {
-				log.Printf("Error rolling back transaction: %v", derr)
-				internalError(c, derr)
-				return
-			}
-			log.Printf("Error committing transaction: %v", err)
-			internalError(c, err)
-		}
+	// Start a db transaction
+	tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
+	if err != nil {
+		log.Printf("Error creating transaction: %v", err)
+		internalError(c, err)
+		return
 	}
+
+	//defer rollback if there is an error
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback(c.Request.Context())
+		}
+	}()
+
+	// Process each row
+	var errorDetails []ErrorDetail
+	recordCount := 0
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Printf("Error reading CSV: %v", err)
+			internalError(c, err)
+			return
+		}
+		if len(record) == 0 {
+			continue
+		}
+		title := record[0]
+
+		_, err = s.insertGame(c, title, errorDetails, &tx)
+		if errors.Is(err, errValidation) {
+			continue
+		}
+		if err != nil {
+			log.Printf("Error adding game: %v", err)
+			internalError(c, err)
+			return
+		}
+		recordCount++
+	}
+
+	//If there are any validation errors, rollback the transaction
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+
+	//If there are no validation errors, commit the transaction
+	err = tx.Commit(c.Request.Context())
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		internalError(c, err)
+	}
+	tx = nil // Prevent defer rollback after successful commit
+
+	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
 }
 
 func (s Server) DeleteGame(c *gin.Context, gameId string) {
