@@ -53,11 +53,6 @@ func (m *MockDatabase) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pg
 	return args.Get(0).(pgx.Tx), args.Error(1)
 }
 
-func (m *MockDatabase) ExecTx(ctx context.Context, tx pgx.Tx, s string, i ...any) (pgconn.CommandTag, error) {
-	args := m.Called(ctx, tx, s, i)
-	return args.Get(0).(pgconn.CommandTag), args.Error(1)
-}
-
 // MockTx is a mock of the pgx.Tx interface
 type MockTx struct {
 	mock.Mock

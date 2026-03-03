@@ -74,7 +74,3 @@ func (database *LibraryDatabase) QueryRow(ctx context.Context, s string, i ...in
 func (database *LibraryDatabase) BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error) {
 	return database.pool.BeginTx(ctx, opts)
 }
-
-func (database *LibraryDatabase) ExecTx(ctx context.Context, tx pgx.Tx, s string, i ...interface{}) (pgconn.CommandTag, error) {
-	return tx.Exec(ctx, s, i...)
-}
