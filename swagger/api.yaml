@@ -75,6 +75,10 @@ paths:
         - games
       operationId: bulkAddGames
       summary: Add multiple games
+      description: |
+        Add multiple games by uploading a CSV file. 
+        The CSV file should contain a list of games, one per line, in the following format: 
+        "Catan\nTicket to Ride\nAzul"
       requestBody:
         required: true
         content:
@@ -85,10 +89,6 @@ paths:
       responses:
         '201':
           description: Games added successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GameList'
         '400':
           description: Validation error
           content:
@@ -227,6 +227,10 @@ paths:
         - patrons
       operationId: bulkAddPatrons
       summary: Add multiple patrons
+      description: |
+        Add multiple patrons by uploading a CSV file. 
+        The CSV file should contain a list of patrons names, one per line, in the following format: 
+        "John Smith\nJane Doe\nAlice Baker"
       requestBody:
         required: true
         content:
@@ -234,13 +238,10 @@ paths:
             schema:
               type: string
               format: base64
+              description: Base64 encoded CSV of patrons to add
       responses:
         '201':
           description: Patrons added successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PatronList'
         '400':
           description: Validation error
           content:

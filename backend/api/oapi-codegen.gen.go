@@ -272,6 +272,9 @@ type ClientInterface interface {
 	// ListGames request
 	ListGames(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BulkAddGamesWithBody request with any body
+	BulkAddGamesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddPatronWithBody request with any body
 	AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -290,6 +293,9 @@ type ClientInterface interface {
 
 	// ListPatrons request
 	ListPatrons(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BulkAddPatronsWithBody request with any body
+	BulkAddPatronsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -415,6 +421,18 @@ func (c *Client) ListGames(ctx context.Context, params *ListGamesParams, reqEdit
 	return c.Client.Do(req)
 }
 
+func (c *Client) BulkAddGamesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBulkAddGamesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) AddPatronWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddPatronRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -489,6 +507,18 @@ func (c *Client) UpdatePatron(ctx context.Context, patronId string, body UpdateP
 
 func (c *Client) ListPatrons(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListPatronsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BulkAddPatronsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBulkAddPatronsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -816,6 +846,35 @@ func NewListGamesRequest(server string, params *ListGamesParams) (*http.Request,
 	return req, nil
 }
 
+// NewBulkAddGamesRequestWithBody generates requests for BulkAddGames with any type of body
+func NewBulkAddGamesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/games")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAddPatronRequest calls the generic AddPatron builder with application/json body
 func NewAddPatronRequest(server string, body AddPatronJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1020,6 +1079,35 @@ func NewListPatronsRequest(server string, params *ListPatronsParams) (*http.Requ
 	return req, nil
 }
 
+// NewBulkAddPatronsRequestWithBody generates requests for BulkAddPatrons with any type of body
+func NewBulkAddPatronsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/patrons")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetHealthRequest generates requests for GetHealth
 func NewGetHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -1117,6 +1205,9 @@ type ClientWithResponsesInterface interface {
 	// ListGamesWithResponse request
 	ListGamesWithResponse(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*ListGamesResponse, error)
 
+	// BulkAddGamesWithBodyWithResponse request with any body
+	BulkAddGamesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddGamesResponse, error)
+
 	// AddPatronWithBodyWithResponse request with any body
 	AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error)
 
@@ -1135,6 +1226,9 @@ type ClientWithResponsesInterface interface {
 
 	// ListPatronsWithResponse request
 	ListPatronsWithResponse(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*ListPatronsResponse, error)
+
+	// BulkAddPatronsWithBodyWithResponse request with any body
+	BulkAddPatronsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error)
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
@@ -1299,6 +1393,28 @@ func (r ListGamesResponse) StatusCode() int {
 	return 0
 }
 
+type BulkAddGamesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r BulkAddGamesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BulkAddGamesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type AddPatronResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1406,6 +1522,28 @@ func (r ListPatronsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ListPatronsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type BulkAddPatronsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r BulkAddPatronsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BulkAddPatronsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1521,6 +1659,15 @@ func (c *ClientWithResponses) ListGamesWithResponse(ctx context.Context, params 
 	return ParseListGamesResponse(rsp)
 }
 
+// BulkAddGamesWithBodyWithResponse request with arbitrary body returning *BulkAddGamesResponse
+func (c *ClientWithResponses) BulkAddGamesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddGamesResponse, error) {
+	rsp, err := c.BulkAddGamesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBulkAddGamesResponse(rsp)
+}
+
 // AddPatronWithBodyWithResponse request with arbitrary body returning *AddPatronResponse
 func (c *ClientWithResponses) AddPatronWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPatronResponse, error) {
 	rsp, err := c.AddPatronWithBody(ctx, contentType, body, reqEditors...)
@@ -1580,6 +1727,15 @@ func (c *ClientWithResponses) ListPatronsWithResponse(ctx context.Context, param
 		return nil, err
 	}
 	return ParseListPatronsResponse(rsp)
+}
+
+// BulkAddPatronsWithBodyWithResponse request with arbitrary body returning *BulkAddPatronsResponse
+func (c *ClientWithResponses) BulkAddPatronsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error) {
+	rsp, err := c.BulkAddPatronsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBulkAddPatronsResponse(rsp)
 }
 
 // GetHealthWithResponse request returning *GetHealthResponse
@@ -1808,6 +1964,32 @@ func ParseListGamesResponse(rsp *http.Response) (*ListGamesResponse, error) {
 	return response, nil
 }
 
+// ParseBulkAddGamesResponse parses an HTTP response from a BulkAddGamesWithResponse call
+func ParseBulkAddGamesResponse(rsp *http.Response) (*BulkAddGamesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BulkAddGamesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseAddPatronResponse parses an HTTP response from a AddPatronWithResponse call
 func ParseAddPatronResponse(rsp *http.Response) (*AddPatronResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1959,6 +2141,32 @@ func ParseListPatronsResponse(rsp *http.Response) (*ListPatronsResponse, error) 
 	return response, nil
 }
 
+// ParseBulkAddPatronsResponse parses an HTTP response from a BulkAddPatronsWithResponse call
+func ParseBulkAddPatronsResponse(rsp *http.Response) (*BulkAddPatronsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BulkAddPatronsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetHealthResponse parses an HTTP response from a GetHealthWithResponse call
 func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2008,6 +2216,9 @@ type ServerInterface interface {
 	// Get list of all games with check out status
 	// (GET /api/v1/library/games)
 	ListGames(c *gin.Context, params ListGamesParams)
+	// Add multiple games
+	// (POST /api/v1/library/games)
+	BulkAddGames(c *gin.Context)
 	// Add a patron
 	// (POST /api/v1/library/patron)
 	AddPatron(c *gin.Context)
@@ -2023,6 +2234,9 @@ type ServerInterface interface {
 	// Get list of all patrons
 	// (GET /api/v1/library/patrons)
 	ListPatrons(c *gin.Context, params ListPatronsParams)
+	// Add multiple patrons
+	// (POST /api/v1/library/patrons)
+	BulkAddPatrons(c *gin.Context)
 
 	// (GET /health)
 	GetHealth(c *gin.Context)
@@ -2202,6 +2416,19 @@ func (siw *ServerInterfaceWrapper) ListGames(c *gin.Context) {
 	siw.Handler.ListGames(c, params)
 }
 
+// BulkAddGames operation middleware
+func (siw *ServerInterfaceWrapper) BulkAddGames(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.BulkAddGames(c)
+}
+
 // AddPatron operation middleware
 func (siw *ServerInterfaceWrapper) AddPatron(c *gin.Context) {
 
@@ -2313,6 +2540,19 @@ func (siw *ServerInterfaceWrapper) ListPatrons(c *gin.Context) {
 	siw.Handler.ListPatrons(c, params)
 }
 
+// BulkAddPatrons operation middleware
+func (siw *ServerInterfaceWrapper) BulkAddPatrons(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.BulkAddPatrons(c)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(c *gin.Context) {
 
@@ -2360,10 +2600,12 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/library/game/:gameId", wrapper.GetGame)
 	router.PUT(options.BaseURL+"/api/v1/library/game/:gameId", wrapper.UpdateGame)
 	router.GET(options.BaseURL+"/api/v1/library/games", wrapper.ListGames)
+	router.POST(options.BaseURL+"/api/v1/library/games", wrapper.BulkAddGames)
 	router.POST(options.BaseURL+"/api/v1/library/patron", wrapper.AddPatron)
 	router.DELETE(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.DeletePatron)
 	router.GET(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.GetPatron)
 	router.PUT(options.BaseURL+"/api/v1/library/patron/:patronId", wrapper.UpdatePatron)
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
+	router.POST(options.BaseURL+"/api/v1/library/patrons", wrapper.BulkAddPatrons)
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth)
 }

@@ -1,7 +1,10 @@
 package api
 
 import (
+	"encoding/base64"
+	"encoding/csv"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 
@@ -17,12 +20,12 @@ func (s Server) AddPatron(c *gin.Context) {
 		malformedJson(c)
 		return
 	}
-	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
-	if len(errorDetails) > 0 {
+
+	var errorDetails []ErrorDetail
+	dbPatron, err := s.insertPatron(c, jsonObject.Name, errorDetails, nil)
+	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
-		return
 	}
-	dbPatron, err := s.queries.CreatePatron(c.Request.Context(), jsonObject.Name)
 	if err != nil {
 		log.Printf("Error creating patron: %v", err)
 		internalError(c, err)
@@ -30,6 +33,87 @@ func (s Server) AddPatron(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, FromPatron(dbPatron))
+}
+
+func (s Server) insertPatron(c *gin.Context, name string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Patron, error) {
+	errorDetails = ValidateStringLength("name", name, 1, 100, errorDetails)
+	if len(errorDetails) > 0 {
+		return db.Patron{}, errValidation
+	}
+
+	if tx != nil {
+		return s.queries.WithTx(*tx).CreatePatron(c.Request.Context(), name)
+	}
+	return s.queries.CreatePatron(c.Request.Context(), name)
+}
+
+func (s Server) BulkAddPatrons(c *gin.Context) {
+	var csvReader *csv.Reader
+	decodedReader := base64.NewDecoder(base64.StdEncoding, c.Request.Body)
+	csvReader = csv.NewReader(decodedReader)
+	if csvReader != nil {
+		tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
+		if tx == nil {
+			log.Printf("Error creating transaction: %v", err)
+			internalError(c, err)
+			return
+		}
+
+		if err != nil {
+			log.Printf("Error creating transaction: %v", err)
+			internalError(c, err)
+		}
+
+		var errorDetails []ErrorDetail
+		for {
+			record, err := csvReader.Read()
+			if err == io.EOF {
+				break
+			}
+			if len(record) == 0 {
+				continue
+			}
+			name := record[0]
+
+			_, err = s.insertPatron(c, name, errorDetails, nil)
+			if errors.Is(err, errValidation) {
+				continue
+			}
+			if err != nil {
+				log.Printf("Error adding patron: %v", err)
+				derr := tx.Rollback(c.Request.Context())
+				if derr != nil {
+					log.Printf("Error rolling back transaction: %v", derr)
+					internalError(c, derr)
+					return
+				}
+				internalError(c, err)
+				return
+			}
+		}
+
+		if len(errorDetails) > 0 {
+			derr := tx.Rollback(c.Request.Context())
+			if derr != nil {
+				log.Printf("Error rolling back transaction: %v", derr)
+				internalError(c, derr)
+				return
+			}
+			validationError(c, errorDetails)
+			return
+		}
+		err = tx.Commit(c.Request.Context())
+		if err != nil {
+			derr := tx.Rollback(c.Request.Context())
+			if derr != nil {
+				log.Printf("Error rolling back transaction: %v", derr)
+				internalError(c, derr)
+				return
+			}
+			log.Printf("Error committing transaction: %v", err)
+			internalError(c, err)
+		}
+	}
 }
 
 func (s Server) DeletePatron(c *gin.Context, patronId string) {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -20,12 +21,16 @@ type DB interface {
 	Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error)
 	Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error)
 	QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row
+	BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error)
+	ExecTx(ctx context.Context, tx pgx.Tx, s string, i ...interface{}) (pgconn.CommandTag, error)
 }
 
 type Server struct {
 	Database DB
 	queries  *db.Queries
 }
+
+var errValidation = errors.New("Validation error")
 
 func NewServer() Server {
 	database := db.NewLibraryDatabase()
