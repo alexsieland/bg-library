@@ -178,6 +178,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.check-tests.outputs.commit_sha }}
+      - name: Debug - List files
+        run: |
+          echo "=== Listing backend/db directory ==="
+          ls -la backend/db/
+          echo ""
+          echo "=== Checking for required files ==="
+          test -f backend/db/Dockerfile && echo "✓ Dockerfile exists" || echo "✗ Dockerfile missing"
+          test -f backend/db/schema.sql && echo "✓ schema.sql exists" || echo "✗ schema.sql missing"
+          echo ""
+          echo "=== Dockerfile contents ==="
+          cat backend/db/Dockerfile
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GitHub Container Registry
