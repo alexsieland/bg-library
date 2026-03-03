@@ -38,7 +38,37 @@ Use the following `make` commands from the project root to manage the applicatio
 - `make help`: Display available targets.
 
 For more detailed information on the frontend, see [frontend/README.md](frontend/README.md).
-For more detailed information on the backend, see [backend/README.md](backend/README.md)
+For more detailed information on the backend, see [backend/README.md](backend/README.md).
+
+## Docker Environment Variables
+
+The application uses environment variables to configure Docker containers. See [compose.yaml](compose.yaml) for the default configuration and how to override these variables.
+
+### Frontend Variables
+- `API_URL` - The backend API endpoint (default: `http://localhost:8080`)
+- `BACKEND_PORT` - The backend port (default: `8080`)
+- `EXPOSE_SWAGGER_UI` - Whether to expose Swagger UI (default: `false`)
+- `NGINX_HOST` - The nginx server name (default: `localhost`)
+- `FRONTEND_PORT` - The frontend port (default: `80`)
+
+### Backend Variables
+- `DB_HOST` - Database host
+- `DB_PORT` - Database port
+- `DB_USER` - Database user
+- `DB_PASSWORD` - Database password
+- `DB_NAME` - Database name
+- `GIN_MODE` - Gin framework mode (`release` or `debug`)
+- `CORS_ALLOWED_ORIGIN` - CORS origin (default: `*`)
+- `BACKEND_PORT` - Backend API port (default: `8080`)
+
+### GHCR Configuration
+The application uses GitHub Container Registry (ghcr.io) for Docker images. Set the `GHCR_USERNAME` environment variable to specify the image repository owner:
+
+```bash
+GHCR_USERNAME=your-username docker compose up
+```
+
+The `compose.yaml` file defaults to `alexsieland` if `GHCR_USERNAME` is not set.
 
 ## Development
 
