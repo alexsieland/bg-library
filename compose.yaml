@@ -11,6 +11,7 @@ services:
       - SERVICE_NAME=nginx
       - TRUSTED_PROXIES=${TRUSTED_PROXIES:-}
       - REAL_IP_HEADER=${REAL_IP_HEADER:-X-Real-IP}
+      - ENABLE_HTTPS=${ENABLE_HTTPS:-false}
     networks:
       - bg-library_frontend_nw
     ports:

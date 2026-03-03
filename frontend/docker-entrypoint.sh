@@ -7,34 +7,42 @@ EXPOSE_SWAGGER_UI=${EXPOSE_SWAGGER_UI:-false}
 API_URL=${API_URL:-http://localhost:8080}
 TRUSTED_PROXIES=${TRUSTED_PROXIES:-}
 REAL_IP_HEADER=${REAL_IP_HEADER:-X-Real-IP}
+ENABLE_HTTPS=${ENABLE_HTTPS:-false}
 
 # SSL certificate paths
 SSL_CERT_DIR="/etc/nginx/ssl"
 SSL_CERT="${SSL_CERT_DIR}/cert.crt"
 SSL_KEY="${SSL_CERT_DIR}/cert.key"
 
-# Create SSL directory if it doesn't exist
-mkdir -p "$SSL_CERT_DIR"
+# Only handle SSL if HTTPS is enabled
+if [ "$ENABLE_HTTPS" = "true" ]; then
+    echo "HTTPS enabled - configuring SSL..."
 
-# Generate self-signed certificate if no certificate exists
-if [ ! -f "$SSL_CERT" ] || [ ! -f "$SSL_KEY" ]; then
-    echo "No SSL certificate found. Generating self-signed certificate..."
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout "$SSL_KEY" \
-        -out "$SSL_CERT" \
-        -subj "/C=US/ST=State/L=City/O=Organization/CN=${NGINX_HOST}" \
-        2>/dev/null
+    # Create SSL directory if it doesn't exist
+    mkdir -p "$SSL_CERT_DIR"
 
-    if [ $? -eq 0 ]; then
-        echo "Self-signed SSL certificate generated successfully"
-        chmod 644 "$SSL_CERT"
-        chmod 600 "$SSL_KEY"
+    # Generate self-signed certificate if no certificate exists
+    if [ ! -f "$SSL_CERT" ] || [ ! -f "$SSL_KEY" ]; then
+        echo "No SSL certificate found. Generating self-signed certificate..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$SSL_KEY" \
+            -out "$SSL_CERT" \
+            -subj "/C=US/ST=State/L=City/O=Organization/CN=${NGINX_HOST}" \
+            2>/dev/null
+
+        if [ $? -eq 0 ]; then
+            echo "Self-signed SSL certificate generated successfully"
+            chmod 644 "$SSL_CERT"
+            chmod 600 "$SSL_KEY"
+        else
+            echo "ERROR: Failed to generate SSL certificate"
+            exit 1
+        fi
     else
-        echo "ERROR: Failed to generate SSL certificate"
-        exit 1
+        echo "Using existing SSL certificate"
     fi
 else
-    echo "Using existing SSL certificate"
+    echo "HTTPS disabled - HTTP-only mode (suitable for Cloudflare Flexible SSL)"
 fi
 
 # Start building the nginx config
@@ -72,6 +80,13 @@ if [ -n "$TRUSTED_PROXIES" ]; then
     rm "$PROXY_CONFIG"
 else
     mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+fi
+
+# Remove HTTPS server block if HTTPS is disabled
+if [ "$ENABLE_HTTPS" != "true" ]; then
+    echo "Removing HTTPS server block (not needed for HTTP-only mode)..."
+    # Remove everything from "# HTTPS/SSL server block" to the end of file
+    sed -i '/# HTTPS\/SSL server block/,$d' "$CONFIG_FILE"
 fi
 
 # Inject API_URL into config.js
