@@ -112,7 +112,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 		log.Printf("Error committing transaction: %v", err)
 		internalError(c, err)
 	}
-	tx = nil // Prevent defer rollback after successful commit
+	tx = nil // Prevent deferred rollback after a successful commit
 
 	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
 }
