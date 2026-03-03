@@ -16,11 +16,11 @@ generate:
 
 build-docker:
 	@echo "Building local Docker image for API server..."
-	cd .. && docker build -f frontend/Dockerfile -t alexsieland/bg-library-frontend:dev .
+	cd .. && docker build -f frontend/Dockerfile -t ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-frontend:dev .
 
 remove-docker:
 	@echo "Removing local Docker image for API server..."
-	docker rmi alexsieland/bg-library-frontend:dev
+	docker rmi ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-frontend:dev
 
 run:
 	@echo "Running frontend locally..."

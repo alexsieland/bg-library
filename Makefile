@@ -1,4 +1,4 @@
-.PHONY: up down down-clean help
+.PHONY: up down down-clean help build clean
 
 help:
 	@echo "Available targets:"
@@ -29,3 +29,4 @@ build:
 clean:
 	@echo "Stopping containers and removing volumes..."
 	@docker compose down --volumes
+

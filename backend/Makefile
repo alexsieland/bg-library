@@ -1,4 +1,4 @@
-.PHONY: help generate build-docker remove-docker run format lint
+.PHONY: help generate build-docker remove-docker run format lint test
 
 # Display this help message
 help:
@@ -22,12 +22,12 @@ generate:
 # Build the Docker image for the API server locally
 build-docker:
 	@echo "Building local Docker image for API server..."
-	cd .. && docker build -f backend/Dockerfile -t alexsieland/bg-library-backend:dev .
+	cd .. && docker build -f backend/Dockerfile -t ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-backend:dev .
 
 # Remove the local Docker image for the API server locally
 remove-docker:
 	@echo "Removing local Docker image for API server..."
-	docker rmi alexsieland/bg-library-backend:dev
+	docker rmi ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-backend:dev
 
 # Run the API server locally directly through go (without Docker)
 run:
