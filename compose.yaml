@@ -47,8 +47,8 @@ services:
   db:
     image: ghcr.io/${GHCR_USERNAME:-alexsieland}/bg-library-db:${APP_VERSION:-latest}
     build:
-      context: ./backend/db
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/db/Dockerfile
     restart: always
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}

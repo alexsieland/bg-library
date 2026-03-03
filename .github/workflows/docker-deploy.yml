@@ -198,8 +198,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend/db
-          file: ./Dockerfile
+          context: .
+          file: ./backend/db/Dockerfile
           push: ${{ github.event.inputs.dry_run != 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
