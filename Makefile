@@ -1,4 +1,6 @@
-.PHONY: up down down-clean help build clean
+.PHONY: up down down-clean help build build-docker clean
+
+export GHCR_USERNAME ?= alexsieland
 
 help:
 	@echo "Available targets:"
@@ -10,9 +12,9 @@ help:
 
 up:
 	@echo "Running generate and build-docker in backend/..."
-	@$(MAKE) -C backend build-docker
+	@$(MAKE) -C backend GHCR_USERNAME=$(GHCR_USERNAME) build-docker
 	@echo "Running build-docker in frontend/..."
-	@$(MAKE) -C frontend build-docker
+	@$(MAKE) -C frontend GHCR_USERNAME=$(GHCR_USERNAME) build-docker
 	@echo "Bringing up containers..."
 	@docker compose up -d
 
@@ -22,9 +24,11 @@ down:
 
 build:
 	@echo "Running build-docker in backend/..."
-	@$(MAKE) -C backend build-docker
+	@$(MAKE) -C backend GHCR_USERNAME=$(GHCR_USERNAME) build-docker
 	@echo "Running build-docker in frontend/..."
-	@$(MAKE) -C frontend build-docker
+	@$(MAKE) -C frontend GHCR_USERNAME=$(GHCR_USERNAME) build-docker
+
+build-docker: build
 
 clean:
 	@echo "Stopping containers and removing volumes..."
