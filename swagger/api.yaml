@@ -70,6 +70,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GameList'
+    post:
+      tags:
+        - games
+      operationId: bulkAddGames
+      summary: Add multiple games
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+              format: base64
+      responses:
+        '201':
+          description: Games added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameList'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/game/{gameId}:
     get:
@@ -197,6 +222,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PatronList'
+    post:
+      tags:
+        - patrons
+      operationId: bulkAddPatrons
+      summary: Add multiple patrons
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+              format: base64
+      responses:
+        '201':
+          description: Patrons added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameList'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/patron/{patronId}:
     get:
