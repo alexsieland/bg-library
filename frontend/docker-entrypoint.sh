@@ -8,6 +8,35 @@ API_URL=${API_URL:-http://localhost:8080}
 TRUSTED_PROXIES=${TRUSTED_PROXIES:-}
 REAL_IP_HEADER=${REAL_IP_HEADER:-X-Real-IP}
 
+# SSL certificate paths
+SSL_CERT_DIR="/etc/nginx/ssl"
+SSL_CERT="${SSL_CERT_DIR}/cert.crt"
+SSL_KEY="${SSL_CERT_DIR}/cert.key"
+
+# Create SSL directory if it doesn't exist
+mkdir -p "$SSL_CERT_DIR"
+
+# Generate self-signed certificate if no certificate exists
+if [ ! -f "$SSL_CERT" ] || [ ! -f "$SSL_KEY" ]; then
+    echo "No SSL certificate found. Generating self-signed certificate..."
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout "$SSL_KEY" \
+        -out "$SSL_CERT" \
+        -subj "/C=US/ST=State/L=City/O=Organization/CN=${NGINX_HOST}" \
+        2>/dev/null
+
+    if [ $? -eq 0 ]; then
+        echo "Self-signed SSL certificate generated successfully"
+        chmod 644 "$SSL_CERT"
+        chmod 600 "$SSL_KEY"
+    else
+        echo "ERROR: Failed to generate SSL certificate"
+        exit 1
+    fi
+else
+    echo "Using existing SSL certificate"
+fi
+
 # Start building the nginx config
 CONFIG_FILE="/etc/nginx/conf.d/default.conf"
 
@@ -34,7 +63,7 @@ if [ -n "$TRUSTED_PROXIES" ]; then
     echo "    real_ip_header $REAL_IP_HEADER;" >> "$PROXY_CONFIG"
     echo "" >> "$PROXY_CONFIG"
 
-    # Inject the proxy config after the server_name line
+    # Inject the proxy config after BOTH server_name lines (HTTP and HTTPS)
     awk -v proxy_config="$(cat $PROXY_CONFIG)" '
         /server_name/ { print; print proxy_config; next }
         { print }
@@ -52,7 +81,14 @@ envsubst '$API_URL' < /usr/share/nginx/html/config.js.template > /usr/share/ngin
 rm /usr/share/nginx/html/config.js.template
 
 # Test nginx configuration
+echo "Testing nginx configuration..."
 nginx -t
 
+if [ $? -ne 0 ]; then
+    echo "ERROR: nginx configuration test failed"
+    exit 1
+fi
+
+echo "Starting nginx..."
 # Start nginx in the foreground
 nginx -g 'daemon off;'
