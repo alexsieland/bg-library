@@ -74,10 +74,14 @@ func FromVwLibraryPatron(dbPatron db.VwLibraryPatron) Patron {
 }
 
 func FromPatron(dbPatron db.Patron) Patron {
-	return Patron{
+	patron := Patron{
 		PatronId: pgUUIDToUUID(dbPatron.ID),
 		Name:     dbPatron.FullName,
 	}
+	if dbPatron.Barcode.Valid {
+		patron.Barcode = &dbPatron.Barcode.String
+	}
+	return patron
 }
 
 func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
@@ -97,10 +101,14 @@ func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
 }
 
 func FromGame(dbGame db.Game) Game {
-	return Game{
+	game := Game{
 		GameId: pgUUIDToUUID(dbGame.ID),
 		Title:  dbGame.Title,
 	}
+	if dbGame.Barcode.Valid {
+		game.Barcode = &dbGame.Barcode.String
+	}
+	return game
 }
 
 // Validation Utils
