@@ -70,6 +70,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GameList'
+    post:
+      tags:
+        - games
+      operationId: bulkAddGames
+      summary: Add multiple games
+      description: |
+        Add multiple games by uploading a CSV file. 
+        This call is all or nothing. If any game fails to be added, none will be added.
+        The CSV file should contain a list of games, one per line, in the following format: 
+        "Catan"\n"Ticket to Ride"\n"Azul"
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              format: byte
+              description: Base64 encoded CSV of games to add
+      responses:
+        '201':
+          description: Games added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkAddResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/game/{gameId}:
     get:
@@ -197,6 +228,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PatronList'
+    post:
+      tags:
+        - patrons
+      operationId: bulkAddPatrons
+      summary: Add multiple patrons
+      description: |
+        Add multiple patrons by uploading a CSV file.
+        This call is all or nothing. If any patron fails to be added, none will be added.
+        The CSV file should contain a list of patrons names, one per line, in the following format: 
+        "John Smith"\n"Jane Doe"\n"Alice Baker"
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              format: byte
+              description: Base64 encoded CSV of patrons to add
+      responses:
+        '201':
+          description: Patrons added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkAddResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/library/patron/{patronId}:
     get:
@@ -550,3 +612,14 @@ components:
           description: Human-readable error message for this field
           example: "Title cannot exceed 100 characters"
       description: Details about specific errors
+
+    BulkAddResponse:
+      type: object
+      required:
+        - imported
+      properties:
+        imported:
+          type: integer
+          description: Number of records imported successfully
+          example: 10
+      description: Response for bulk add operations
