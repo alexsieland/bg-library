@@ -103,7 +103,7 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
-      expect(request.url).toContain('/api/v1/library/game/123');
+      expect(request.url).toContain('/api/v1/library/game/id/123');
       expect(result).toHaveProperty('gameId', '123');
     });
 
@@ -116,7 +116,7 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
-      expect(request.url).toContain('/api/v1/library/game/123');
+      expect(request.url).toContain('/api/v1/library/game/id/123');
       expect(request.method).toBe('PUT');
       
       const body = await request.json();
@@ -131,7 +131,7 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
-      expect(request.url).toContain('/api/v1/library/game/123');
+      expect(request.url).toContain('/api/v1/library/game/id/123');
       expect(request.method).toBe('DELETE');
     });
 
@@ -277,7 +277,7 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
-      expect(request.url).toContain('/api/v1/library/patron/p1');
+      expect(request.url).toContain('/api/v1/library/patron/id/p1');
       expect(result).toHaveProperty('patronId', 'p1');
     });
 
@@ -290,7 +290,7 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
-      expect(request.url).toContain('/api/v1/library/patron/p1');
+      expect(request.url).toContain('/api/v1/library/patron/id/p1');
       expect(request.method).toBe('PUT');
       
       const body = await request.json();
@@ -305,7 +305,7 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
-      expect(request.url).toContain('/api/v1/library/patron/p1');
+      expect(request.url).toContain('/api/v1/library/patron/id/p1');
       expect(request.method).toBe('DELETE');
     });
 
