@@ -25,11 +25,12 @@ func TestAddPatron(t *testing.T) {
 		name := "John Doe"
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
 			*args.Get(1).(*string) = name
 			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(3).(*bool) = false
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
@@ -85,7 +86,7 @@ func TestAddPatron(t *testing.T) {
 		name := "John Doe"
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
 
 		w := httptest.NewRecorder()
@@ -151,10 +152,11 @@ func TestGetPatron(t *testing.T) {
 		name := "John Doe"
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
 			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(2).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 		}).Return(nil)
 
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(mockRow)
@@ -177,7 +179,7 @@ func TestGetPatron(t *testing.T) {
 		patronID := uuid.New()
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
@@ -204,7 +206,7 @@ func TestGetPatron(t *testing.T) {
 		patronID := uuid.New()
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
@@ -298,10 +300,11 @@ func TestListPatrons(t *testing.T) {
 		mockRows := new(MockRows)
 		mockRows.On("Next").Return(true).Once()
 		mockRows.On("Next").Return(false).Once()
-		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
 			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(2).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 		}).Return(nil)
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
@@ -373,21 +376,23 @@ func TestBulkAddPatrons(t *testing.T) {
 
 		// First patron
 		mockRow1 := new(MockRow)
-		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID1, Valid: true}
 			*args.Get(1).(*string) = name1
 			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(3).(*bool) = false
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name1}).Return(mockRow1)
 
 		// Second patron
 		mockRow2 := new(MockRow)
-		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID2, Valid: true}
 			*args.Get(1).(*string) = name2
 			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(3).(*bool) = false
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name2}).Return(mockRow2)
 
@@ -423,11 +428,12 @@ func TestBulkAddPatrons(t *testing.T) {
 
 		// Only the valid patron
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
 			*args.Get(1).(*string) = validName
 			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(3).(*bool) = false
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validName}).Return(mockRow)
 
@@ -478,7 +484,7 @@ func TestBulkAddPatrons(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
 
@@ -506,11 +512,12 @@ func TestBulkAddPatrons(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
 			*args.Get(1).(*string) = name
 			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(3).(*bool) = false
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
 

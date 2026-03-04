@@ -25,12 +25,13 @@ func TestAddGame(t *testing.T) {
 		title := "Catan"
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = title
 			*args.Get(2).(*string) = SanitizeTitle(title)
 			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(4).(*bool) = false
+			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
@@ -81,12 +82,12 @@ func TestAddGame(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
-	t.Run("Should return 500 Internal Server Error when DB returns error", func(t *testing.T) {
+	t.Run("Should return 500 Internal Server Error when database returns an error", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		title := "Catan"
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
 
 		w := httptest.NewRecorder()
@@ -152,11 +153,12 @@ func TestGetGame(t *testing.T) {
 		title := "Catan"
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = title
 			*args.Get(2).(*string) = SanitizeTitle(title)
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
+			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 		}).Return(nil)
 
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
@@ -179,7 +181,7 @@ func TestGetGame(t *testing.T) {
 		gameID := uuid.New()
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
@@ -324,23 +326,25 @@ func TestBulkAddGames(t *testing.T) {
 
 		// First game
 		mockRow1 := new(MockRow)
-		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID1, Valid: true}
 			*args.Get(1).(*string) = title1
 			*args.Get(2).(*string) = SanitizeTitle(title1)
 			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(4).(*bool) = false
+			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title1, SanitizeTitle(title1)}).Return(mockRow1)
 
 		// Second game
 		mockRow2 := new(MockRow)
-		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID2, Valid: true}
 			*args.Get(1).(*string) = title2
 			*args.Get(2).(*string) = SanitizeTitle(title2)
 			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(4).(*bool) = false
+			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title2, SanitizeTitle(title2)}).Return(mockRow2)
 
@@ -376,12 +380,13 @@ func TestBulkAddGames(t *testing.T) {
 
 		// Only the valid game
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = validTitle
 			*args.Get(2).(*string) = SanitizeTitle(validTitle)
 			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(4).(*bool) = false
+			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validTitle, SanitizeTitle(validTitle)}).Return(mockRow)
 
@@ -432,7 +437,7 @@ func TestBulkAddGames(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
 
@@ -460,12 +465,13 @@ func TestBulkAddGames(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = title
 			*args.Get(2).(*string) = SanitizeTitle(title)
 			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(4).(*bool) = false
+			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title)}).Return(mockRow)
 
