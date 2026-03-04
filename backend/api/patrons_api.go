@@ -98,9 +98,11 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 		}
 		name := record[0]
 		var barcode *string
-		if len(record) > 1 && record[1] != "" {
-			barcode = &record[1]
-		}
+		// Disable the ability to set the barcode on bulk add for now
+		// TODO Add this back in once barcode implementation is complete
+		//if len(record) > 1 && record[1] != "" {
+		//	barcode = &record[1]
+		//}
 
 		_, err = s.insertPatron(c, name, barcode, errorDetails, &tx)
 		if errors.Is(err, errValidation) {

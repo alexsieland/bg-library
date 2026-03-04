@@ -97,9 +97,11 @@ func (s Server) BulkAddGames(c *gin.Context) {
 		}
 		title := record[0]
 		var barcode *string
-		if len(record) > 1 && record[1] != "" {
-			barcode = &record[1]
-		}
+		// Disable the ability to set the barcode on bulk add for now
+		// TODO Add this back in once barcode implementation is complete
+		//if len(record) > 1 && record[1] != "" {
+		//	barcode = &record[1]
+		//}
 
 		_, err = s.insertGame(c, title, barcode, errorDetails, &tx)
 		if errors.Is(err, errValidation) {
