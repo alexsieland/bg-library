@@ -61,24 +61,26 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <section>
       <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Add Games</h2>
-      <div class="flex items-center space-x-2">
-        <Label for="gameTitle" class="mb-2">Game Title</Label>
-        <div class="flex-grow">
-          <Input
-            id="gameTitle"
-            placeholder="Enter game title"
-            bind:value={gameTitle}
-            onkeydown={handleKeydown}
-            autocomplete="off"
-            maxlength={100}
-          />
+      <div class="space-y-2">
+        <Label for="gameTitle">Game Title</Label>
+        <div class="flex items-center space-x-2">
+          <div class="flex-grow">
+            <Input
+                    id="gameTitle"
+                    placeholder="Enter game title"
+                    bind:value={gameTitle}
+                    onkeydown={handleKeydown}
+                    autocomplete="off"
+                    maxlength={100}
+            />
+          </div>
+          <Button onclick={handleAddGame} disabled={loading || !gameTitle.trim()}>
+            {#if loading}
+              <Spinner size="4" class="me-2" />
+            {/if}
+            Add Game
+          </Button>
         </div>
-        <Button onclick={handleAddGame} disabled={loading || !gameTitle.trim()}>
-          {#if loading}
-            <Spinner size="4" class="me-2" />
-          {/if}
-          Add Game
-        </Button>
       </div>
       {#if error}
         <p class="mt-2 text-sm text-rose-500">{error}</p>
