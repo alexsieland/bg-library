@@ -102,7 +102,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/library/game/{gameId}:
+  /api/v1/library/game/id/{gameId}:
     get:
       tags:
         - games
@@ -176,6 +176,34 @@ paths:
       responses:
         '204':
           description: Game deleted successfully
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/game/barcode/{gameBarcode}:
+    get:
+      tags:
+        - games
+        - barcode
+      operationId: getGameByBarcode
+      summary: Get a game from a barcode
+      parameters:
+        - in: path
+          name: gameBarcode
+          schema:
+            type: string
+          required: true
+          description: Game Barcode
+      responses:
+        '200':
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
         '404':
           description: Game not found
           content:
@@ -260,7 +288,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/library/patron/{patronId}:
+  /api/v1/library/patron/id/{patronId}:
     get:
       tags:
         - patrons
@@ -335,6 +363,34 @@ paths:
       responses:
         '204':
           description: Patron deleted successfully
+        '404':
+          description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/library/patron/barcode/{patronBarcode}:
+    get:
+      tags:
+        - patrons
+        - barcode
+      operationId: getPatronByBarcode
+      summary: Get a patron from a barcode
+      parameters:
+        - in: path
+          name: patronBarcode
+          schema:
+            type: string
+          required: true
+          description: Patron Barcode
+      responses:
+        '200':
+          description: Patron found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patron'
         '404':
           description: Patron not found
           content:
@@ -444,6 +500,12 @@ components:
           maxLength: 100
           description: The name of the board game
           example: "Catan"
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 48
+          description: The barcode of the game
+          example: "9780307455925"
 
     CreateGameRequest:
       type: object
@@ -456,6 +518,12 @@ components:
           maxLength: 100
           description: The name of the board game
           example: "Catan"
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 48
+          description: The barcode of the game
+          example: "9780307455925"
       description: Request payload for creating a new game
 
     Patron:
@@ -463,7 +531,6 @@ components:
       required:
         - patronId
         - name
-        - createdAt
       description: A library patron
       properties:
         patronId:
@@ -477,6 +544,12 @@ components:
           maxLength: 100
           description: The name of the patron
           example: "John Smith"
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 48
+          description: The barcode of the patron
+          example: "9780307455925"
 
     CreatePatronRequest:
       type: object
@@ -489,6 +562,12 @@ components:
           maxLength: 100
           description: The name of the patron
           example: "John Smith"
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 48
+          description: The barcode of the patron
+          example: "9780307455925"
       description: Request payload for creating a new patron
 
     GameList:

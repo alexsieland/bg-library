@@ -46,17 +46,18 @@ func (q *Queries) CheckOutGame(ctx context.Context, arg CheckOutGameParams) (Tra
 }
 
 const createGame = `-- name: CreateGame :one
-INSERT INTO games ( title, sanitized_title ) VALUES ( $1, $2 )
-RETURNING id, title, sanitized_title, created_at, deleted
+INSERT INTO games ( title, sanitized_title, barcode ) VALUES ( $1, $2, $3 )
+RETURNING id, title, sanitized_title, created_at, deleted, barcode
 `
 
 type CreateGameParams struct {
 	Title          string
 	SanitizedTitle string
+	Barcode        pgtype.Text
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, error) {
-	row := q.db.QueryRow(ctx, createGame, arg.Title, arg.SanitizedTitle)
+	row := q.db.QueryRow(ctx, createGame, arg.Title, arg.SanitizedTitle, arg.Barcode)
 	var i Game
 	err := row.Scan(
 		&i.ID,
@@ -64,23 +65,30 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, e
 		&i.SanitizedTitle,
 		&i.CreatedAt,
 		&i.Deleted,
+		&i.Barcode,
 	)
 	return i, err
 }
 
 const createPatron = `-- name: CreatePatron :one
-INSERT INTO patrons ( full_name ) VALUES ( $1 )
-RETURNING id, full_name, created_at, deleted
+INSERT INTO patrons ( full_name, barcode ) VALUES ( $1, $2 )
+RETURNING id, full_name, created_at, deleted, barcode
 `
 
-func (q *Queries) CreatePatron(ctx context.Context, fullName string) (Patron, error) {
-	row := q.db.QueryRow(ctx, createPatron, fullName)
+type CreatePatronParams struct {
+	FullName string
+	Barcode  pgtype.Text
+}
+
+func (q *Queries) CreatePatron(ctx context.Context, arg CreatePatronParams) (Patron, error) {
+	row := q.db.QueryRow(ctx, createPatron, arg.FullName, arg.Barcode)
 	var i Patron
 	err := row.Scan(
 		&i.ID,
 		&i.FullName,
 		&i.CreatedAt,
 		&i.Deleted,
+		&i.Barcode,
 	)
 	return i, err
 }
@@ -110,7 +118,8 @@ func (q *Queries) DeletePatron(ctx context.Context, id pgtype.UUID) error {
 const editGame = `-- name: EditGame :exec
 UPDATE games
     SET title = $2,
-        sanitized_title = $3
+        sanitized_title = $3,
+        barcode = $4
 WHERE id = $1
 `
 
@@ -118,31 +127,39 @@ type EditGameParams struct {
 	ID             pgtype.UUID
 	Title          string
 	SanitizedTitle string
+	Barcode        pgtype.Text
 }
 
 func (q *Queries) EditGame(ctx context.Context, arg EditGameParams) error {
-	_, err := q.db.Exec(ctx, editGame, arg.ID, arg.Title, arg.SanitizedTitle)
+	_, err := q.db.Exec(ctx, editGame,
+		arg.ID,
+		arg.Title,
+		arg.SanitizedTitle,
+		arg.Barcode,
+	)
 	return err
 }
 
 const editPatron = `-- name: EditPatron :exec
 UPDATE patrons
-set full_name = $2
+set full_name = $2,
+    barcode = $3
 WHERE id = $1
 `
 
 type EditPatronParams struct {
 	ID       pgtype.UUID
 	FullName string
+	Barcode  pgtype.Text
 }
 
 func (q *Queries) EditPatron(ctx context.Context, arg EditPatronParams) error {
-	_, err := q.db.Exec(ctx, editPatron, arg.ID, arg.FullName)
+	_, err := q.db.Exec(ctx, editPatron, arg.ID, arg.FullName, arg.Barcode)
 	return err
 }
 
 const getGame = `-- name: GetGame :one
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 WHERE id = $1
 `
@@ -154,6 +171,26 @@ func (q *Queries) GetGame(ctx context.Context, id pgtype.UUID) (VwLibraryGame, e
 		&i.ID,
 		&i.Title,
 		&i.SanitizedTitle,
+		&i.Barcode,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getGameByBarcode = `-- name: GetGameByBarcode :one
+SELECT id, title, sanitized_title, barcode, created_at
+FROM vw_library_games
+WHERE barcode = $1
+`
+
+func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) (VwLibraryGame, error) {
+	row := q.db.QueryRow(ctx, getGameByBarcode, barcode)
+	var i VwLibraryGame
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.SanitizedTitle,
+		&i.Barcode,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -182,7 +219,7 @@ func (q *Queries) GetGameStatus(ctx context.Context, gameID pgtype.UUID) (VwGame
 }
 
 const getPatron = `-- name: GetPatron :one
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
 WHERE id = $1
 `
@@ -190,7 +227,30 @@ WHERE id = $1
 func (q *Queries) GetPatron(ctx context.Context, id pgtype.UUID) (VwLibraryPatron, error) {
 	row := q.db.QueryRow(ctx, getPatron, id)
 	var i VwLibraryPatron
-	err := row.Scan(&i.ID, &i.FullName, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.Barcode,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPatronByBarcode = `-- name: GetPatronByBarcode :one
+SELECT id, full_name, barcode, created_at
+FROM vw_library_patrons
+WHERE barcode = $1
+`
+
+func (q *Queries) GetPatronByBarcode(ctx context.Context, barcode pgtype.Text) (VwLibraryPatron, error) {
+	row := q.db.QueryRow(ctx, getPatronByBarcode, barcode)
+	var i VwLibraryPatron
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.Barcode,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
@@ -237,7 +297,7 @@ func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGam
 }
 
 const listGames = `-- name: ListGames :many
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2
@@ -261,6 +321,7 @@ func (q *Queries) ListGames(ctx context.Context, arg ListGamesParams) ([]VwLibra
 			&i.ID,
 			&i.Title,
 			&i.SanitizedTitle,
+			&i.Barcode,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -315,7 +376,7 @@ func (q *Queries) ListGamesStatus(ctx context.Context, arg ListGamesStatusParams
 }
 
 const listPatrons = `-- name: ListPatrons :many
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
 ORDER BY full_name
 LIMIT $1 OFFSET $2
@@ -335,7 +396,12 @@ func (q *Queries) ListPatrons(ctx context.Context, arg ListPatronsParams) ([]VwL
 	var items []VwLibraryPatron
 	for rows.Next() {
 		var i VwLibraryPatron
-		if err := rows.Scan(&i.ID, &i.FullName, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.FullName,
+			&i.Barcode,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -433,7 +499,7 @@ func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusPara
 }
 
 const searchGames = `-- name: SearchGames :many
-SELECT id, title, sanitized_title, created_at
+SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
@@ -459,6 +525,7 @@ func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwL
 			&i.ID,
 			&i.Title,
 			&i.SanitizedTitle,
+			&i.Barcode,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -472,7 +539,7 @@ func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwL
 }
 
 const searchPatrons = `-- name: SearchPatrons :many
-SELECT id, full_name, created_at
+SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
 WHERE full_name ILIKE $1
 ORDER BY full_name
@@ -494,7 +561,12 @@ func (q *Queries) SearchPatrons(ctx context.Context, arg SearchPatronsParams) ([
 	var items []VwLibraryPatron
 	for rows.Next() {
 		var i VwLibraryPatron
-		if err := rows.Scan(&i.ID, &i.FullName, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.FullName,
+			&i.Barcode,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

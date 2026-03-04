@@ -11,6 +11,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (s Server) AddPatron(c *gin.Context) {
@@ -22,7 +23,7 @@ func (s Server) AddPatron(c *gin.Context) {
 	}
 
 	var errorDetails []ErrorDetail
-	dbPatron, err := s.insertPatron(c, jsonObject.Name, errorDetails, nil)
+	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
 	}
@@ -35,16 +36,29 @@ func (s Server) AddPatron(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromPatron(dbPatron))
 }
 
-func (s Server) insertPatron(c *gin.Context, name string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Patron, error) {
+func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Patron, error) {
 	errorDetails = ValidateStringLength("name", name, 1, 100, errorDetails)
+	if barcode != nil {
+		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
+	}
+
 	if len(errorDetails) > 0 {
 		return db.Patron{}, errValidation
 	}
 
-	if tx != nil {
-		return s.queries.WithTx(*tx).CreatePatron(c.Request.Context(), name)
+	dbBarcode := pgtype.Text{Valid: false}
+	if barcode != nil {
+		dbBarcode = pgtype.Text{String: *barcode, Valid: true}
 	}
-	return s.queries.CreatePatron(c.Request.Context(), name)
+	createPatronParams := db.CreatePatronParams{
+		FullName: name,
+		Barcode:  dbBarcode,
+	}
+
+	if tx != nil {
+		return s.queries.WithTx(*tx).CreatePatron(c.Request.Context(), createPatronParams)
+	}
+	return s.queries.CreatePatron(c.Request.Context(), createPatronParams)
 }
 
 func (s Server) BulkAddPatrons(c *gin.Context) {
@@ -83,8 +97,14 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 			continue
 		}
 		name := record[0]
+		var barcode *string
+		// Disable the ability to set the barcode on bulk add for now
+		// TODO Add this back in once barcode implementation is complete
+		//if len(record) > 1 && record[1] != "" {
+		//	barcode = &record[1]
+		//}
 
-		_, err = s.insertPatron(c, name, errorDetails, &tx)
+		_, err = s.insertPatron(c, name, barcode, errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -149,6 +169,26 @@ func (s Server) GetPatron(c *gin.Context, patronId string) {
 	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
 }
 
+func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
+	errorDetails := ValidateStringLength("patronBarcode", patronBarcode, 1, 48, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	var barcode = pgtype.Text{String: patronBarcode, Valid: true}
+	dbPatron, err := s.queries.GetPatronByBarcode(c.Request.Context(), barcode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error getting patron: %v", err)
+		internalError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
+}
+
 func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 	var jsonObject UpdatePatronJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
@@ -158,13 +198,23 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 	}
 	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
 	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, errorDetails)
+	if jsonObject.Barcode != nil {
+		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
+	}
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
 	}
+
+	dbBarcode := pgtype.Text{Valid: false}
+	if jsonObject.Barcode != nil {
+		dbBarcode = pgtype.Text{String: *jsonObject.Barcode, Valid: true}
+	}
+
 	err = s.queries.EditPatron(c.Request.Context(), db.EditPatronParams{
 		ID:       patronUUID,
 		FullName: jsonObject.Name,
+		Barcode:  dbBarcode,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

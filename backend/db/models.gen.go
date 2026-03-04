@@ -14,6 +14,7 @@ type Game struct {
 	SanitizedTitle string
 	CreatedAt      pgtype.Timestamp
 	Deleted        bool
+	Barcode        pgtype.Text
 }
 
 type Patron struct {
@@ -21,6 +22,7 @@ type Patron struct {
 	FullName  string
 	CreatedAt pgtype.Timestamp
 	Deleted   bool
+	Barcode   pgtype.Text
 }
 
 type Transaction struct {
@@ -46,11 +48,13 @@ type VwLibraryGame struct {
 	ID             pgtype.UUID
 	Title          string
 	SanitizedTitle string
+	Barcode        pgtype.Text
 	CreatedAt      pgtype.Timestamp
 }
 
 type VwLibraryPatron struct {
 	ID        pgtype.UUID
 	FullName  string
+	Barcode   pgtype.Text
 	CreatedAt pgtype.Timestamp
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (s Server) AddGame(c *gin.Context) {
@@ -22,7 +23,7 @@ func (s Server) AddGame(c *gin.Context) {
 	}
 
 	var errorDetails []ErrorDetail
-	dbGame, err := s.insertGame(c, jsonObject.Title, errorDetails, nil)
+	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
 	}
@@ -34,15 +35,23 @@ func (s Server) AddGame(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromGame(dbGame))
 }
 
-func (s Server) insertGame(c *gin.Context, title string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {
+func (s Server) insertGame(c *gin.Context, title string, barcode *string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {
 	errorDetails = ValidateStringLength("title", title, 1, 100, errorDetails)
+	if barcode != nil {
+		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
+	}
 	if len(errorDetails) > 0 {
 		return db.Game{}, errValidation
 	}
 
+	dbBarcode := pgtype.Text{Valid: false}
+	if barcode != nil {
+		dbBarcode = pgtype.Text{String: *barcode, Valid: true}
+	}
 	createGameParams := db.CreateGameParams{
 		Title:          title,
 		SanitizedTitle: SanitizeTitle(title),
+		Barcode:        dbBarcode,
 	}
 
 	if tx != nil {
@@ -87,8 +96,14 @@ func (s Server) BulkAddGames(c *gin.Context) {
 			continue
 		}
 		title := record[0]
+		var barcode *string
+		// Disable the ability to set the barcode on bulk add for now
+		// TODO Add this back in once barcode implementation is complete
+		//if len(record) > 1 && record[1] != "" {
+		//	barcode = &record[1]
+		//}
 
-		_, err = s.insertGame(c, title, errorDetails, &tx)
+		_, err = s.insertGame(c, title, barcode, errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -152,6 +167,26 @@ func (s Server) GetGame(c *gin.Context, gameId string) {
 	c.JSON(http.StatusOK, FromVwLibraryGame(dbGame))
 }
 
+func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
+	errorDetails := ValidateStringLength("gameBarcode", gameBarcode, 1, 48, []ErrorDetail{})
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	var barcode = pgtype.Text{String: gameBarcode, Valid: true}
+	dbGame, err := s.queries.GetGameByBarcode(c.Request.Context(), barcode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error getting game: %v", err)
+		internalError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, FromVwLibraryGame(dbGame))
+}
+
 func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	var jsonObject UpdateGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
@@ -161,15 +196,24 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	}
 	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
 	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, errorDetails)
+	if jsonObject.Barcode != nil {
+		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
+	}
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
+	}
+
+	dbBarcode := pgtype.Text{Valid: false}
+	if jsonObject.Barcode != nil {
+		dbBarcode = pgtype.Text{String: *jsonObject.Barcode, Valid: true}
 	}
 
 	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
 		ID:             gameUUID,
 		Title:          jsonObject.Title,
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
+		Barcode:        dbBarcode,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
