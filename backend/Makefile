@@ -6,7 +6,7 @@ export GHCR_USERNAME ?= alexsieland
 help:
 	@echo "Available targets:"
 	@echo "  make generate       - Generate the go code for the database and API"
-	@echo "  make build-docker   - Build the Docker image for the API server locally"
+	@echo "  make build-docker   - Build the Docker image for the API server and db locally"
 	@echo "  make remove-docker  - Remove the local Docker image for the API server"
 	@echo "  make run            - Run the API server locally directly through go"
 	@echo "  make format         - Format and simplify code using gofmt and goimports"
@@ -24,12 +24,15 @@ generate:
 # Build the Docker image for the API server locally
 build-docker:
 	@echo "Building local Docker image for API server..."
-	cd .. && docker build -f backend/Dockerfile -t ghcr.io/${GHCR_USERNAME}/bg-library-backend:dev .
+	cd .. && docker build -f backend/Dockerfile -t ghcr.io/$(GHCR_USERNAME)/bg-library-backend:dev .
+	@echo "Building database image..."
+	cd .. && docker build -f backend/db/Dockerfile -t ghcr.io/$(GHCR_USERNAME)/bg-library-db:dev .
 
 # Remove the local Docker image for the API server locally
 remove-docker:
 	@echo "Removing local Docker image for API server..."
-	docker rmi ghcr.io/${GHCR_USERNAME}/bg-library-backend:dev
+	@docker rmi ghcr.io/$(GHCR_USERNAME)/bg-library-backend:dev
+	@docker rmi ghcr.io/$(GHCR_USERNAME)/bg-library-db:dev
 
 # Run the API server locally directly through go (without Docker)
 run:
