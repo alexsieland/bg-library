@@ -115,3 +115,10 @@ FROM vw_game_status
 WHERE checkin_timestamp IS NULL AND vw_game_status.sanitized_title ILIKE $1
 ORDER BY sanitized_title
 LIMIT $2 OFFSET $3;
+
+-- name: SearchTransactions :many
+SELECT *
+FROM vw_library_transactions
+WHERE sanitized_title ILIKE $1
+    AND patron_full_name ILIKE $2
+LIMIT $3 OFFSET $4;

@@ -459,6 +459,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/library/transactions:
+    get:
+      tags:
+        - transactions
+      operationId: listTransactions
+      summary: List transactions
+      description: |
+        List all library transactions, ordered by timestamp (newest first).
+        Game titles and patron names filters stack, so if you filter by both title and patron name, 
+        only games with that title and patron name will be returned
+      parameters:
+        - in: query
+          name: game_title
+          schema:
+            type: string
+          description: Filter by game title (optional)
+        - in: query
+          name: patron_name
+          schema:
+            type: string
+          description: Filter by patron name (optional)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Limit the number of transactions returned (optional)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+          description: Offset for pagination (optional)
+      responses:
+        '200':
+          description: List of library transactions successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryTransactionList'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     GameStatus:
@@ -620,16 +668,15 @@ components:
         - gameId
         - timestamp
       properties:
-        id:
+        transaction_id:
           type: string
           format: uuid
           description: Transaction ID
           example: "f13bb82c-18dd-4a94-a878-44ca6706e2d9"
-        patronId:
-          type: string
-          format: uuid
-          description: Patron ID
-          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        game:
+          $ref: "#/components/schemas/Game"
+        patron:
+          $ref: "#/components/schemas/Patron"
         gameId:
           type: string
           format: uuid
@@ -641,6 +688,18 @@ components:
           description: ISO 8601 timestamp when the transaction occurred in UTC
           example: "2026-01-31T12:00:00Z"
       description: Request payload for making a check in/out transaction
+
+    LibraryTransactionList:
+      type: object
+      required:
+        - transactions
+      description: List of library transactions
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryTransaction'
+          description: Array of library transactions
 
     ErrorResponse:
       type: object
