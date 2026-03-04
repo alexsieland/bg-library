@@ -57,63 +57,65 @@
   }
 </script>
 
-<div class="p-6 space-y-8">
-  <section class="max-w-2xl">
-    <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Add Games</h2>
-    <div class="flex items-center space-x-2">
-      <Label for="gameTitle" class="whitespace-nowrap">Game Title</Label>
-      <div class="flex-grow">
-        <Input
-          id="gameTitle" 
-          placeholder="Enter game title" 
-          bind:value={gameTitle} 
-          onkeydown={handleKeydown}
-          autocomplete="off"
-          maxlength={100}
-        />
-      </div>
-      <Button onclick={handleAddGame} disabled={loading || !gameTitle.trim()}>
-        {#if loading}
-          <Spinner size="4" class="me-2" />
-        {/if}
-        Add Game
-      </Button>
-    </div>
-    {#if error}
-      <p class="mt-2 text-sm text-rose-500">{error}</p>
-    {/if}
-  </section>
-
-  <section class="max-w-2xl">
-    <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Bulk Add Games</h2>
-    <div class="space-y-4">
-      <div>
-        <Label for="bulkGameUpload" class="mb-2">Upload CSV File</Label>
-        <div class="flex items-center space-x-2">
-          <div class="flex-grow">
-            <Fileupload
-              id="bulkGameUpload"
-              bind:files={bulkUploadFile}
-              accept=".csv,text/csv,text/plain"
-            />
-          </div>
-          <Button
-            onclick={handleBulkUpload}
-            disabled={bulkLoading || !bulkUploadFile || bulkUploadFile.length === 0}
-          >
-            {#if bulkLoading}
-              <Spinner size="4" class="me-2" />
-            {/if}
-            Upload Games
-          </Button>
+<div class="p-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <section>
+      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Add Games</h2>
+      <div class="flex items-center space-x-2">
+        <Label for="gameTitle" class="mb-2">Game Title</Label>
+        <div class="flex-grow">
+          <Input
+            id="gameTitle"
+            placeholder="Enter game title"
+            bind:value={gameTitle}
+            onkeydown={handleKeydown}
+            autocomplete="off"
+            maxlength={100}
+          />
         </div>
-        <Helper class="mt-2">
-          Upload a CSV file with one game title per line. Maximum file size: 10MB.
-        </Helper>
+        <Button onclick={handleAddGame} disabled={loading || !gameTitle.trim()}>
+          {#if loading}
+            <Spinner size="4" class="me-2" />
+          {/if}
+          Add Game
+        </Button>
       </div>
-      {#if bulkError}
-        <p class="text-sm text-rose-500">{bulkError}</p>
+      {#if error}
+        <p class="mt-2 text-sm text-rose-500">{error}</p>
       {/if}
-    </div>
-  </section>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Bulk Add Games</h2>
+      <div class="space-y-4">
+        <div>
+          <Label for="bulkGameUpload" class="mb-2">Upload CSV File</Label>
+          <div class="flex items-center space-x-2">
+            <div class="flex-grow">
+              <Fileupload
+                id="bulkGameUpload"
+                bind:files={bulkUploadFile}
+                accept=".csv,text/csv,text/plain"
+              />
+            </div>
+            <Button
+              onclick={handleBulkUpload}
+              disabled={bulkLoading || !bulkUploadFile || bulkUploadFile.length === 0}
+            >
+              {#if bulkLoading}
+                <Spinner size="4" class="me-2" />
+              {/if}
+              Upload Games
+            </Button>
+          </div>
+          <Helper class="mt-2">
+            Upload a CSV file with one game title per line. Maximum file size: 10MB.
+          </Helper>
+        </div>
+        {#if bulkError}
+          <p class="text-sm text-rose-500">{bulkError}</p>
+        {/if}
+      </div>
+    </section>
+  </div>
 </div>
