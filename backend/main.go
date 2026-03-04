@@ -21,9 +21,14 @@ func main() {
 
 	r := gin.Default()
 
+	CorsAllowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
+	if CorsAllowedOrigin == "" {
+		CorsAllowedOrigin = "*" // Default to allowing all origins if the environment variable is not set
+	}
+
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", os.Getenv("CORS_ALLOWED_ORIGIN"))
+		c.Writer.Header().Set("Access-Control-Allow-Origin", CorsAllowedOrigin)
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length")

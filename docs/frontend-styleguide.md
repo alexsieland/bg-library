@@ -19,6 +19,13 @@ The color scheme leans toward **neutral and cool colors** to create a calm and p
 - **Warning/Edit**: Muted yellows/ambers (e.g., "Edit" buttons).
 - **Neutral**: Grays and off-whites/deep grays for backgrounds, borders, and secondary text.
 
+### 2.3 Color Standardization
+To maintain consistency across the application, specific Tailwind color variants are standardized:
+- **Red → Rose**: Use `rose-*` variants (e.g., `text-rose-500`, `bg-rose-500`) instead of `red-*` for errors, conflicts, and negative actions.
+- **Green → Emerald**: Use `emerald-*` variants (e.g., `text-emerald-500`, `bg-emerald-500`) instead of `green-*` for success states and positive confirmations.
+
+These muted variants align with the design philosophy and provide better visual harmony across light and dark themes.
+
 ## 3. Typography
 - Use standard sans-serif fonts that are highly legible (e.g., Roboto, Inter, or system defaults).
 - Maintain high contrast between text and background to satisfy accessibility requirements.

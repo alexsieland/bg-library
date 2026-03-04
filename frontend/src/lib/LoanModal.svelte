@@ -140,7 +140,7 @@
     </div>
 
     {#if error}
-      <p class="text-sm text-red-500">{error}</p>
+      <p class="text-sm text-rose-500">{error}</p>
     {/if}
   </div>
 </Modal>

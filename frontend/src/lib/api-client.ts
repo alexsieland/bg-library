@@ -11,6 +11,62 @@ export type CreatePatronRequest = components["schemas"]["CreatePatronRequest"];
 export type CheckOutRequest = components["schemas"]["CheckOutRequest"];
 export type LibraryTransaction = components["schemas"]["LibraryTransaction"];
 export type ErrorResponse = components["schemas"]["ErrorResponse"];
+export type BulkAddResponse = components["schemas"]["BulkAddResponse"];
+
+/**
+ * Validates and encodes a CSV file to base64 for bulk upload operations.
+ *
+ * @param file - The CSV file to encode
+ * @throws Error if file is not a text/CSV file, is empty, or exceeds 10MB
+ * @returns Promise resolving to base64-encoded string
+ */
+async function encodeCsvFile(file: File): Promise<string> {
+  // Validate MIME type
+  const validMimeTypes = ['text/csv', 'text/plain', 'application/csv'];
+  if (!validMimeTypes.includes(file.type)) {
+    throw new Error(`Invalid file type: ${file.type}. Please upload a CSV or text file.`);
+  }
+
+  // Validate file size (10MB max)
+  const maxSizeBytes = 10 * 1024 * 1024; // 10MB
+  if (file.size === 0) {
+    throw new Error('File is empty. Please upload a file with content.');
+  }
+  if (file.size > maxSizeBytes) {
+    throw new Error(`File size exceeds 10MB limit. File size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+  }
+
+  // Read file as text and encode to base64
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const text = reader.result as string;
+
+        // Properly encode UTF-8 string to base64
+        // First encode the string as UTF-8, then convert to base64
+        const utf8Bytes = new TextEncoder().encode(text);
+
+        // Convert Uint8Array to binary string using Array.from
+        const binaryString = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
+
+        // Now encode to base64
+        const base64 = btoa(binaryString);
+
+        resolve(base64);
+      } catch (error) {
+        reject(new Error(`Failed to encode file: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Failed to read file'));
+    };
+
+    reader.readAsText(file);
+  });
+}
 
 class ApiClient {
   private client!: ReturnType<typeof createClient<paths>>;
@@ -83,6 +139,15 @@ class ApiClient {
     return this.handleResponse(res);
   }
 
+  async bulkAddGames(csvFile: File): Promise<BulkAddResponse> {
+    const base64Content = await encodeCsvFile(csvFile);
+    const res = await this.client.POST('/api/v1/library/games', {
+      body: base64Content,
+      bodySerializer: (body) => body as string,
+    });
+    return this.handleResponse(res);
+  }
+
   // Patrons
   async listPatrons(query?: operations["listPatrons"]["parameters"]["query"]): Promise<components["schemas"]["PatronList"]> {
     const res = await this.client.GET('/api/v1/library/patrons',{
@@ -124,6 +189,15 @@ class ApiClient {
       params: {
         path: { patronId }
       }
+    });
+    return this.handleResponse(res);
+  }
+
+  async bulkAddPatrons(csvFile: File): Promise<BulkAddResponse> {
+    const base64Content = await encodeCsvFile(csvFile);
+    const res = await this.client.POST('/api/v1/library/patrons', {
+      body: base64Content,
+      bodySerializer: (body) => body as string,
     });
     return this.handleResponse(res);
   }
