@@ -22,13 +22,14 @@ FROM vw_library_games
 WHERE barcode = $1;
 
 -- name: CreateGame :one
-INSERT INTO games ( title, sanitized_title ) VALUES ( $1, $2 )
+INSERT INTO games ( title, sanitized_title, barcode ) VALUES ( $1, $2, $3 )
 RETURNING *;
 
 -- name: EditGame :exec
 UPDATE games
     SET title = $2,
-        sanitized_title = $3
+        sanitized_title = $3,
+        barcode = $4
 WHERE id = $1;
 
 -- name: DeleteGame :exec
@@ -60,12 +61,13 @@ FROM vw_library_patrons
 WHERE barcode = $1;
 
 -- name: CreatePatron :one
-INSERT INTO patrons ( full_name ) VALUES ( $1 )
+INSERT INTO patrons ( full_name, barcode ) VALUES ( $1, $2 )
 RETURNING *;
 
 -- name: EditPatron :exec
 UPDATE patrons
-set full_name = $2
+set full_name = $2,
+    barcode = $3
 WHERE id = $1;
 
 -- name: DeletePatron :exec
