@@ -134,6 +134,108 @@ describe('ApiClient', () => {
       expect(request.url).toContain('/api/v1/library/game/123');
       expect(request.method).toBe('DELETE');
     });
+
+    describe('bulkAddGames', () => {
+      it('Should successfully upload a CSV file and return imported count when file is valid', async () => {
+        const csvContent = 'Catan\nTicket to Ride\nAzul';
+        const mockFile = new File([csvContent], 'games.csv', { type: 'text/csv' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
+
+        const result = await apiClient.bulkAddGames(mockFile);
+
+        expect(fetch).toHaveBeenCalled();
+        const firstCall = vi.mocked(fetch).mock.calls[0];
+        const request = firstCall[0] as Request;
+        expect(request.url).toContain('/api/v1/library/games');
+        expect(request.method).toBe('POST');
+        expect(result).toEqual({ imported: 3 });
+
+        // Verify the body is base64 encoded
+        const body = await request.text();
+        expect(body).toBeTruthy();
+        // Decode and verify content
+        const decoded = atob(body);
+        expect(decoded).toBe(csvContent);
+      });
+
+      it('Should reject when file type is not CSV or text', async () => {
+        const mockFile = new File(['data'], 'image.png', { type: 'image/png' });
+
+        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow('Invalid file type: image/png');
+      });
+
+      it('Should reject when file is empty', async () => {
+        const mockFile = new File([], 'empty.csv', { type: 'text/csv' });
+
+        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow('File is empty');
+      });
+
+      it('Should reject when file exceeds 10MB limit', async () => {
+        // Create a file larger than 10MB
+        const largeContent = 'x'.repeat(11 * 1024 * 1024); // 11MB
+        const mockFile = new File([largeContent], 'large.csv', { type: 'text/csv' });
+
+        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow('File size exceeds 10MB limit');
+      });
+
+      it('Should accept text/plain MIME type', async () => {
+        const csvContent = 'Game1\nGame2';
+        const mockFile = new File([csvContent], 'games.txt', { type: 'text/plain' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 2 }));
+
+        const result = await apiClient.bulkAddGames(mockFile);
+
+        expect(result).toEqual({ imported: 2 });
+      });
+
+      it('Should accept application/csv MIME type', async () => {
+        const csvContent = 'Game1';
+        const mockFile = new File([csvContent], 'games.csv', { type: 'application/csv' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 1 }));
+
+        const result = await apiClient.bulkAddGames(mockFile);
+
+        expect(result).toEqual({ imported: 1 });
+      });
+
+      it('Should handle UTF-8 characters correctly', async () => {
+        const csvContent = 'Catan\nCafé International\nPuerto Rico';
+        const mockFile = new File([csvContent], 'games.csv', { type: 'text/csv' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
+
+        const result = await apiClient.bulkAddGames(mockFile);
+
+        expect(result).toEqual({ imported: 3 });
+
+        const firstCall = vi.mocked(fetch).mock.calls[0];
+        const request = firstCall[0] as Request;
+        const body = await request.text();
+
+        // Properly decode base64 -> UTF-8
+        const binaryString = atob(body);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const decoded = new TextDecoder().decode(bytes);
+
+        // Verify UTF-8 encoding works
+        expect(decoded).toContain('Café');
+      });
+
+      it('Should propagate API errors when backend returns error', async () => {
+        const mockFile = new File(['Game1'], 'games.csv', { type: 'text/csv' });
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 400,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({ message: 'Validation failed' }),
+          text: async () => JSON.stringify({ message: 'Validation failed' }),
+        } as Response);
+
+        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow('Validation failed');
+      });
+    });
   });
 
   describe('Patrons API', () => {
@@ -205,6 +307,110 @@ describe('ApiClient', () => {
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/patron/p1');
       expect(request.method).toBe('DELETE');
+    });
+
+    describe('bulkAddPatrons', () => {
+      it('Should successfully upload a CSV file and return imported count when file is valid', async () => {
+        const csvContent = 'John Smith\nJane Doe\nAlice Baker';
+        const mockFile = new File([csvContent], 'patrons.csv', { type: 'text/csv' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
+
+        const result = await apiClient.bulkAddPatrons(mockFile);
+
+        expect(fetch).toHaveBeenCalled();
+        const firstCall = vi.mocked(fetch).mock.calls[0];
+        const request = firstCall[0] as Request;
+        expect(request.url).toContain('/api/v1/library/patrons');
+        expect(request.method).toBe('POST');
+        expect(result).toEqual({ imported: 3 });
+
+        // Verify the body is base64 encoded
+        const body = await request.text();
+        expect(body).toBeTruthy();
+        // Decode and verify content
+        const decoded = atob(body);
+        expect(decoded).toBe(csvContent);
+      });
+
+      it('Should reject when file type is not CSV or text', async () => {
+        const mockFile = new File(['data'], 'document.pdf', { type: 'application/pdf' });
+
+        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow('Invalid file type: application/pdf');
+      });
+
+      it('Should reject when file is empty', async () => {
+        const mockFile = new File([], 'empty.csv', { type: 'text/csv' });
+
+        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow('File is empty');
+      });
+
+      it('Should reject when file exceeds 10MB limit', async () => {
+        // Create a file larger than 10MB
+        const largeContent = 'x'.repeat(11 * 1024 * 1024); // 11MB
+        const mockFile = new File([largeContent], 'large.csv', { type: 'text/csv' });
+
+        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow('File size exceeds 10MB limit');
+      });
+
+      it('Should accept text/plain MIME type', async () => {
+        const csvContent = 'Patron1\nPatron2';
+        const mockFile = new File([csvContent], 'patrons.txt', { type: 'text/plain' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 2 }));
+
+        const result = await apiClient.bulkAddPatrons(mockFile);
+
+        expect(result).toEqual({ imported: 2 });
+      });
+
+      it('Should accept application/csv MIME type', async () => {
+        const csvContent = 'Patron1';
+        const mockFile = new File([csvContent], 'patrons.csv', { type: 'application/csv' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 1 }));
+
+        const result = await apiClient.bulkAddPatrons(mockFile);
+
+        expect(result).toEqual({ imported: 1 });
+      });
+
+      it('Should handle UTF-8 characters correctly', async () => {
+        const csvContent = 'José García\nMüller Schmidt\nFrançois Dupont';
+        const mockFile = new File([csvContent], 'patrons.csv', { type: 'text/csv' });
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
+
+        const result = await apiClient.bulkAddPatrons(mockFile);
+
+        expect(result).toEqual({ imported: 3 });
+
+        const firstCall = vi.mocked(fetch).mock.calls[0];
+        const request = firstCall[0] as Request;
+        const body = await request.text();
+
+        // Properly decode base64 -> UTF-8
+        const binaryString = atob(body);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const decoded = new TextDecoder().decode(bytes);
+
+        // Verify UTF-8 encoding works
+        expect(decoded).toContain('José');
+        expect(decoded).toContain('Müller');
+        expect(decoded).toContain('François');
+      });
+
+      it('Should propagate API errors when backend returns error', async () => {
+        const mockFile = new File(['Patron1'], 'patrons.csv', { type: 'text/csv' });
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 400,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({ message: 'Validation failed' }),
+          text: async () => JSON.stringify({ message: 'Validation failed' }),
+        } as Response);
+
+        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow('Validation failed');
+      });
     });
   });
 
