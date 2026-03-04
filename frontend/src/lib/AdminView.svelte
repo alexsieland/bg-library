@@ -89,24 +89,28 @@
     <div class="space-y-4">
       <div>
         <Label for="bulkGameUpload" class="mb-2">Upload CSV File</Label>
-        <Fileupload
-          id="bulkGameUpload"
-          bind:files={bulkUploadFile}
-          accept=".csv,text/csv,text/plain"
-        />
+        <div class="flex items-center space-x-2">
+          <div class="flex-grow">
+            <Fileupload
+              id="bulkGameUpload"
+              bind:files={bulkUploadFile}
+              accept=".csv,text/csv,text/plain"
+            />
+          </div>
+          <Button
+            onclick={handleBulkUpload}
+            disabled={bulkLoading || !bulkUploadFile || bulkUploadFile.length === 0}
+          >
+            {#if bulkLoading}
+              <Spinner size="4" class="me-2" />
+            {/if}
+            Upload Games
+          </Button>
+        </div>
         <Helper class="mt-2">
           Upload a CSV file with one game title per line. Maximum file size: 10MB.
         </Helper>
       </div>
-      <Button
-        onclick={handleBulkUpload}
-        disabled={bulkLoading || !bulkUploadFile || bulkUploadFile.length === 0}
-      >
-        {#if bulkLoading}
-          <Spinner size="4" class="me-2" />
-        {/if}
-        Upload Games
-      </Button>
       {#if bulkError}
         <p class="text-sm text-rose-500">{bulkError}</p>
       {/if}
