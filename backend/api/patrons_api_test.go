@@ -33,7 +33,7 @@ func TestAddPatron(t *testing.T) {
 			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
 
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -87,7 +87,7 @@ func TestAddPatron(t *testing.T) {
 
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -99,6 +99,58 @@ func TestAddPatron(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
+	})
+
+	t.Run("Should return 201 Created with barcode when barcode is provided", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		patronID := uuid.New()
+		name := "John Doe"
+		barcode := "9780000000001"
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
+			*args.Get(1).(*string) = name
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*bool) = false
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{String: barcode, Valid: true}
+		}).Return(nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: name, Barcode: &barcode})
+		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.AddPatron(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response Patron
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, name, response.Name)
+		assert.Equal(t, patronID, response.PatronId)
+		assert.NotNil(t, response.Barcode)
+		assert.Equal(t, barcode, *response.Barcode)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 400 Bad Request when barcode exceeds 48 characters", func(t *testing.T) {
+		server, _ := setupTestServer()
+		name := "John Doe"
+		barcode := string(make([]byte, 49)) // 49 chars
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: name, Barcode: &barcode})
+		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.AddPatron(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 }
 
@@ -314,7 +366,7 @@ func TestUpdatePatron(t *testing.T) {
 		patronID := uuid.New()
 		name := "Updated Name"
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name}).Return(pgconn.CommandTag{}, nil)
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -332,7 +384,7 @@ func TestUpdatePatron(t *testing.T) {
 		patronID := uuid.New()
 		name := "Updated Name"
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name}).Return(pgconn.CommandTag{}, pgx.ErrNoRows)
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, pgx.ErrNoRows)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -365,7 +417,7 @@ func TestUpdatePatron(t *testing.T) {
 		patronID := uuid.New()
 		name := "Updated Name"
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name}).Return(pgconn.CommandTag{}, errors.New("db error"))
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, errors.New("db error"))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -377,6 +429,26 @@ func TestUpdatePatron(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
+	})
+
+	t.Run("Should return 204 No Content when patron is updated with barcode", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		patronID := uuid.New()
+		name := "Updated Name"
+		barcode := "9780000000001"
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{String: barcode, Valid: true}}).Return(pgconn.CommandTag{}, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(UpdatePatronJSONRequestBody{Name: name, Barcode: &barcode})
+		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.UpdatePatron(c, patronID.String())
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		mockDB.AssertExpectations(t)
 	})
 }
 
@@ -472,7 +544,7 @@ func TestBulkAddPatrons(t *testing.T) {
 			*args.Get(3).(*bool) = false
 			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name1}).Return(mockRow1)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name1, pgtype.Text{Valid: false}}).Return(mockRow1)
 
 		// Second patron
 		mockRow2 := new(MockRow)
@@ -483,7 +555,7 @@ func TestBulkAddPatrons(t *testing.T) {
 			*args.Get(3).(*bool) = false
 			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name2}).Return(mockRow2)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name2, pgtype.Text{Valid: false}}).Return(mockRow2)
 
 		mockTx.On("Commit", mock.Anything).Return(nil)
 
@@ -524,7 +596,7 @@ func TestBulkAddPatrons(t *testing.T) {
 			*args.Get(3).(*bool) = false
 			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validName}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validName, pgtype.Text{Valid: false}}).Return(mockRow)
 
 		mockTx.On("Commit", mock.Anything).Return(nil)
 
@@ -574,7 +646,7 @@ func TestBulkAddPatrons(t *testing.T) {
 
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
 
 		w := httptest.NewRecorder()
@@ -608,7 +680,7 @@ func TestBulkAddPatrons(t *testing.T) {
 			*args.Get(3).(*bool) = false
 			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
 		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
 
 		mockTx.On("Commit", mock.Anything).Return(errors.New("commit error"))
 		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
