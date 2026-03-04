@@ -72,7 +72,7 @@
 {#if loading && gameList.games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading checked out games...</div>
 {:else if error}
-  <div class="p-8 text-center text-red-500">{error}</div>
+  <div class="p-8 text-center text-rose-500">{error}</div>
 {:else}
   <Table shadow hoverable={true} class="w-full">
     <TableHead>
