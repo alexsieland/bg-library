@@ -18,6 +18,9 @@ RUN npm prune --production
 # Production stage
 FROM nginx:stable-alpine
 
+# Install openssl for SSL certificate generation
+RUN apk add --no-cache openssl
+
 ENV EXPOSE_SWAGGER_UI=false
 ENV BACKEND_PORT=8080
 ENV API_URL=http://localhost:8080
@@ -30,5 +33,6 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY frontend/public/config.js.template /usr/share/nginx/html/config.js.template
 
 EXPOSE 80
+EXPOSE 443
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

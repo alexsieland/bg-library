@@ -50,6 +50,10 @@ The application uses environment variables to configure Docker containers. See [
 - `EXPOSE_SWAGGER_UI` - Whether to expose Swagger UI (default: `false`)
 - `NGINX_HOST` - The nginx server name (default: `localhost`)
 - `FRONTEND_PORT` - The frontend port (default: `80`)
+- `FRONTEND_SSL_PORT` - The frontend HTTPS port (default: `443`)
+- `ENABLE_HTTPS` - Enable HTTPS/SSL support on port 443 (default: `false`, see [Cloudflare SSL Modes](docs/cloudflare-ssl-modes.md))
+- `TRUSTED_PROXIES` - Comma-separated list of trusted proxy IPs/CIDRs (optional, see [Proxy Configuration](docs/proxy-configuration.md))
+- `REAL_IP_HEADER` - HTTP header containing real client IP (default: `X-Real-IP`, see [Proxy Configuration](docs/proxy-configuration.md))
 
 ### Backend Variables
 - `DB_HOST` - Database host
