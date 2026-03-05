@@ -7,6 +7,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
@@ -66,4 +67,71 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, FromTransaction(transaction))
+}
+
+func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
+	dbArgs, verr := getSearchTransactionEventsParams(params)
+	if len(verr) > 0 {
+		validationError(c, verr)
+		return
+	}
+	transactions, err := s.queries.SearchTransactionEvents(c.Request.Context(), dbArgs)
+	if err != nil {
+		log.Printf("Error listing transactions: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	var events []TransactionEvent
+	for _, transaction := range transactions {
+		game := FromGame(db.Game{ID: transaction.GameID, Title: transaction.GameTitle})
+		patron := FromPatron(db.Patron{ID: transaction.PatronID, FullName: transaction.PatronFullName})
+		eventType := TransactionEventEventType(transaction.EventType)
+		events = append(events, TransactionEvent{
+			TransactionId:  pgUUIDToUUID(transaction.TransactionID),
+			Game:           game,
+			Patron:         patron,
+			EventTimestamp: transaction.EventTimestamp.Time,
+			EventType:      eventType,
+		})
+	}
+
+	c.JSON(http.StatusOK, TransactionEventList{Transactions: events})
+}
+
+func getSearchTransactionEventsParams(params ListTransactionEventsParams) (db.SearchTransactionEventsParams, []ErrorDetail) {
+	var errorDetails []ErrorDetail
+	sanitizedTitle := pgtype.Text{String: "", Valid: true}
+	if params.GameTitle != nil {
+		errorDetails = ValidateStringLength("gameTitle", *params.GameTitle, 1, 100, errorDetails)
+		sanitizedTitle = pgtype.Text{
+			String: SanitizeTitle(*params.GameTitle),
+			Valid:  true,
+		}
+	}
+	patronFullName := ""
+	if params.PatronName != nil {
+		errorDetails = ValidateStringLength("patronName", *params.PatronName, 1, 100, errorDetails)
+		patronFullName = *params.PatronName
+	}
+	var limit int32 = 100
+	if params.Limit != nil {
+		errorDetails = ValidateIntMin("limit", *params.Limit, 1, errorDetails)
+		errorDetails = ValidateIntMax("limit", *params.Limit, 100, errorDetails)
+		limit = int32(*params.Limit)
+	}
+	var offset int32 = 0
+	if params.Offset != nil {
+		errorDetails = ValidateIntMin("offset", *params.Offset, 0, errorDetails)
+		offset = int32(*params.Offset)
+	}
+	if len(errorDetails) > 0 {
+		return db.SearchTransactionEventsParams{}, errorDetails
+	}
+	return db.SearchTransactionEventsParams{
+		SanitizedTitle: sanitizedTitle,
+		PatronFullName: patronFullName,
+		Limit:          limit,
+		Offset:         offset,
+	}, errorDetails
 }

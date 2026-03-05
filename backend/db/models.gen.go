@@ -5,8 +5,53 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type TransactionEventType string
+
+const (
+	TransactionEventTypeCheckOut TransactionEventType = "check_out"
+	TransactionEventTypeCheckIn  TransactionEventType = "check_in"
+)
+
+func (e *TransactionEventType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TransactionEventType(s)
+	case string:
+		*e = TransactionEventType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TransactionEventType: %T", src)
+	}
+	return nil
+}
+
+type NullTransactionEventType struct {
+	TransactionEventType TransactionEventType
+	Valid                bool // Valid is true if TransactionEventType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTransactionEventType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TransactionEventType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TransactionEventType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTransactionEventType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TransactionEventType), nil
+}
 
 type Game struct {
 	ID             pgtype.UUID
@@ -33,6 +78,16 @@ type Transaction struct {
 	CheckinTimestamp  pgtype.Timestamp
 }
 
+type TransactionEvent struct {
+	ID             pgtype.UUID
+	TransactionID  pgtype.UUID
+	GameID         pgtype.UUID
+	PatronID       pgtype.UUID
+	EventType      TransactionEventType
+	EventTimestamp pgtype.Timestamp
+	RecordedAt     pgtype.Timestamp
+}
+
 type VwGameStatus struct {
 	GameID            pgtype.UUID
 	GameTitle         string
@@ -57,4 +112,15 @@ type VwLibraryPatron struct {
 	FullName  string
 	Barcode   pgtype.Text
 	CreatedAt pgtype.Timestamp
+}
+
+type VwLibraryTransactionEvent struct {
+	TransactionID  pgtype.UUID
+	GameID         pgtype.UUID
+	GameTitle      string
+	SanitizedTitle pgtype.Text
+	PatronID       pgtype.UUID
+	PatronFullName string
+	EventTimestamp pgtype.Timestamp
+	EventType      TransactionEventType
 }
