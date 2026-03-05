@@ -26,6 +26,7 @@ const API_PATHS = {
 
 export type Game = components["schemas"]["Game"];
 export type GameList = components["schemas"]["GameList"];
+export type GameStatusList = components["schemas"]["GameStatusList"];
 export type GameStatus = components["schemas"]["GameStatus"];
 export type Patron = components["schemas"]["Patron"];
 export type CreateGameRequest = components["schemas"]["CreateGameRequest"];
@@ -117,7 +118,7 @@ class ApiClient {
   }
 
   // Games
-  async listGames(query?: operations["listGames"]["parameters"]["query"]): Promise<GameList> {
+  async listGames(query?: operations["listGames"]["parameters"]["query"]): Promise<GameStatusList> {
     const res = await this.client.GET(API_PATHS.listGames, {
       params: { query }
     });
@@ -134,6 +135,13 @@ class ApiClient {
   async getGame(gameId: string): Promise<Game> {
     const res = await this.client.GET(API_PATHS.getGame, {
       params: { path: { gameId } }
+    });
+    return this.handleResponse(res);
+  }
+
+  async getGameByBarcode(gameBarcode: string): Promise<GameList> {
+    const res = await this.client.GET(API_PATHS.getGameByBarcode, {
+      params: { path: { gameBarcode } }
     });
     return this.handleResponse(res);
   }
@@ -180,6 +188,13 @@ class ApiClient {
   async getPatron(patronId: string): Promise<Patron> {
     const res = await this.client.GET(API_PATHS.getPatron, {
       params: { path: { patronId } }
+    });
+    return this.handleResponse(res);
+  }
+
+  async getPatronByBarcode(patronBarcode: string): Promise<Patron> {
+    const res = await this.client.GET(API_PATHS.getPatronByBarcode, {
+      params: { path: { patronBarcode } }
     });
     return this.handleResponse(res);
   }

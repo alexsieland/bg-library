@@ -248,22 +248,26 @@ func TestGetGame(t *testing.T) {
 }
 
 func TestGetGameByBarcode(t *testing.T) {
-	t.Run("Should return 200 OK when game is found by barcode", func(t *testing.T) {
+	t.Run("Should return 200 OK with a list of games when games are found by barcode", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 		title := "Catan"
 		barcode := "1234567890"
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = title
 			*args.Get(2).(*string) = SanitizeTitle(title)
 			*args.Get(3).(*pgtype.Text) = pgtype.Text{String: barcode, Valid: true}
 			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 		}).Return(nil)
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
 
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRows, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -271,11 +275,32 @@ func TestGetGameByBarcode(t *testing.T) {
 		server.GetGameByBarcode(c, barcode)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var response Game
+		var response GameList
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, title, response.Title)
-		assert.Equal(t, gameID, response.GameId)
+		assert.Len(t, response.Games, 1)
+		assert.Equal(t, title, response.Games[0].Title)
+		assert.Equal(t, gameID, response.Games[0].GameId)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 404 Not Found when no games match the barcode", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		barcode := "1234567890"
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(false)
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRows, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/games/barcode/"+barcode, nil)
+		server.GetGameByBarcode(c, barcode)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
 		mockDB.AssertExpectations(t)
 	})
 
@@ -302,29 +327,11 @@ func TestGetGameByBarcode(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("Should return 404 Not Found when game does not exist for barcode", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		barcode := "1234567890"
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/games/barcode/"+barcode, nil)
-		server.GetGameByBarcode(c, barcode)
-
-		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-
 	t.Run("Should return 500 Internal Server Error when database error occurs", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		barcode := "1234567890"
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(nil, errors.New("db error"))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -425,7 +432,7 @@ func TestListGames(t *testing.T) {
 		server.ListGames(c, ListGamesParams{})
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var response GameList
+		var response GameStatusList
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Len(t, response.Games, 1)

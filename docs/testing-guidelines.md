@@ -40,6 +40,7 @@ describe('GameCard', () => {
 - **Mocking**: Use the `DB` interface (defined in `api/api.go`) to mock database interactions.
 - **Location**: Place unit tests in the same package as the code being tested (e.g., `backend/api/games_api_test.go`).
 - **Idioms**: Use `t.Run` for subtests and `t.Context()` when a context is required.
+- **Contract-First**: Unit tests must be written against the OpenAPI specification (`swagger/api.yaml`) as the source of truth for expected behaviour — including status codes, response shapes, and error cases. Do not derive expected behaviour solely from the current implementation. If a test passes but contradicts the spec, the test (or the implementation) is wrong.
 
 ### Integration Tests
 - **Tools**: [testcontainers-go](https://golang.testcontainers.org/) to spin up a real PostgreSQL instance.

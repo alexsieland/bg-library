@@ -106,10 +106,10 @@ type Game struct {
 	Title string `json:"title"`
 }
 
-// GameList List of games with check out info
+// GameList List of games
 type GameList struct {
-	// Games Array of the game statuses
-	Games []GameStatus `json:"games"`
+	// Games Array of games
+	Games []Game `json:"games"`
 }
 
 // GameStatus Game with check out info
@@ -125,6 +125,12 @@ type GameStatus struct {
 
 	// TransactionId Transaction ID
 	TransactionId *openapi_types.UUID `json:"transactionId,omitempty"`
+}
+
+// GameStatusList List of games with check out info
+type GameStatusList struct {
+	// Games Array of the game statuses
+	Games []GameStatus `json:"games"`
 }
 
 // LibraryTransaction Request payload for making a check in/out transaction
@@ -1649,7 +1655,7 @@ func (r AddGameResponse) StatusCode() int {
 type GetGameByBarcodeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Game
+	JSON200      *GameList
 	JSON404      *ErrorResponse
 }
 
@@ -1740,7 +1746,7 @@ func (r UpdateGameResponse) StatusCode() int {
 type ListGamesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GameList
+	JSON200      *GameStatusList
 }
 
 // Status returns HTTPResponse.Status
@@ -2318,7 +2324,7 @@ func ParseGetGameByBarcodeResponse(rsp *http.Response) (*GetGameByBarcodeRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Game
+		var dest GameList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2443,7 +2449,7 @@ func ParseListGamesResponse(rsp *http.Response) (*ListGamesResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GameList
+		var dest GameStatusList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2774,7 +2780,7 @@ type ServerInterface interface {
 	// Add a game
 	// (POST /api/v1/library/game)
 	AddGame(c *gin.Context)
-	// Get a game from a barcode
+	// Get game(s) from a barcode
 	// (GET /api/v1/library/game/barcode/{gameBarcode})
 	GetGameByBarcode(c *gin.Context, gameBarcode string)
 	// Soft delete a game

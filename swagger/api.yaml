@@ -69,7 +69,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameList'
+                $ref: '#/components/schemas/GameStatusList'
     post:
       tags:
         - games
@@ -189,7 +189,12 @@ paths:
         - games
         - barcode
       operationId: getGameByBarcode
-      summary: Get a game from a barcode
+      summary: Get game(s) from a barcode
+      description: |
+        Get game(s) that match the provided barcode. 
+        If multiple games have the same barcode, all will be returned.
+        This covers the case where a library uses UPCs in lieu of unique barcodes.
+        Unlike the search endpoints, this endpoint will return a 404 if no games are found.
       parameters:
         - in: path
           name: gameBarcode
@@ -199,11 +204,11 @@ paths:
           description: Game Barcode
       responses:
         '200':
-          description: Game found
+          description: Game(s) found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Game'
+                $ref: '#/components/schemas/GameList'
         '404':
           description: Game not found
           content:
@@ -557,6 +562,18 @@ components:
           description: The barcode of the game
           example: "9780307455925"
 
+    GameList:
+      type: object
+      required:
+        - games
+      description: List of games
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+          description: Array of games
+
     CreateGameRequest:
       type: object
       required:
@@ -620,7 +637,7 @@ components:
           example: "9780307455925"
       description: Request payload for creating a new patron
 
-    GameList:
+    GameStatusList:
       type: object
       required:
         - games

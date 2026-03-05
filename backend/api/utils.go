@@ -99,6 +99,14 @@ func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
 	return game
 }
 
+func FromVwLibraryGames(dbGame []db.VwLibraryGame) GameList {
+	gameList := make([]Game, len(dbGame))
+	for i, dbGame := range dbGame {
+		gameList[i] = FromVwLibraryGame(dbGame)
+	}
+	return GameList{Games: gameList}
+}
+
 func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
 	return LibraryTransaction{
 		GameId:    pgUUIDToUUID(dbTransaction.GameID),

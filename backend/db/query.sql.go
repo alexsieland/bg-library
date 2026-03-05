@@ -177,23 +177,36 @@ func (q *Queries) GetGame(ctx context.Context, id pgtype.UUID) (VwLibraryGame, e
 	return i, err
 }
 
-const getGameByBarcode = `-- name: GetGameByBarcode :one
+const getGameByBarcode = `-- name: GetGameByBarcode :many
 SELECT id, title, sanitized_title, barcode, created_at
 FROM vw_library_games
 WHERE barcode = $1
 `
 
-func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) (VwLibraryGame, error) {
-	row := q.db.QueryRow(ctx, getGameByBarcode, barcode)
-	var i VwLibraryGame
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.SanitizedTitle,
-		&i.Barcode,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) ([]VwLibraryGame, error) {
+	rows, err := q.db.Query(ctx, getGameByBarcode, barcode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VwLibraryGame
+	for rows.Next() {
+		var i VwLibraryGame
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.SanitizedTitle,
+			&i.Barcode,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getGameStatus = `-- name: GetGameStatus :one

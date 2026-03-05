@@ -16,7 +16,7 @@ SELECT *
 FROM vw_library_games
 WHERE id = $1;
 
--- name: GetGameByBarcode :one
+-- name: GetGameByBarcode :many
 SELECT *
 FROM vw_library_games
 WHERE barcode = $1;

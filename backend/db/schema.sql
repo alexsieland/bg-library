@@ -4,7 +4,7 @@ CREATE TABLE games (
     sanitized_title VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    barcode VARCHAR(48) UNIQUE,
+    barcode VARCHAR(48), -- Not unique because a library might use UPCs
     PRIMARY KEY (id)
 );
 

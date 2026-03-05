@@ -1,12 +1,12 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
-  import { apiClient, type GameList } from './api-client';
+  import { apiClient, type GameStatusList } from './api-client';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
 
   let searchQuery = '';
-  let gameList: GameList = { games: [] };
+  let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
 
@@ -14,7 +14,7 @@
     loading = true;
     error = null;
     try {
-      gameList = await apiClient.listGames({ 
+      gameStatusList = await apiClient.listGames({
         title: searchQuery || undefined,
         checkedOut: true
       });
@@ -69,7 +69,7 @@
   <SearchBar bind:searchQuery placeholder="Search checked out games..." onSearch={handleSearch} />
 </div>
 
-{#if loading && gameList.games.length === 0}
+{#if loading && gameStatusList.games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading checked out games...</div>
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
@@ -82,7 +82,7 @@
       <TableHeadCell>Action</TableHeadCell>
     </TableHead>
     <TableBody class="divide-y">
-      {#each gameList.games as gameStatus (gameStatus.game.gameId)}
+      {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
           <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">{gameStatus.game.title}</TableBodyCell>
           <TableBodyCell class="text-slate-700 dark:text-slate-300">
@@ -102,7 +102,7 @@
           </TableBodyCell>
         </TableBodyRow>
       {/each}
-      {#if gameList.games.length === 0}
+      {#if gameStatusList.games.length === 0}
         <TableBodyRow>
           <TableBodyCell colspan={4} class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
             No checked out games found.
