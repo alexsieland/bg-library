@@ -61,16 +61,18 @@
   }
 </script>
 
-<div class="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-  <!-- Primary row: search -->
-  <SearchBar bind:searchQuery placeholder="Search games..." onSearch={handleSearch} />
-
-  <!-- Secondary row: barcode scanner, only shown when enabled -->
-  {#if isBarcodeEnabled()}
-    <div class="flex justify-end mt-3">
-      <BarcodeInput onGameFound={handleBarcodeFound} onError={handleBarcodeError} />
+<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+  <div class="flex items-center justify-between gap-4">
+    <!-- Primary: search -->
+    <div class="flex-1">
+      <SearchBar bind:searchQuery placeholder="Search games..." onSearch={handleSearch} />
     </div>
-  {/if}
+
+    <!-- Secondary: barcode scanner, right-aligned and visually de-emphasised -->
+    {#if isBarcodeEnabled()}
+      <BarcodeInput onGameFound={handleBarcodeFound} onError={handleBarcodeError} />
+    {/if}
+  </div>
 </div>
 
 <LoanModal bind:open={loanModalOpen} game={selectedGame} onLoanSuccess={fetchGames} />

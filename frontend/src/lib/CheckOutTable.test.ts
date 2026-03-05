@@ -122,7 +122,7 @@ describe('CheckOutTable', () => {
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
 
     expect(screen.queryByLabelText('Barcode Scanner')).not.toBeInTheDocument();
-    expect(screen.queryByPlaceholderText('Scan barcode…')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Scan…')).not.toBeInTheDocument();
   });
 });
 
@@ -142,7 +142,7 @@ describe('CheckOutTable (barcode enabled)', () => {
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
 
     expect(screen.getByLabelText('Barcode Scanner')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Scan barcode…')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Scan…')).toBeInTheDocument();
   });
 
   it('Should open the loan modal with the found game when a barcode scan succeeds', async () => {
@@ -155,7 +155,7 @@ describe('CheckOutTable (barcode enabled)', () => {
 
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
 
-    const barcodeInput = screen.getByPlaceholderText('Scan barcode…');
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 

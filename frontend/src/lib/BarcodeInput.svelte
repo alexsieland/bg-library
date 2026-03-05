@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Input, Label, Spinner } from 'flowbite-svelte';
+  import { Spinner } from 'flowbite-svelte';
   import { apiClient } from './api-client';
   import type { components } from '../generated/library-api';
 
@@ -43,27 +43,33 @@
   }
 </script>
 
-<div class="flex items-end gap-2">
-  <div class="relative w-56">
-    <Label for="barcode-input" class="mb-1 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-      Barcode Scanner
-    </Label>
-    <Input
+<div class="flex items-center gap-2">
+  <span class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none">
+    Barcode
+  </span>
+  <div class="relative">
+    <input
       id="barcode-input"
+      type="text"
       bind:value={barcode}
       onkeydown={handleKeydown}
-      placeholder="Scan barcode…"
+      placeholder="Scan…"
+      aria-label="Barcode Scanner"
       autocomplete="off"
       disabled={loading}
-      class="w-full text-sm border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 placeholder-slate-300 dark:placeholder-slate-600 focus:border-slate-400 focus:ring-slate-300"
+      class="w-36 rounded-lg border border-slate-200 dark:border-slate-600
+             bg-white dark:bg-slate-800
+             px-3 py-2 text-sm
+             text-slate-500 dark:text-slate-400
+             placeholder:text-slate-300 dark:placeholder:text-slate-600
+             focus:border-slate-400 dark:focus:border-slate-500
+             focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500
+             disabled:opacity-50"
     />
     {#if loading}
-      <div class="absolute inset-y-0 inset-e-0 flex items-center pe-3 pointer-events-none top-6">
+      <div class="absolute inset-y-0 inset-e-0 flex items-center pe-2 pointer-events-none">
         <Spinner size="4" />
       </div>
     {/if}
-    <p class="mt-1 text-xs text-slate-400 dark:text-slate-600">
-      Connect a barcode scanner to use
-    </p>
   </div>
 </div>

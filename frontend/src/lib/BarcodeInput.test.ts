@@ -30,7 +30,7 @@ describe('BarcodeInput', () => {
     render(BarcodeInput);
 
     expect(screen.getByLabelText('Barcode Scanner')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Scan barcode…')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Scan…')).toBeInTheDocument();
   });
 
   it('Should call getGameByBarcode with the scanned value when Enter is pressed', async () => {
@@ -38,7 +38,7 @@ describe('BarcodeInput', () => {
 
     render(BarcodeInput);
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -52,7 +52,7 @@ describe('BarcodeInput', () => {
 
     render(BarcodeInput);
 
-    const input = screen.getByPlaceholderText('Scan barcode…') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Scan…') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -67,7 +67,7 @@ describe('BarcodeInput', () => {
 
     render(BarcodeInput, { props: { onGameFound } });
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -86,7 +86,7 @@ describe('BarcodeInput', () => {
 
     render(BarcodeInput, { props: { onError } });
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -103,7 +103,7 @@ describe('BarcodeInput', () => {
 
     render(BarcodeInput, { props: { onError } });
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '0000000000000' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -115,7 +115,7 @@ describe('BarcodeInput', () => {
   it('Should not call getGameByBarcode when Enter is pressed with an empty input', async () => {
     render(BarcodeInput);
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(apiClient.getGameByBarcode).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe('BarcodeInput', () => {
   it('Should not call getGameByBarcode when a key other than Enter is pressed', async () => {
     render(BarcodeInput);
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'a' });
 
@@ -137,7 +137,7 @@ describe('BarcodeInput', () => {
 
     render(BarcodeInput);
 
-    const input = screen.getByPlaceholderText('Scan barcode…');
+    const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
