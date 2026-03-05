@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Modal, Button, Input, Label, Listgroup, ListgroupItem, Spinner } from 'flowbite-svelte';
+  import { Modal, Button, Input, Label, Spinner } from 'flowbite-svelte';
   import { apiClient } from './api-client';
   import type { components } from '../generated/library-api';
   import Debounce from './snippets/debounce.svelte';
   import { toasts } from './toast-store';
+  import { isBarcodeEnabled } from './config';
 
   export let open = false;
   export let game: components["schemas"]["Game"] | null = null;
@@ -18,6 +19,33 @@
 
   // This is used by the Debounce snippet to skip updates if we manually trigger a search
   let cancelKey = 0;
+
+  let patronBarcode = '';
+  let barcodeLoading = false;
+
+  async function handlePatronBarcodeScan() {
+    const value = patronBarcode.trim();
+    patronBarcode = '';
+
+    if (!value) return;
+
+    barcodeLoading = true;
+    try {
+      const patron = await apiClient.getPatronByBarcode(value);
+      selectPatron(patron);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Patron not found';
+      toasts.add(`Barcode scan failed: ${message}`, 'error');
+    } finally {
+      barcodeLoading = false;
+    }
+  }
+
+  function handleBarcodeKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      handlePatronBarcodeScan();
+    }
+  }
 
   async function searchPatrons(name: string) {
     if (name.length < 3) {
@@ -138,6 +166,40 @@
         Loan
       </Button>
     </div>
+
+    {#if isBarcodeEnabled()}
+      <div class="flex justify-end">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none">
+            Barcode
+          </span>
+          <div class="relative">
+            <input
+              type="text"
+              bind:value={patronBarcode}
+              onkeydown={handleBarcodeKeydown}
+              placeholder="Scan…"
+              aria-label="Patron Barcode Scanner"
+              autocomplete="off"
+              disabled={barcodeLoading}
+              class="w-36 rounded-lg border border-slate-200 dark:border-slate-600
+                     bg-white dark:bg-slate-800
+                     px-3 py-2 text-sm
+                     text-slate-500 dark:text-slate-400
+                     placeholder:text-slate-300 dark:placeholder:text-slate-600
+                     focus:border-slate-400 dark:focus:border-slate-500
+                     focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500
+                     disabled:opacity-50"
+            />
+            {#if barcodeLoading}
+              <div class="absolute inset-y-0 inset-e-0 flex items-center pe-2 pointer-events-none">
+                <Spinner size="4" />
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
 
     {#if error}
       <p class="text-sm text-rose-500">{error}</p>

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Badge, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
+  import BarcodeInput from './BarcodeInput.svelte';
   import { apiClient, type GameStatusList } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
-  
+  import { isBarcodeEnabled } from './config';
+
   import LoanModal from './LoanModal.svelte';
 
   let searchQuery = '';
@@ -49,10 +51,28 @@
     searchQuery = query;
     fetchGames();
   }
+
+  function handleBarcodeFound(game: components["schemas"]["Game"]) {
+    handleCheckout(game);
+  }
+
+  function handleBarcodeError(message: string) {
+    toasts.add(message, 'error');
+  }
 </script>
 
-<div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-  <SearchBar bind:searchQuery placeholder="Search games..." onSearch={handleSearch} />
+<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+  <div class="flex items-center justify-between gap-4">
+    <!-- Primary: search -->
+    <div class="flex-1">
+      <SearchBar bind:searchQuery placeholder="Search games..." onSearch={handleSearch} />
+    </div>
+
+    <!-- Secondary: barcode scanner, right-aligned and visually de-emphasised -->
+    {#if isBarcodeEnabled()}
+      <BarcodeInput onGameFound={handleBarcodeFound} onError={handleBarcodeError} />
+    {/if}
+  </div>
 </div>
 
 <LoanModal bind:open={loanModalOpen} game={selectedGame} onLoanSuccess={fetchGames} />

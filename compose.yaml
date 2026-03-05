@@ -31,7 +31,7 @@ services:
       - DB_NAME=librarydb
       - GIN_MODE=release
       - CORS_ALLOWED_ORIGIN=*
-      - API_URL=${API_URL:-http://localhost:80}
+      - API_URL=${API_URL:-http://localhost:8080}
     networks:
       - bg-library_backend_nw
       - bg-library_frontend_nw

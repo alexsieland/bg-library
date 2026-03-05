@@ -210,6 +210,47 @@ The permission flow and Chromium-only limitation make it unsuitable as a primary
 
 ---
 
+## Interaction with Modals
+
+This section analyses how the Approach 1 + 4 combination behaves when a modal is open, specifically the existing `LoanModal` (patron name search + loan initiation) and the planned barcode conflict resolution modal.
+
+### Scanning a game barcode while LoanModal is open — ✅ Safe
+
+The `LoanModal` contains a focused patron name `<Input>` field. When the modal is open and that field has focus, the global listener's suppression logic kicks in: `document.activeElement` is the patron name input, so the listener discards its buffer and lets the characters flow into the field. The scanner burst will not trigger a game barcode lookup.
+
+However, this means a librarian **cannot** scan a game barcode while the loan modal is open. This is desirable — the modal is mid-transaction. Scanning a new game at that point would be an error, not a valid workflow step.
+
+### The Enter key conflict in LoanModal — ⚠️ Requires care
+
+`LoanModal` has its own `handleKeydown` listener on the patron name `<Input>` that calls `handleLoan()` on `Enter`. This is also the termination character a barcode scanner sends.
+
+If a librarian accidentally scans *anything* while the patron name field has focus:
+- The barcode characters will be appended to the patron name field (since the global listener is suppressed).
+- The `Enter` at the end will fire `handleLoan()` with garbled patron name input.
+
+This is a **pre-existing UX hazard** that exists independently of the barcode feature. Mitigation options at implementation time:
+- Validate that the patron name field contains only plausible name characters before submitting on `Enter`.
+- Debounce the `Enter` handler so a burst-speed `Enter` is distinguishable from a deliberate keypress (checking elapsed time since the last character).
+
+### Scanning a patron barcode for conflict resolution — ✅ Handled by Approach 4
+
+The barcode conflict resolution modal (triggered when multiple copies of a game are checked out) requires the librarian to identify the returning patron. This is the explicit "Scan patron barcode" input field (Approach 4).
+
+Because this field takes focus when the modal opens, the global listener is naturally suppressed. The scanner burst flows directly into the dedicated patron barcode field, which processes the value on `Enter` and calls `getPatronByBarcode()`. No cross-interference with the global listener occurs.
+
+This is the cleanest interaction in the entire barcode workflow: Approach 4's explicit field handles the one place where intentional scanner input inside a modal is expected, and the global listener stays out of the way.
+
+### Summary
+
+| Context | Global listener active? | Scanner input goes to… | Result |
+|---|---|---|---|
+| No modal open, no field focused | ✅ Yes | Global buffer | Game barcode lookup triggered |
+| No modal open, search field focused | 🚫 Suppressed | Search field | Characters appear in search input |
+| LoanModal open, patron field focused | 🚫 Suppressed | Patron name field | Characters appended to patron name; `Enter` submits loan |
+| Conflict resolution modal open | 🚫 Suppressed | Dedicated patron barcode field | `getPatronByBarcode()` triggered |
+
+---
+
 ## Implementation Notes
 
 - **Feature flag**: Always check `isBarcodeEnabled()` before registering any listener or rendering any barcode UI. See the [Feature Flag](#feature-flag) section above.
