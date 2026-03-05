@@ -1,9 +1,12 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
+  import BarcodeInput from './BarcodeInput.svelte';
   import { apiClient, type GameStatusList } from './api-client';
+  import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
+  import { isBarcodeEnabled } from './config';
 
   let searchQuery = '';
   let gameStatusList: GameStatusList = { games: [] };
@@ -63,10 +66,30 @@
       hour12: true
     });
   }
+
+  function handleBarcodeFound(game: components["schemas"]["Game"]) {
+    const match = gameStatusList.games.find(gs => gs.game.gameId === game.gameId);
+    if (!match) {
+      toasts.add(`${game.title} has already been returned.`, 'warn');
+      return;
+    }
+    handleReturn(match.transactionId, match.game.title);
+  }
+
+  function handleBarcodeError(message: string) {
+    toasts.add(message, 'error');
+  }
 </script>
 
-<div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-  <SearchBar bind:searchQuery placeholder="Search checked out games..." onSearch={handleSearch} />
+<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+  <div class="flex items-center justify-between gap-4">
+    <div class="flex-1">
+      <SearchBar bind:searchQuery placeholder="Search checked out games..." onSearch={handleSearch} />
+    </div>
+    {#if isBarcodeEnabled()}
+      <BarcodeInput onGameFound={handleBarcodeFound} onError={handleBarcodeError} />
+    {/if}
+  </div>
 </div>
 
 {#if loading && gameStatusList.games.length === 0}

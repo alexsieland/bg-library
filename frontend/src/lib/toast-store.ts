@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-export type ToastType = 'success' | 'error';
+export type ToastType = 'success' | 'error' | 'warn';
 
 export interface Toast {
   id: string;
@@ -18,9 +18,11 @@ export const toasts = {
     const id = crypto.randomUUID();
     const dismissible = true;
     
-    // Default success toasts to 3 seconds auto-close if not specified
+    // Default timeouts by type
     if (type === 'success' && timeout === undefined) {
       timeout = 3000;
+    } else if (type === 'warn' && timeout === undefined) {
+      timeout = 10000;
     }
 
     const toast: Toast = { id, message, type, dismissible, timeout };
