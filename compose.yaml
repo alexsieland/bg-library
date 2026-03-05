@@ -12,6 +12,7 @@ services:
       - API_URL=${API_URL:-http://localhost:80}
       - NGINX_HOST=${APP_HOST:-localhost}
       - SERVICE_NAME=nginx
+      - BARCODE_ENABLED=true
     networks:
       - bg-library_frontend_nw
     ports:

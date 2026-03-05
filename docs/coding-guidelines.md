@@ -46,6 +46,7 @@ The frontend is a Svelte application built with Vite and TypeScript.
 - **Styling**: (Insert preferred styling method here, e.g., Tailwind or CSS modules, if applicable).
 - **API Communication**: Create centralized API utility functions that handle fetching and error state management, leveraging the generated types for request/response payloads.
 - **Search Sanitization**: The frontend sends raw search strings to the backend. All sanitization, including accent folding and case-insensitivity, is handled by the backend API.
+- **Barcode Feature Flag**: All barcode-related UI, event listeners, and API calls must be gated behind `isBarcodeEnabled()` (from `frontend/src/lib/config.ts`). If the flag is `false`, no barcode components should render and no barcode listeners should be registered. See `docs/barcode-scanner-input.md` for detail.
 
 ## 3. Persistence Layer (PostgreSQL, sqlc)
 
