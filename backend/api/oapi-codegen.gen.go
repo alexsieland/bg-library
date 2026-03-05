@@ -29,6 +29,12 @@ const (
 	VALIDATIONERROR    ErrorResponseErrorCode = "VALIDATION_ERROR"
 )
 
+// Defines values for TransactionEventEventType.
+const (
+	CheckIn  TransactionEventEventType = "check_in"
+	CheckOut TransactionEventEventType = "check_out"
+)
+
 // BulkAddResponse Response for bulk add operations
 type BulkAddResponse struct {
 	// Imported Number of records imported successfully
@@ -154,6 +160,33 @@ type PatronList struct {
 	Patrons []Patron `json:"patrons"`
 }
 
+// TransactionEvent Record of a library transaction event
+type TransactionEvent struct {
+	// EventTimestamp ISO 8601 timestamp when the transaction occurred in UTC
+	EventTimestamp time.Time `json:"event_timestamp"`
+
+	// EventType Type of transaction event
+	EventType TransactionEventEventType `json:"event_type"`
+
+	// Game A game in the library
+	Game Game `json:"game"`
+
+	// Patron A library patron
+	Patron Patron `json:"patron"`
+
+	// TransactionId Transaction ID
+	TransactionId openapi_types.UUID `json:"transaction_id"`
+}
+
+// TransactionEventEventType Type of transaction event
+type TransactionEventEventType string
+
+// TransactionEventList List of transaction events
+type TransactionEventList struct {
+	// Transactions Array of transaction events
+	Transactions []TransactionEvent `json:"transactions"`
+}
+
 // CheckInGameParams defines parameters for CheckInGame.
 type CheckInGameParams struct {
 	// TransactionId Transaction ID
@@ -180,6 +213,21 @@ type ListPatronsParams struct {
 
 // BulkAddPatronsTextBody defines parameters for BulkAddPatrons.
 type BulkAddPatronsTextBody = []byte
+
+// ListTransactionEventsParams defines parameters for ListTransactionEvents.
+type ListTransactionEventsParams struct {
+	// GameTitle Filter by game title (optional)
+	GameTitle *string `form:"game_title,omitempty" json:"game_title,omitempty"`
+
+	// PatronName Filter by patron name (optional)
+	PatronName *string `form:"patron_name,omitempty" json:"patron_name,omitempty"`
+
+	// Limit Limit the number of transactions returned (optional)
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Offset for pagination (optional)
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.
 type CheckOutGameJSONRequestBody = CheckOutRequest
@@ -336,6 +384,9 @@ type ClientInterface interface {
 	BulkAddPatronsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	BulkAddPatronsWithTextBody(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListTransactionEvents request
+	ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -607,6 +658,18 @@ func (c *Client) BulkAddPatronsWithBody(ctx context.Context, contentType string,
 
 func (c *Client) BulkAddPatronsWithTextBody(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBulkAddPatronsRequestWithTextBody(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTransactionEventsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1278,6 +1341,103 @@ func NewBulkAddPatronsRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
+// NewListTransactionEventsRequest generates requests for ListTransactionEvents
+func NewListTransactionEventsRequest(server string, params *ListTransactionEventsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/library/transactions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.GameTitle != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "game_title", runtime.ParamLocationQuery, *params.GameTitle); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PatronName != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "patron_name", runtime.ParamLocationQuery, *params.PatronName); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetHealthRequest generates requests for GetHealth
 func NewGetHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -1409,6 +1569,9 @@ type ClientWithResponsesInterface interface {
 	BulkAddPatronsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error)
 
 	BulkAddPatronsWithTextBodyWithResponse(ctx context.Context, body BulkAddPatronsTextRequestBody, reqEditors ...RequestEditorFn) (*BulkAddPatronsResponse, error)
+
+	// ListTransactionEventsWithResponse request
+	ListTransactionEventsWithResponse(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*ListTransactionEventsResponse, error)
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
@@ -1778,6 +1941,29 @@ func (r BulkAddPatronsResponse) StatusCode() int {
 	return 0
 }
 
+type ListTransactionEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TransactionEventList
+	JSON400      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListTransactionEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListTransactionEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetHealthResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1998,6 +2184,15 @@ func (c *ClientWithResponses) BulkAddPatronsWithTextBodyWithResponse(ctx context
 		return nil, err
 	}
 	return ParseBulkAddPatronsResponse(rsp)
+}
+
+// ListTransactionEventsWithResponse request returning *ListTransactionEventsResponse
+func (c *ClientWithResponses) ListTransactionEventsWithResponse(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*ListTransactionEventsResponse, error) {
+	rsp, err := c.ListTransactionEvents(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListTransactionEventsResponse(rsp)
 }
 
 // GetHealthWithResponse request returning *GetHealthResponse
@@ -2509,6 +2704,39 @@ func ParseBulkAddPatronsResponse(rsp *http.Response) (*BulkAddPatronsResponse, e
 	return response, nil
 }
 
+// ParseListTransactionEventsResponse parses an HTTP response from a ListTransactionEventsWithResponse call
+func ParseListTransactionEventsResponse(rsp *http.Response) (*ListTransactionEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListTransactionEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TransactionEventList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetHealthResponse parses an HTTP response from a GetHealthWithResponse call
 func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2585,6 +2813,9 @@ type ServerInterface interface {
 	// Add multiple patrons
 	// (POST /api/v1/library/patrons)
 	BulkAddPatrons(c *gin.Context)
+	// List transaction events
+	// (GET /api/v1/library/transactions)
+	ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams)
 
 	// (GET /health)
 	GetHealth(c *gin.Context)
@@ -2949,6 +3180,56 @@ func (siw *ServerInterfaceWrapper) BulkAddPatrons(c *gin.Context) {
 	siw.Handler.BulkAddPatrons(c)
 }
 
+// ListTransactionEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListTransactionEvents(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTransactionEventsParams
+
+	// ------------- Optional query parameter "game_title" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "game_title", c.Request.URL.Query(), &params.GameTitle)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter game_title: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "patron_name" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "patron_name", c.Request.URL.Query(), &params.PatronName)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter patron_name: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListTransactionEvents(c, params)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(c *gin.Context) {
 
@@ -3005,5 +3286,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PUT(options.BaseURL+"/api/v1/library/patron/id/:patronId", wrapper.UpdatePatron)
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
 	router.POST(options.BaseURL+"/api/v1/library/patrons", wrapper.BulkAddPatrons)
+	router.GET(options.BaseURL+"/api/v1/library/transactions", wrapper.ListTransactionEvents)
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth)
 }

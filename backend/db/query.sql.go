@@ -576,3 +576,60 @@ func (q *Queries) SearchPatrons(ctx context.Context, arg SearchPatronsParams) ([
 	}
 	return items, nil
 }
+
+const searchTransactionEvents = `-- name: SearchTransactionEvents :many
+SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_type, event_timestamp
+FROM vw_library_transaction_events
+WHERE sanitized_title ILIKE $1 AND patron_full_name ILIKE $2
+LIMIT $3 OFFSET $4
+`
+
+type SearchTransactionEventsParams struct {
+	SanitizedTitle pgtype.Text
+	PatronFullName string
+	Limit          int32
+	Offset         int32
+}
+
+type SearchTransactionEventsRow struct {
+	TransactionID  pgtype.UUID
+	GameID         pgtype.UUID
+	GameTitle      string
+	PatronID       pgtype.UUID
+	PatronFullName string
+	EventType      TransactionEventType
+	EventTimestamp pgtype.Timestamp
+}
+
+func (q *Queries) SearchTransactionEvents(ctx context.Context, arg SearchTransactionEventsParams) ([]SearchTransactionEventsRow, error) {
+	rows, err := q.db.Query(ctx, searchTransactionEvents,
+		arg.SanitizedTitle,
+		arg.PatronFullName,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchTransactionEventsRow
+	for rows.Next() {
+		var i SearchTransactionEventsRow
+		if err := rows.Scan(
+			&i.TransactionID,
+			&i.GameID,
+			&i.GameTitle,
+			&i.PatronID,
+			&i.PatronFullName,
+			&i.EventType,
+			&i.EventTimestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

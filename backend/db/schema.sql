@@ -88,25 +88,26 @@ LEFT JOIN transactions AS t ON t.game_id = g.id
 LEFT JOIN vw_library_patrons AS p ON t.patron_id = p.id
 ORDER BY g.id, t.checkout_timestamp DESC;
 
-CREATE VIEW vw_library_transactions AS
+CREATE VIEW vw_library_transaction_events AS
 SELECT
     te.transaction_id,
-    g.title AS game_title,
+    g.id AS game_id,
+    COALESCE(g.title, 'Missing Game') AS game_title,
     g.sanitized_title AS sanitized_title,
     te.patron_id,
-    p.full_name AS patron_full_name,
+    COALESCE(p.full_name, 'Missing Patron') AS patron_full_name,
     te.event_timestamp,
     te.event_type
 FROM transaction_events AS te
          LEFT JOIN games AS g ON te.game_id = g.id
-         LEFT JOIN vw_library_patrons AS p ON te.patron_id = p.id
+         LEFT JOIN patrons AS p ON te.patron_id = p.id
 ORDER BY te.event_timestamp DESC;
 
 CREATE OR REPLACE FUNCTION fn_record_checkout_event()
     RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO transaction_events (transaction_id, game_id, patron_id, event_type, event_timestamp)
-    VALUES (NEW.id, NEW.game_id, NEW.patron_id, 'checked_out', NEW.checkout_timestamp);
+    VALUES (NEW.id, NEW.game_id, NEW.patron_id, 'check_out', NEW.checkout_timestamp);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -121,7 +122,7 @@ CREATE OR REPLACE FUNCTION fn_record_checkin_event()
 BEGIN
     IF OLD.checkin_timestamp IS NULL AND NEW.checkin_timestamp IS NOT NULL THEN
         INSERT INTO transaction_events (transaction_id, game_id, patron_id, event_type, event_timestamp)
-        VALUES (NEW.id, NEW.game_id, NEW.patron_id, 'checked_in', NEW.checkin_timestamp);
+        VALUES (NEW.id, NEW.game_id, NEW.patron_id, 'check_in', NEW.checkin_timestamp);
     END IF;
     RETURN NEW;
 END;

@@ -151,6 +151,26 @@ func ValidateStringLength(fieldName string, str string, minLength int, maxLength
 	return nil
 }
 
+func ValidateIntMin(fieldName string, i int, minVal int, errorDetails []ErrorDetail) []ErrorDetail {
+	if i < minVal {
+		return append(errorDetails, ErrorDetail{
+			Field:   fieldName,
+			Message: "Must be greater than or equal to " + strconv.Itoa(minVal),
+		})
+	}
+	return errorDetails
+}
+
+func ValidateIntMax(fieldName string, i int, maxVal int, errorDetails []ErrorDetail) []ErrorDetail {
+	if i > maxVal {
+		return append(errorDetails, ErrorDetail{
+			Field:   fieldName,
+			Message: "Must be less than or equal to " + strconv.Itoa(maxVal),
+		})
+	}
+	return errorDetails
+}
+
 func SanitizeTitle(title string) string {
 	t := norm.NFD.String(strings.ToLower(title))
 	var result strings.Builder

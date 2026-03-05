@@ -463,8 +463,8 @@ paths:
     get:
       tags:
         - transactions
-      operationId: listTransactions
-      summary: List transactions
+      operationId: listTransactionEvents
+      summary: List transaction events
       description: |
         List all library transactions, ordered by timestamp (newest first).
         Game titles and patron names filters stack, so if you filter by both title and patron name, 
@@ -486,12 +486,14 @@ paths:
             type: integer
             minimum: 1
             maximum: 100
+            default: 100
           description: Limit the number of transactions returned (optional)
         - in: query
           name: offset
           schema:
             type: integer
             minimum: 0
+            default: 0
           description: Offset for pagination (optional)
       responses:
         '200':
@@ -499,7 +501,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LibraryTransactionList'
+                $ref: '#/components/schemas/TransactionEventList'
         '400':
           description: Invalid query parameters
           content:
@@ -668,15 +670,16 @@ components:
         - gameId
         - timestamp
       properties:
-        transaction_id:
+        id:
           type: string
           format: uuid
           description: Transaction ID
           example: "f13bb82c-18dd-4a94-a878-44ca6706e2d9"
-        game:
-          $ref: "#/components/schemas/Game"
-        patron:
-          $ref: "#/components/schemas/Patron"
+        patronId:
+          type: string
+          format: uuid
+          description: Patron ID
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
         gameId:
           type: string
           format: uuid
@@ -689,17 +692,49 @@ components:
           example: "2026-01-31T12:00:00Z"
       description: Request payload for making a check in/out transaction
 
-    LibraryTransactionList:
+    TransactionEvent:
+      type: object
+      required:
+        - transaction_id
+        - patron
+        - game
+        - event_timestamp
+        - event_type
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+          description: Transaction ID
+          example: "f13bb82c-18dd-4a94-a878-44ca6706e2d9"
+        game:
+          $ref: "#/components/schemas/Game"
+        patron:
+          $ref: "#/components/schemas/Patron"
+        event_timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the transaction occurred in UTC
+          example: "2026-01-31T12:00:00Z"
+        event_type:
+          type: string
+          enum:
+            - check_in
+            - check_out
+          description: Type of transaction event
+          example: "check_out"
+      description: Record of a library transaction event
+
+    TransactionEventList:
       type: object
       required:
         - transactions
-      description: List of library transactions
+      description: List of transaction events
       properties:
         transactions:
           type: array
           items:
-            $ref: '#/components/schemas/LibraryTransaction'
-          description: Array of library transactions
+            $ref: '#/components/schemas/TransactionEvent'
+          description: Array of transaction events
 
     ErrorResponse:
       type: object
