@@ -40,6 +40,37 @@ describe('Toast System', () => {
     expect(get(toasts)).toHaveLength(1);
   });
 
+  it('should auto-close warn toasts after 10 seconds by default', () => {
+    toasts.add('Warning message', 'warn');
+    expect(get(toasts)).toHaveLength(1);
+
+    vi.advanceTimersByTime(9999);
+    expect(get(toasts)).toHaveLength(1);
+
+    vi.advanceTimersByTime(1);
+    expect(get(toasts)).toHaveLength(0);
+  });
+
+  it('should NOT auto-close warn toasts before 10 seconds', () => {
+    toasts.add('Warning message', 'warn');
+    expect(get(toasts)).toHaveLength(1);
+
+    vi.advanceTimersByTime(3000);
+    expect(get(toasts)).toHaveLength(1);
+  });
+
+  it('should render warn toasts with yellow styling', async () => {
+    render(ToastContainer);
+
+    toasts.add('Watch out', 'warn');
+
+    await waitFor(() => {
+      expect(screen.getByText('Watch out')).toBeInTheDocument();
+      const alert = screen.getByRole('alert');
+      expect(alert.className).toContain('bg-yellow-500');
+    });
+  });
+
   it('should render toasts in ToastContainer', async () => {
     render(ToastContainer);
     

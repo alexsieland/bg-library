@@ -70,7 +70,7 @@
   function handleBarcodeFound(game: components["schemas"]["Game"]) {
     const match = gameStatusList.games.find(gs => gs.game.gameId === game.gameId);
     if (!match) {
-      toasts.add(`${game.title} is not currently checked out`, 'error');
+      toasts.add(`${game.title} has already been returned.`, 'warn');
       return;
     }
     handleReturn(match.transactionId, match.game.title);

@@ -195,7 +195,7 @@ describe('CheckInTable (barcode enabled)', () => {
     });
   });
 
-  it('Should show an error toast when the scanned game is not in the checked out list', async () => {
+  it('Should show a warning toast when the scanned game is not in the checked out list', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
       games: [{ gameId: 'unknown-id', title: 'Azul', barcode: '1111111111111' }],
