@@ -2,9 +2,12 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import LoanModal from './LoanModal.svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiClient } from './api-client';
+import { isBarcodeEnabled } from './config';
+import { toasts } from './toast-store';
 
 vi.mock('./config', () => ({
-  getBackendUrl: () => 'http://localhost:8080'
+  getBackendUrl: () => 'http://localhost:8080',
+  isBarcodeEnabled: vi.fn().mockReturnValue(false),
 }));
 
 // Mock apiClient
@@ -16,6 +19,7 @@ vi.mock('./api-client', async (importOriginal) => {
       listPatrons: vi.fn(),
       addPatron: vi.fn(),
       checkOutGame: vi.fn(),
+      getPatronByBarcode: vi.fn(),
     }
   };
 });
@@ -31,6 +35,7 @@ const mockPatronData = {
 describe('LoanModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isBarcodeEnabled).mockReturnValue(false);
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -142,3 +147,121 @@ describe('LoanModal', () => {
     });
   });
 });
+
+describe('LoanModal (barcode enabled)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isBarcodeEnabled).mockReturnValue(true);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  it('Should not render the patron barcode field when isBarcodeEnabled is false', async () => {
+    vi.mocked(isBarcodeEnabled).mockReturnValue(false);
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    expect(screen.queryByPlaceholderText('Scan…')).not.toBeInTheDocument();
+  });
+
+  it('Should render the patron barcode field when isBarcodeEnabled is true', async () => {
+    render(LoanModal, { open: true, game: mockGame });
+
+    expect(screen.getByPlaceholderText('Scan…')).toBeInTheDocument();
+  });
+
+  it('Should call getPatronByBarcode with the scanned value when Enter is pressed', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'P-12345' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.getPatronByBarcode).toHaveBeenCalledWith('P-12345');
+    });
+  });
+
+  it('Should populate the patron name field when a barcode scan succeeds', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'P-12345' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      const patronInput = screen.getByPlaceholderText('Enter patron name') as HTMLInputElement;
+      expect(patronInput.value).toBe('Alice');
+    });
+  });
+
+  it('Should clear the barcode field after a successful scan', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…') as HTMLInputElement;
+    await fireEvent.input(barcodeInput, { target: { value: 'P-12345' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(barcodeInput.value).toBe('');
+    });
+  });
+
+  it('Should show a toast error when the barcode is not found', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Not found'));
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'INVALID' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      let toastMessages: string[] = [];
+      toasts.subscribe(t => { toastMessages = t.map(x => x.message); })();
+      expect(toastMessages).toContain('Barcode scan failed: Not found');
+    });
+  });
+
+  it('Should not call getPatronByBarcode when Enter is pressed with an empty barcode field', async () => {
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    expect(apiClient.getPatronByBarcode).not.toHaveBeenCalled();
+  });
+
+  it('Should allow immediate loan submission after patron is populated by barcode scan', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [{ patronId: 'p1', name: 'Alice' }] });
+    vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
+
+    const onLoanSuccess = vi.fn();
+    render(LoanModal, { open: true, game: mockGame, onLoanSuccess });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'P-12345' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      const patronInput = screen.getByPlaceholderText('Enter patron name') as HTMLInputElement;
+      expect(patronInput.value).toBe('Alice');
+    });
+
+    const loanButton = screen.getByText('Loan');
+    await fireEvent.click(loanButton);
+
+    await waitFor(() => {
+      expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p1');
+      expect(onLoanSuccess).toHaveBeenCalled();
+    });
+  });
+});
+
