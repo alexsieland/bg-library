@@ -4,6 +4,28 @@ This document researches and evaluates approaches for integrating a USB/Bluetoot
 
 ---
 
+## Feature Flag
+
+All barcode-related UI and logic is controlled by the `BARCODE_ENABLED` runtime configuration flag, exposed via `isBarcodeEnabled()` from `frontend/src/lib/config.ts`.
+
+**Any component, listener, action, or UI element related to barcode scanning must be gated behind this flag.** If `isBarcodeEnabled()` returns `false`:
+
+- The global keyboard listener must not be registered.
+- Barcode scan input fields must not be rendered.
+- Barcode-triggered API calls (`getGameByBarcode`, `getPatronByBarcode`) must not be invoked from the barcode path.
+- No barcode-related UI affordances (buttons, labels, hints) should be visible to the user.
+
+```svelte
+<!-- Example: conditionally mounting barcode functionality -->
+{#if isBarcodeEnabled()}
+  <!-- scanner action / scan field / conflict resolution UI -->
+{/if}
+```
+
+The flag is set in `public/config.js` at deployment time, allowing barcode support to be enabled or disabled per environment without a code change or rebuild.
+
+---
+
 ## Background: How HID Barcode Scanners Work in a Browser
 
 A HID (Human Interface Device) barcode scanner presents itself to the operating system as a standard keyboard. When a barcode is scanned, the device:
@@ -190,8 +212,11 @@ The permission flow and Chromium-only limitation make it unsuitable as a primary
 
 ## Implementation Notes
 
+- **Feature flag**: Always check `isBarcodeEnabled()` before registering any listener or rendering any barcode UI. See the [Feature Flag](#feature-flag) section above.
 - The global listener should be implemented as a **Svelte action** (`use:barcodeScanner`) or a **rune-based snippet** so it can be cleanly scoped to individual views and automatically removed when the component is destroyed.
 - The timing threshold should be **configurable** (e.g., via `public/config.js`) to accommodate different scanner models, which can vary in burst speed.
 - Barcode values should be passed to the existing `apiClient.getGameByBarcode()` or `apiClient.getPatronByBarcode()` functions directly — no additional sanitization is needed on the frontend (per the project's separation-of-concerns policy: backend handles all sanitization).
 - In the global listener, call `e.preventDefault()` on buffered keystrokes only if you are confident they came from a scanner (i.e., after the `Enter` arrives and the threshold was met). Do **not** call `preventDefault` speculatively, as this would break normal typing.
+
+
 

@@ -4,6 +4,10 @@ This document describes how the system handles UPC barcode conflicts during game
 
 ---
 
+> **Feature Flag**: The entire barcode conflict workflow is only active when `isBarcodeEnabled()` returns `true` (see `frontend/src/lib/config.ts`). All UI elements, conflict resolution modals, and barcode-triggered API calls described in this document must be gated behind that check. If the flag is `false`, the standard manual checkout/check-in flow applies and no barcode logic should be invoked.
+
+---
+
 ## Background
 
 The library uses barcodes to identify games and patrons. However, **UPC barcodes are not unique per copy** — two physical copies of the same game will share the same UPC barcode. The library database may therefore contain multiple game records that share an identical barcode value.
