@@ -174,17 +174,17 @@ func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
 		return
 	}
 	var barcode = pgtype.Text{String: gameBarcode, Valid: true}
-	dbGame, err := s.queries.GetGameByBarcode(c.Request.Context(), barcode)
+	dbGames, err := s.queries.GetGameByBarcode(c.Request.Context(), barcode)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			notFound(c)
-			return
-		}
 		log.Printf("Error getting game: %v", err)
 		internalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, FromVwLibraryGame(dbGame))
+	if dbGames == nil || len(dbGames) == 0 {
+		notFound(c)
+		return
+	}
+	c.JSON(http.StatusOK, FromVwLibraryGames(dbGames))
 }
 
 func (s Server) UpdateGame(c *gin.Context, gameId string) {
@@ -256,12 +256,12 @@ func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {
 		}
 	}
 
-	gameList := make([]GameStatus, len(dbGameStatusList))
+	gameStatusList := make([]GameStatus, len(dbGameStatusList))
 	for i, dbGameStatus := range dbGameStatusList {
-		gameList[i] = FromVwGameStatus(dbGameStatus)
+		gameStatusList[i] = FromVwGameStatus(dbGameStatus)
 	}
 
-	c.JSON(http.StatusOK, GameList{Games: gameList})
+	c.JSON(http.StatusOK, GameStatusList{Games: gameStatusList})
 }
 
 func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
@@ -297,10 +297,10 @@ func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
 		}
 	}
 
-	gameList := make([]GameStatus, len(dbGameStatusList))
+	gameStatusList := make([]GameStatus, len(dbGameStatusList))
 	for i, dbGameStatus := range dbGameStatusList {
-		gameList[i] = FromVwGameStatus(dbGameStatus)
+		gameStatusList[i] = FromVwGameStatus(dbGameStatus)
 	}
 
-	c.JSON(http.StatusOK, GameList{Games: gameList})
+	c.JSON(http.StatusOK, GameStatusList{Games: gameStatusList})
 }

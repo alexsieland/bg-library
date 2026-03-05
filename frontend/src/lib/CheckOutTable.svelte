@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Badge, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
-  import { apiClient, type GameList } from './api-client';
+  import { apiClient, type GameStatusList } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
@@ -12,7 +12,7 @@
   let loanModalOpen = false;
   let selectedGame: components["schemas"]["Game"] | null = null;
 
-  let gameList: GameList = { games: [] };
+  let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
 
@@ -21,8 +21,8 @@
     loading = true;
     error = null;
     try {
-      gameList = await apiClient.listGames({ title: searchQuery || undefined });
-      console.log('Fetched games:', gameList.games.length);
+      gameStatusList = await apiClient.listGames({ title: searchQuery || undefined });
+      console.log('Fetched games:', gameStatusList.games.length);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
@@ -57,7 +57,7 @@
 
 <LoanModal bind:open={loanModalOpen} game={selectedGame} onLoanSuccess={fetchGames} />
 
-{#if loading && gameList.games.length === 0}
+{#if loading && gameStatusList.games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
@@ -69,7 +69,7 @@
       <TableHeadCell>Action</TableHeadCell>
     </TableHead>
     <TableBody class="divide-y">
-      {#each gameList.games as gameStatus (gameStatus.game.gameId)}
+      {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
           <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">{gameStatus.game.title}</TableBodyCell>
           <TableBodyCell>
@@ -102,7 +102,7 @@
           </TableBodyCell>
         </TableBodyRow>
       {/each}
-      {#if gameList.games.length === 0}
+      {#if gameStatusList.games.length === 0}
         <TableBodyRow>
           <TableBodyCell colspan={3} class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
             No games found.

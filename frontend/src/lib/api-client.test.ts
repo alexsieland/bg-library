@@ -107,6 +107,57 @@ describe('ApiClient', () => {
       expect(result).toHaveProperty('gameId', '123');
     });
 
+    describe('getGameByBarcode', () => {
+      it('Should make a GET request to the barcode URL with the provided barcode', async () => {
+        const mockGames = { games: [{ gameId: '123', title: 'Catan', barcode: '9780307455925' }] };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
+
+        await apiClient.getGameByBarcode('9780307455925');
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/library/game/barcode/9780307455925');
+        expect(request.method).toBe('GET');
+      });
+
+      it('Should return a GameList when one game matches the barcode', async () => {
+        const mockGames = { games: [{ gameId: '123', title: 'Catan', barcode: '9780307455925' }] };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
+
+        const result = await apiClient.getGameByBarcode('9780307455925');
+
+        expect(result.games).toHaveLength(1);
+        expect(result.games[0]).toHaveProperty('gameId', '123');
+        expect(result.games[0]).toHaveProperty('title', 'Catan');
+      });
+
+      it('Should return a GameList with multiple games when the barcode matches more than one game', async () => {
+        const mockGames = {
+          games: [
+            { gameId: '123', title: 'Catan', barcode: '9780307455925' },
+            { gameId: '456', title: 'Catan (2nd Edition)', barcode: '9780307455925' },
+          ]
+        };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
+
+        const result = await apiClient.getGameByBarcode('9780307455925');
+
+        expect(result.games).toHaveLength(2);
+      });
+
+      it('Should throw an error when no games are found for the barcode', async () => {
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 404,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({ message: 'Not found' }),
+          text: async () => JSON.stringify({ message: 'Not found' }),
+        } as Response);
+
+        await expect(apiClient.getGameByBarcode('0000000000000')).rejects.toThrow();
+      });
+    });
+
     it('updateGame should make a PUT request', async () => {
       const updateData = { title: 'Updated Title' };
       vi.mocked(fetch).mockResolvedValue(mockResponse(204, undefined));
@@ -279,6 +330,43 @@ describe('ApiClient', () => {
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/patron/id/p1');
       expect(result).toHaveProperty('patronId', 'p1');
+    });
+
+    describe('getPatronByBarcode', () => {
+      it('Should make a GET request to the barcode URL with the provided barcode', async () => {
+        const mockPatron = { patronId: 'p1', name: 'John Doe', barcode: 'P-12345' };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockPatron));
+
+        await apiClient.getPatronByBarcode('P-12345');
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/library/patron/barcode/P-12345');
+        expect(request.method).toBe('GET');
+      });
+
+      it('Should return a Patron when the barcode matches', async () => {
+        const mockPatron = { patronId: 'p1', name: 'John Doe', barcode: 'P-12345' };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockPatron));
+
+        const result = await apiClient.getPatronByBarcode('P-12345');
+
+        expect(result).toHaveProperty('patronId', 'p1');
+        expect(result).toHaveProperty('name', 'John Doe');
+        expect(result).toHaveProperty('barcode', 'P-12345');
+      });
+
+      it('Should throw an error when no patron is found for the barcode', async () => {
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 404,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({ message: 'Not found' }),
+          text: async () => JSON.stringify({ message: 'Not found' }),
+        } as Response);
+
+        await expect(apiClient.getPatronByBarcode('INVALID-BARCODE')).rejects.toThrow();
+      });
     });
 
     it('updatePatron should make a PUT request', async () => {
