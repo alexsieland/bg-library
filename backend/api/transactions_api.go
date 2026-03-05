@@ -103,7 +103,7 @@ func getSearchTransactionEventsParams(params ListTransactionEventsParams) (db.Se
 	var errorDetails []ErrorDetail
 	sanitizedTitle := pgtype.Text{String: "", Valid: true}
 	if params.GameTitle != nil {
-		ValidateStringLength("gameTitle", *params.GameTitle, 1, 100, errorDetails)
+		errorDetails = ValidateStringLength("gameTitle", *params.GameTitle, 1, 100, errorDetails)
 		sanitizedTitle = pgtype.Text{
 			String: SanitizeTitle(*params.GameTitle),
 			Valid:  true,
@@ -111,18 +111,18 @@ func getSearchTransactionEventsParams(params ListTransactionEventsParams) (db.Se
 	}
 	patronFullName := ""
 	if params.PatronName != nil {
-		ValidateStringLength("patronName", *params.GameTitle, 1, 100, errorDetails)
+		errorDetails = ValidateStringLength("patronName", *params.PatronName, 1, 100, errorDetails)
 		patronFullName = *params.PatronName
 	}
 	var limit int32 = 100
 	if params.Limit != nil {
-		ValidateIntMin("limit", *params.Limit, 1, errorDetails)
-		ValidateIntMax("limit", *params.Limit, 100, errorDetails)
+		errorDetails = ValidateIntMin("limit", *params.Limit, 1, errorDetails)
+		errorDetails = ValidateIntMax("limit", *params.Limit, 100, errorDetails)
 		limit = int32(*params.Limit)
 	}
 	var offset int32 = 0
 	if params.Offset != nil {
-		ValidateIntMin("offset", *params.Limit, 1, errorDetails)
+		errorDetails = ValidateIntMin("offset", *params.Offset, 0, errorDetails)
 		offset = int32(*params.Offset)
 	}
 	if len(errorDetails) > 0 {
