@@ -30,11 +30,11 @@ run:
 
 format:
 	@echo "Formatting code..."
-	@npx prettier --write .
+	@npx prettier --write --plugin prettier-plugin-svelte .
 
 lint:
 	@echo "Checking code formatting..."
-	@npx prettier --check .
+	@npx prettier --check --plugin prettier-plugin-svelte .
 
 test:
 	@echo "Running tests..."
