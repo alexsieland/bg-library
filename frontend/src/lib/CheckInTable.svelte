@@ -100,9 +100,17 @@
       toasts.add(message, 'error');
     }
   }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    // Alt+B: focus the barcode input
+    if (event.altKey && event.key === 'b') {
+      event.preventDefault();
+      if (barcodeInputElement) barcodeInputElement.focus();
+    }
+  }
 </script>
 
-<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} />
+<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
 
 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
   <div class="flex items-center justify-between gap-4">
