@@ -18,7 +18,7 @@
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
-  let barcodeInputElement: HTMLInputElement;
+  let barcodeInputElement: HTMLInputElement | undefined;
 
   async function fetchGames() {
     console.log('fetchGames called with query:', searchQuery);
@@ -67,6 +67,7 @@
       if (barcodeInputElement) {
         barcodeInputElement.focus();
         barcodeInputElement.value = barcode;
+        barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
       }
       const result = await apiClient.getGameByBarcode(barcode);
       if (result.games.length > 1) {
@@ -89,7 +90,9 @@
   }
 </script>
 
-<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
+{#if isBarcodeEnabled()}
+  <svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
+{/if}
 
 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
   <div class="flex items-center justify-between gap-4">
