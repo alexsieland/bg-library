@@ -3,7 +3,7 @@ CREATE TABLE games (
     title VARCHAR(100) NOT NULL,
     sanitized_title VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
-    deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP,
     barcode VARCHAR(48), -- Not unique because a library might use UPCs
     PRIMARY KEY (id)
 );
@@ -12,7 +12,7 @@ CREATE TABLE patrons (
     id UUID DEFAULT gen_random_uuid(),
     full_name VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
-    deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP,
     barcode VARCHAR(48) UNIQUE,
     PRIMARY KEY (id)
 );
@@ -39,6 +39,47 @@ CREATE TABLE transaction_events (
                                     PRIMARY KEY (id)
 );
 
+CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'no_entries', 'other');
+CREATE TABLE play_to_win_games (
+    id UUID DEFAULT gen_random_uuid(),
+    game_id UUID NOT NULL UNIQUE REFERENCES games(id),
+    is_play_to_win BOOLEAN NOT NULL,
+    provided_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    deletion_reason play_to_win_game_deletion_type,
+    deletion_reason_comment VARCHAR(500),
+    PRIMARY KEY (id)
+);
+
+CREATE TYPE play_to_win_session_deletion_type AS ENUM ('foul_play', 'too_many_players', 'too_few_players', 'abnormal_playtime', 'other');
+CREATE TABLE play_to_win_sessions (
+    id UUID DEFAULT gen_random_uuid(),
+    play_to_win_id UUID NOT NULL REFERENCES play_to_win_games(id),
+    playtime_minutes INTEGER,
+    created_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    deletion_reason play_to_win_session_deletion_type,
+    deletion_reason_comment VARCHAR(500),
+    PRIMARY KEY (id)
+);
+
+CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('winner', 'failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
+CREATE TABLE play_to_win_game_entries (
+    id UUID DEFAULT gen_random_uuid(),
+    session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),
+    entrant_name VARCHAR(100) NOT NULL,
+    entrant_email VARCHAR(100),
+    entrant_phone VARCHAR(100),
+    created_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    deletion_reason play_to_win_entry_deletion_type,
+    deletion_reason_comment VARCHAR(500),
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_game_barcode ON games(barcode);
+
 CREATE INDEX idx_game_titles ON games(sanitized_title);
 
 CREATE INDEX idx_patron_full_name ON patrons(full_name);
@@ -56,22 +97,22 @@ ON transactions(checkin_timestamp)
 WHERE checkin_timestamp IS NULL;
 
 CREATE INDEX idx_active_games
-ON games(deleted)
-WHERE deleted IS NOT NULL;
+ON games(deleted_at)
+WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_active_patrons
-ON patrons(deleted)
-WHERE deleted IS NOT NULL;
+ON patrons(deleted_at)
+WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_library_games AS
 SELECT id, title, sanitized_title, barcode, created_at
 FROM games
-WHERE deleted IS FALSE;
+WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_library_patrons AS
 SELECT id, full_name, barcode, created_at
 FROM patrons
-WHERE deleted IS FALSE;
+WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_game_status AS
 SELECT DISTINCT ON (g.id)

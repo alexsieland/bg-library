@@ -34,7 +34,7 @@ WHERE id = $1;
 
 -- name: DeleteGame :exec
 UPDATE games
-    SET deleted = TRUE
+    SET deleted = now()
 WHERE id = $1;
 
 -- name: ListPatrons :many
@@ -72,7 +72,7 @@ WHERE id = $1;
 
 -- name: DeletePatron :exec
 UPDATE patrons
-set deleted = TRUE
+set deleted = now()
 WHERE id = $1;
 
 -- name: CheckOutGame :one
