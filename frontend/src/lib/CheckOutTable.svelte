@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
+  import { barcodeScanner } from './barcodeScannerAction';
 
   import LoanModal from './LoanModal.svelte';
 
@@ -17,6 +18,7 @@
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
+  let barcodeInputElement: HTMLInputElement;
 
   async function fetchGames() {
     console.log('fetchGames called with query:', searchQuery);
@@ -59,7 +61,27 @@
   function handleBarcodeError(message: string) {
     toasts.add(message, 'error');
   }
+
+  async function onScanComplete(barcode: string) {
+    try {
+      if (barcodeInputElement) {
+        barcodeInputElement.focus();
+        barcodeInputElement.value = barcode;
+      }
+      const result = await apiClient.getGameByBarcode(barcode);
+      if (result.games.length > 1) {
+        toasts.add('Barcode conflict handling not yet implemented. Please manually trigger the checkout.', 'error');
+        return;
+      }
+      handleBarcodeFound(result.games[0]);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to look up barcode';
+      toasts.add(message, 'error');
+    }
+  }
 </script>
+
+<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} />
 
 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
   <div class="flex items-center justify-between gap-4">
@@ -70,7 +92,11 @@
 
     <!-- Secondary: barcode scanner, right-aligned and visually de-emphasised -->
     {#if isBarcodeEnabled()}
-      <BarcodeInput onGameFound={handleBarcodeFound} onError={handleBarcodeError} />
+      <BarcodeInput
+        bind:barcodeInputElement
+        onGameFound={handleBarcodeFound}
+        onError={handleBarcodeError}
+      />
     {/if}
   </div>
 </div>
