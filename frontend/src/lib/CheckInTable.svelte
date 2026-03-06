@@ -1,14 +1,19 @@
 <script lang="ts">
   import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Button } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
+  import BarcodeInput from './BarcodeInput.svelte';
   import { apiClient, type GameStatusList } from './api-client';
+  import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
+  import { isBarcodeEnabled } from './config';
+  import { barcodeScanner } from './barcodeScannerAction';
 
   let searchQuery = '';
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
+  let barcodeInputElement: HTMLInputElement | undefined;
 
   async function fetchCheckedOutGames() {
     loading = true;
@@ -63,10 +68,65 @@
       hour12: true
     });
   }
+
+  function handleBarcodeFound(game: components["schemas"]["Game"]) {
+    const match = gameStatusList.games.find(gs => gs.game.gameId === game.gameId);
+    if (!match) {
+      toasts.add(`${game.title} has already been returned.`, 'warn');
+      return;
+    }
+    handleReturn(match.transactionId, match.game.title);
+  }
+
+  function handleBarcodeError(message: string) {
+    toasts.add(message, 'error');
+  }
+
+  async function onScanComplete(barcode: string) {
+    try {
+      // Focus the barcode input field so the scan appears there
+      if (barcodeInputElement) {
+        barcodeInputElement.focus();
+        barcodeInputElement.value = barcode;
+        barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      const result = await apiClient.getGameByBarcode(barcode);
+      if (result.games.length > 1) {
+        toasts.add('Barcode conflict handling not yet implemented. Please manually trigger the check in.', 'error');
+        return;
+      }
+      handleBarcodeFound(result.games[0]);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to look up barcode';
+      toasts.add(message, 'error');
+    }
+  }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (!isBarcodeEnabled()) return;
+    // Alt+B: focus the barcode input
+    if (event.altKey && event.key === 'b') {
+      event.preventDefault();
+      if (barcodeInputElement) barcodeInputElement.focus();
+    }
+  }
 </script>
 
-<div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-  <SearchBar bind:searchQuery placeholder="Search checked out games..." onSearch={handleSearch} />
+<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
+
+<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+  <div class="flex items-center justify-between gap-4">
+    <div class="flex-1">
+      <SearchBar bind:searchQuery placeholder="Search checked out games..." onSearch={handleSearch} />
+    </div>
+    {#if isBarcodeEnabled()}
+      <BarcodeInput
+        bind:barcodeInputElement
+        onGameFound={handleBarcodeFound}
+        onError={handleBarcodeError}
+      />
+    {/if}
+  </div>
 </div>
 
 {#if loading && gameStatusList.games.length === 0}

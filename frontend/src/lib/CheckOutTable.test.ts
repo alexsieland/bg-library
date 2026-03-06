@@ -2,10 +2,11 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import CheckOutTable from './CheckOutTable.svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiClient } from './api-client';
+import { isBarcodeEnabled } from './config';
 
-// Mock getBackendUrl to return a consistent URL
 vi.mock('./config', () => ({
-  getBackendUrl: () => 'http://localhost:8080'
+  getBackendUrl: () => 'http://localhost:8080',
+  isBarcodeEnabled: vi.fn().mockReturnValue(false),
 }));
 
 // Mock apiClient
@@ -15,6 +16,7 @@ vi.mock('./api-client', async (importOriginal) => {
     ...actual,
     apiClient: {
       listGames: vi.fn(),
+      getGameByBarcode: vi.fn(),
     }
   };
 });
@@ -35,6 +37,7 @@ const mockGamesResponse = {
 describe('CheckOutTable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isBarcodeEnabled).mockReturnValue(false);
     // Suppress console.logs during tests
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -108,6 +111,57 @@ describe('CheckOutTable', () => {
 
     await waitFor(() => {
       expect(apiClient.listGames).toHaveBeenCalledWith(expect.objectContaining({ title: 'catan' }));
+    });
+  });
+
+  it('Should not render the barcode input when isBarcodeEnabled returns false', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
+
+    render(CheckOutTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
+
+    expect(screen.queryByLabelText('Barcode Scanner')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Scan…')).not.toBeInTheDocument();
+  });
+});
+
+describe('CheckOutTable (barcode enabled)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isBarcodeEnabled).mockReturnValue(true);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  it('Should render the barcode input when isBarcodeEnabled returns true', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
+
+    render(CheckOutTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
+
+    expect(screen.getByLabelText('Barcode Scanner')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Scan…')).toBeInTheDocument();
+  });
+
+  it('Should open the loan modal with the found game when a barcode scan succeeds', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
+    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+      games: [{ gameId: 'g1', title: 'Catan', barcode: '9780307455925' }],
+    });
+
+    render(CheckOutTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.getGameByBarcode).toHaveBeenCalledWith('9780307455925');
+      expect(screen.getByText('Loan Game: Catan')).toBeInTheDocument();
     });
   });
 });

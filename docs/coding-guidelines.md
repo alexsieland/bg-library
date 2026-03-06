@@ -48,6 +48,36 @@ The frontend is a Svelte application built with Vite and TypeScript.
 - **Search Sanitization**: The frontend sends raw search strings to the backend. All sanitization, including accent folding and case-insensitivity, is handled by the backend API.
 - **Barcode Feature Flag**: All barcode-related UI, event listeners, and API calls must be gated behind `isBarcodeEnabled()` (from `frontend/src/lib/config.ts`). If the flag is `false`, no barcode components should render and no barcode listeners should be registered. See `docs/barcode-scanner-input.md` for detail.
 
+## Important: Barcode Scanner Implementation Strategy
+
+**Barcode scanning uses a hybrid Approach 1 + Approach 4 model:**
+
+- **Approach 4 (Explicit Fallback)**: `BarcodeInput.svelte` component is the primary, always-available, always-reliable barcode input field. It must be:
+  - Rendered conditionally when `isBarcodeEnabled()` is true
+  - Kept in the toolbar, visible and accessible
+  - Exported via `bind:barcodeInputElement` so parent components can programmatically focus and populate it
+
+- **Approach 1 (Convenience Enhancement)**: `barcodeScanner` Svelte action provides a global keydown listener that:
+  - Detects scanner bursts via inter-keystroke timing (80ms threshold, ≥4 chars)
+  - Automatically focuses the Approach 4 field and inputs the barcode into it
+  - Suppresses itself when an interactive element (INPUT, TEXTAREA, contentEditable) has focus
+  - Should be mounted as `<svelte:window use:barcodeScanner={{ onScan: handleScanCallback }} />` in views
+
+**Critical Rule (Single Source of Truth)**: When a barcode scan is detected by the global listener, the logic that ultimately processes the scan (API calls, navigation, error handling) MUST be the same logic that runs when the user types a barcode and presses Enter.
+
+Concretely this means:
+- The `onScan` / `onScanComplete` callback from `barcodeScanner` may:
+  - Focus the visible barcode input field and set its value, **or**
+  - Call a shared “submit barcode” handler directly (the same function used by the field’s Enter key handler).
+- Whatever approach is used, avoid duplicating business rules; reuse the same handler for both keyboard entry and scanner input.
+
+A common, recommended pattern is:
+1. Focus the visible barcode input field: `barcodeInputElement.focus()`
+2. Set the barcode value: `barcodeInputElement.value = barcode`
+3. Call a shared `handleBarcodeSubmit(barcode)` function that is also invoked from the field’s Enter handler (e.g., via `onGameFound` / `onError` callbacks).
+
+**Never remove the explicit Approach 4 fields** — they are the fallback mechanism that ensures barcode input always works.
+
 ## 3. Persistence Layer (PostgreSQL, sqlc)
 
 The project uses PostgreSQL for data storage, with `sqlc` for generating type-safe Go code from SQL.

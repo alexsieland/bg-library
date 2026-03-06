@@ -11,7 +11,17 @@
   const lastValueRef = { v: searchQuery };
   let searchInput: HTMLInputElement;
 
+  export let searchInputElement: HTMLInputElement | undefined = undefined;
+  $: searchInputElement = searchInput;
+
   function handleWindowKeydown(event: KeyboardEvent) {
+    // Alt+S: focus the search bar
+    if (event.altKey && event.key === 's') {
+      event.preventDefault();
+      if (searchInput) searchInput.focus();
+      return;
+    }
+
     // If we're already focusing an input/textarea/editable element, don't do anything
     const activeElement = document.activeElement;
     const isEditing = activeElement && (
@@ -23,13 +33,10 @@
     if (isEditing) return;
 
     // Check if it's a single printable character (length 1) and not a modifier key
+    // Skip if Alt is held — Alt+B should go to barcode, not search
     if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
       if (searchInput) {
         searchInput.focus();
-        // Since we're focusing, the character might not be automatically added if we're too late 
-        // in the event cycle, but usually it is.
-        // Actually, if we focus now, the current keydown event will still result in the character
-        // being entered into the now-focused input by the browser.
       }
     }
   }
