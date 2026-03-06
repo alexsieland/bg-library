@@ -1,6 +1,6 @@
-MANUAL: Board Game Library — Volunteer Quick Reference
+MANUAL: Board Game Library — Desk Quick Reference
 
-This two-sided quick reference covers the common steps for loaning (checking out) and returning (checking in) games. Keep this sheet at the desk. It is written for volunteers who know how to use a web page but may be new to this app. Print front and back (front = Loaning, back = Returning).
+This two-sided quick reference covers the common steps for loaning (checking out) and returning (checking in) games. Keep this sheet at the desk. It is written for desk staff who know how to use a web page but may be new to this app. Print front and back (front = Loaning, back = Returning).
 
 ---
 
@@ -21,11 +21,19 @@ Steps (follow in order):
 5. When you see the patron record, confirm the person (check name and any shown ID or email).
 6. Create the loan:
    - Choose the copy you want to loan and pick the due date if the app asks (the app may offer a default due date).
-   - Add any short note if needed (e.g., missing pieces, special rules).
+   - Add any short note if needed (e.g., special rules).
 7. Confirm the loan by clicking the button labeled "Loan", "Check Out", or similar. Wait for a success message.
 8. Hand the game and any paper receipt to the patron. Tell them the due date and any special notes (e.g., keep pieces together, return to the main desk).
 
-Quick tips (for front desk volunteers):
+Screenshots (Check Out)
+
+![Check Out page](docs/app_images/check_out_page.png)
+Caption: The main Check Out page showing search and loan controls.
+
+![Check Out loading modal](docs/app_images/check_out_load_modal.png)
+Caption: Example modal that appears when creating a loan (shows selected copy and confirmation).
+
+Quick tips (for desk staff):
 - If your keyboard focus is not on the search box, typing a letter usually focuses it — just start typing.
 - If you try scanning and nothing happens, try clicking the search box once and try again; if scanning still does not work, type the barcode or search by title.
 - Use the title search when you only know part of a game's name (short words work best).
@@ -35,24 +43,24 @@ Quick tips (for front desk volunteers):
 Back — Returning a Game (Check In)
 
 Intro
-Returning a game is usually faster than checking out. The main actions are: find the loan with a scan or search, mark it returned, note condition, and put the game away.
+Returning a game is usually faster than checking out. The main actions are: find the loan with a scan or search, mark it returned, and put the game away.
 
 Steps (follow in order):
 1. At the desk, use the barcode scanner on the game box if available, or type the title into the search box. Scanning support is TBD (work in progress); if scanning does not work, use the manual search.
 2. The app should show the game and any active loans. If you found the copy by barcode or title, the active loan for that copy should appear.
 3. Select the active loan record for the patron who has the game.
-4. Inspect the game briefly for missing pieces or damage. Ask the patron about any damage if needed.
-5. Mark the game as returned by clicking the button labeled "Return", "Check In", or similar.
-6. If the game is late, the app may show a late-note or fine. Follow your event’s policy: often you only note it and tell the lead librarian.
-7. If the game is damaged or missing parts, add a short note in the return form and notify the lead librarian.
-8. Give the patron a receipt if requested, then put the game where your desk policy says:
-   - Reshelve now if it is clean and complete, or
-   - Place in the "Needs Repair/Quarantine" bin if dirty/damaged.
+4. Mark the game as returned by clicking the button labeled "Return", "Check In", or similar.
+5. Put the game away according to your desk policy (for example: reshelve now or place in a follow-up bin).
+
+Screenshot (Check In)
+
+![Check In page](docs/app_images/check_in_page.png)
+Caption: The Check In page showing the scanned copy and active loan record.
 
 Quick tips (for returns):
 - If the app can't find a loan for a scanned barcode (or if scanning isn't available), check that you used the correct barcode or try a title search.
 - If the patron has multiple active loans, confirm the copy barcode to match the right loan.
-- When in doubt about damage or fines, flag the return for the lead librarian to review.
+- When unsure about what to do next, follow your desk policy or flag the record for review.
 
 ---
 
@@ -62,8 +70,7 @@ Helpful UI Quick Reference
 - Buttons to look for: "Loan", "Check Out", "Return", "Check In", "Confirm", "Cancel".
 - Patron lookup: search by name, email, phone, or scan their badge when that feature is available.
 
-Troubleshooting & Contacts
+Troubleshooting
 - Can’t find a game by title: try a shorter phrase or a single keyword from the title. Try scanning the barcode if scanning is available.
-- Patron not found: double-check spelling, try email or phone, or ask the patron if they have a different name or badge. If still not found, follow your desk policy for creating a new patron record or ask a lead.
+- Patron not found: double-check spelling, try email or phone, or ask the patron if they have a different name or badge. If still not found, follow your desk policy for creating a new patron record or flag the record for review.
 - App blocks a duplicate checkout: the app will usually prevent checking out a game that is already out. Check the active loans for that copy and confirm the barcode.
-- Damaged/missing parts: note damage in the app and put the game in the repair bin. Notify the lead librarian.
