@@ -7,6 +7,7 @@
 
   export let onGameFound: (game: Game) => void = () => {};
   export let onError: (message: string) => void = () => {};
+  export let barcodeInputElement: HTMLInputElement | undefined;
 
   let barcode = '';
   let loading = false;
@@ -49,6 +50,7 @@
   </span>
   <div class="relative">
     <input
+      bind:this={barcodeInputElement}
       id="barcode-input"
       type="text"
       bind:value={barcode}
