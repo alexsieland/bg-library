@@ -1,9 +1,9 @@
-import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
 
-Object.defineProperty(window, "matchMedia", {
+Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
@@ -16,13 +16,13 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // Polyfill for HTMLDialogElement for jsdom
-if (typeof HTMLDialogElement === "function") {
+if (typeof HTMLDialogElement === 'function') {
   HTMLDialogElement.prototype.show = vi.fn();
   HTMLDialogElement.prototype.showModal = vi.fn();
   HTMLDialogElement.prototype.close = vi.fn();
 }
 
-if (typeof Element === "function" && !Element.prototype.animate) {
+if (typeof Element === 'function' && !Element.prototype.animate) {
   Element.prototype.animate = vi.fn().mockImplementation(() => ({
     finished: Promise.resolve(),
     cancel: vi.fn(),

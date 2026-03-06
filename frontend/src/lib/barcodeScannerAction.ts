@@ -1,4 +1,4 @@
-import { isBarcodeEnabled } from "./config";
+import { isBarcodeEnabled } from './config';
 
 const SCAN_THRESHOLD_MS = 80;
 const MIN_BARCODE_LENGTH = 4;
@@ -32,19 +32,18 @@ export interface BarcodeScannerOptions {
  * }
  * ```
  */
-export function barcodeScanner(node: Window, options: BarcodeScannerOptions) {
-  let scanBuffer = "";
+export function barcodeScanner(
+  node: Window,
+  options: BarcodeScannerOptions
+) {
+  let scanBuffer = '';
   let lastKeyTime = 0;
 
   function isInteractiveElementFocused(): boolean {
     const el = document.activeElement;
     if (!el) return false;
     const tag = el.tagName;
-    return (
-      tag === "INPUT" ||
-      tag === "TEXTAREA" ||
-      (el as HTMLElement).isContentEditable
-    );
+    return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable;
   }
 
   function handleGlobalKeydown(e: KeyboardEvent) {
@@ -52,16 +51,13 @@ export function barcodeScanner(node: Window, options: BarcodeScannerOptions) {
 
     const now = Date.now();
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       const barcode = scanBuffer;
-      scanBuffer = "";
+      scanBuffer = '';
       lastKeyTime = 0;
       // Only treat as a scan if timing threshold was met for the whole burst
       // and no interactive element is focused
-      if (
-        barcode.length >= MIN_BARCODE_LENGTH &&
-        !isInteractiveElementFocused()
-      ) {
+      if (barcode.length >= MIN_BARCODE_LENGTH && !isInteractiveElementFocused()) {
         e.preventDefault();
         options.onScan(barcode);
       }
@@ -70,14 +66,14 @@ export function barcodeScanner(node: Window, options: BarcodeScannerOptions) {
 
     // Suppress if a real input has focus — let characters go to that field
     if (isInteractiveElementFocused()) {
-      scanBuffer = "";
+      scanBuffer = '';
       lastKeyTime = 0;
       return;
     }
 
     // Reset buffer if too much time has passed since last keystroke
     if (now - lastKeyTime > SCAN_THRESHOLD_MS) {
-      scanBuffer = "";
+      scanBuffer = '';
     }
     lastKeyTime = now;
 
@@ -87,12 +83,15 @@ export function barcodeScanner(node: Window, options: BarcodeScannerOptions) {
     }
   }
 
-  node.addEventListener("keydown", handleGlobalKeydown);
+  node.addEventListener('keydown', handleGlobalKeydown);
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     destroy() {
-      node.removeEventListener("keydown", handleGlobalKeydown);
-    },
+      node.removeEventListener('keydown', handleGlobalKeydown);
+    }
   };
 }
+
+
+

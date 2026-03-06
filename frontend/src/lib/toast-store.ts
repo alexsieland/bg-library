@@ -1,6 +1,6 @@
-import { writable } from "svelte/store";
+import { writable } from 'svelte/store';
 
-export type ToastType = "success" | "error" | "warn";
+export type ToastType = 'success' | 'error' | 'warn';
 
 export interface Toast {
   id: string;
@@ -14,19 +14,19 @@ const { subscribe, update } = writable<Toast[]>([]);
 
 export const toasts = {
   subscribe,
-  add: (message: string, type: ToastType = "success", timeout?: number) => {
+  add: (message: string, type: ToastType = 'success', timeout?: number) => {
     const id = crypto.randomUUID();
     const dismissible = true;
-
+    
     // Default timeouts by type
-    if (type === "success" && timeout === undefined) {
+    if (type === 'success' && timeout === undefined) {
       timeout = 3000;
-    } else if (type === "warn" && timeout === undefined) {
+    } else if (type === 'warn' && timeout === undefined) {
       timeout = 10000;
     }
 
     const toast: Toast = { id, message, type, dismissible, timeout };
-    update((all) => [...all, toast]);
+    update(all => [...all, toast]);
 
     if (timeout) {
       setTimeout(() => {
@@ -37,6 +37,6 @@ export const toasts = {
     return id;
   },
   remove: (id: string) => {
-    update((all) => all.filter((t) => t.id !== id));
-  },
+    update(all => all.filter(t => t.id !== id));
+  }
 };
