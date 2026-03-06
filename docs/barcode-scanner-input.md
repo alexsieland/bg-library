@@ -190,23 +190,136 @@ This is the simplest possible approach — it is just a normal `<input>` with an
 
 Given the project's constraints (Svelte + TypeScript frontend, librarian-focused UX, WCAG 2.1 AA compliance, desktop-first), the recommended approach is a **combination of Approach 1 and Approach 4**:
 
-### Primary: Global listener (Approach 1) with field suppression
+### Primary: Explicit Barcode Input Field (Approach 4)
 
-Implement a global `keydown` listener as a Svelte snippet or action, active whenever the checkout or check-in view is mounted. Use a timing threshold (suggested: **80 ms** between keystrokes) and a minimum barcode length (suggested: **4 characters**) to distinguish scanner bursts from typing.
+The core implementation uses **Approach 4**: a dedicated, visible barcode input field (`BarcodeInput.svelte`) that is always present in the check-in and check-out toolbars when `isBarcodeEnabled()` is true. This field is the "official" target for barcode scanner input and is the fallback that works 100% reliably.
 
-Add suppression logic: if the current `document.activeElement` is a recognized interactive input (search bar, modal field), do **not** process the buffer as a barcode — let the characters flow naturally into that field instead.
+- The field is small, subtle, and clearly labelled with a muted all-caps "BARCODE" prefix
+- Librarians can always manually click into it and type/scan a barcode
+- It follows WCAG 2.1 AA accessibility standards with no focus-stealing side effects
 
-### Fallback: Explicit scan field (Approach 4) in conflict resolution UI
+### Enhancement: Global Listener (Approach 1) for Convenience
 
-When the conflict resolution modal is open (multiple copies checked out — see `barcode-conflict-workflow.md`), render an explicit "Scan patron barcode" input field that takes focus automatically when the modal opens. This is the one context where the librarian is expected to scan a second barcode, and making it explicit removes ambiguity.
+The global keydown listener (implemented as a Svelte action `barcodeScanner`) acts as a **convenience enhancement** to Approach 4:
 
-### Why not Approach 2 (hidden input)?
+- When the page has no focused interactive element, a barcode scan is detected via timing heuristics (80ms threshold, ≥4 characters)
+- Instead of buffering the scan globally, the listener **automatically focuses the visible barcode input field and inputs the data into it**
+- This allows librarians to scan without having to manually click into the field
+- The explicit field then processes the barcode normally (calling `onGameFound` or `onError` handlers)
 
-The hidden focused input is a tempting middle ground, but the focus-stealing behaviour creates real accessibility and usability problems with modals and keyboard navigation that are difficult to solve without significant ongoing complexity. The global listener achieves the same goal with a simpler model.
+**In practice**: The librarian can pick up a game/patron barcode scanner and scan directly; the global listener detects the burst, focuses the barcode input field, and inputs the barcode there. The field's own handlers then perform the API call and check-in/check-out logic.
 
-### Why not Approach 3 (Web HID)?
+### Why This Combination Works
+
+1. **Approach 4 (explicit field) is always available**: It's never hidden, never depends on timing heuristics, and always works regardless of page state
+2. **Approach 1 (global listener) is a convenience layer**: It speeds up the happy path (scan with no manual clicking) but falls back gracefully to Approach 4 if the timing heuristic misfire or is disabled
+3. **No accessibility trade-offs**: The global listener never steals focus from user navigation; it only focuses an already-visible, appropriately-labelled field
+4. **No interference with text fields**: When a real input (search bar, patron name field) has focus, the listener explicitly suppresses itself and lets the characters type naturally into that field
+
+### Why Not Approach 2 (hidden input)?
+
+The hidden focused input is a tempting middle ground, but the focus-stealing behaviour creates real accessibility and usability problems with modals and keyboard navigation that are difficult to solve without significant ongoing complexity. The combination of visible Approach 4 field + convenience Approach 1 listener achieves the same goal with a simpler, more robust model.
+
+### Why Not Approach 3 (Web HID)?
 
 The permission flow and Chromium-only limitation make it unsuitable as a primary strategy. It could be considered as an **optional progressive enhancement** in a future iteration if the deployment environment is guaranteed to be Chromium-based.
+
+---
+
+## Implementation Details
+
+### Global Listener Behavior (Approach 1)
+
+The `barcodeScanner` action:
+- Listens globally for `keydown` events
+- Buffers printable characters (excluding modifier key combinations)
+- Resets the buffer if >80ms passes between keystrokes (timing heuristic)
+- When `Enter` is detected:
+  - If the buffer is ≥4 characters AND no interactive element is focused:
+    - Calls `onScan(barcode)` callback with the accumulated buffer
+    - The callback should **focus the barcode input field and set its value**, allowing the field's own handlers to complete the transaction
+  - Otherwise: does nothing, lets the `Enter` key behave normally
+
+### Barcode Input Field Behavior (Approach 4)
+
+The `BarcodeInput` component:
+- Renders a small, muted barcode input field with label "BARCODE"
+- Accepts manual text input or pasted data
+- On `Enter`: calls `onGameFound(game)` or `onError(message)` based on the API result
+- Is always available as a fallback, even if the global listener is disabled or misfires
+- Exports `barcodeInputElement` reference for parent components to focus/set value programmatically
+
+### Integration in Views
+
+When a barcode scanner is detected by the global listener:
+
+```typescript
+async function onScanComplete(barcode: string) {
+  // 1. Focus and populate the visible barcode input field
+  if (barcodeInputElement) {
+    barcodeInputElement.focus();
+    barcodeInputElement.value = barcode;
+  }
+  
+  // 2. The field's own handlers then process the barcode via API call
+  // (This could be done by triggering the field's onKeyDown(Enter) or by calling handleScan directly)
+  
+  // 3. Success/error is handled by the field's onGameFound/onError handlers
+  // (converting to toasts, state updates, etc.)
+}
+```
+
+---
+
+## Interaction with Modals and Focus Management
+
+This section analyses how the Approach 1 + 4 combination behaves when elements with focus are present.
+
+### Scanning a game barcode while LoanModal is open — ✅ Safe
+
+The `LoanModal` contains a focused patron name `<Input>` field. When the modal is open and that field has focus:
+- The global listener's suppression logic kicks in: it sees an INPUT element has focus
+- The listener discards its buffer and **does not** call the `onScan` callback
+- Characters naturally flow into the patron name field as keyboard input
+- The barcode is NOT scanned into the check-in/check-out flow
+
+This is the correct behavior — the modal is mid-transaction; scanning at this point should not trigger an unrelated game barcode lookup.
+
+### Scanning without a focused element — ✅ Scan detected and focused into barcode field
+
+When no interactive element has focus (user is viewing the check-in table):
+- Global listener detects the scanner burst by timing
+- Calls `onScan(barcode)` with the complete barcode string
+- The handler focuses the visible `BarcodeInput` field and populates its value
+- The field's own `Enter` handler fires, calling `onGameFound` or `onError`
+
+### Scanning into the search bar — ✅ Characters type into search, no barcode scan
+
+When the user has the search bar focused:
+- Global listener sees an INPUT element has focus
+- It suppresses itself, discards the buffer, does not call `onScan`
+- Barcode characters naturally type into the search field
+- User can then press Enter to search (or clear and try again with the barcode field)
+
+### Summary
+
+| Context | Global listener active? | Behavior |
+|---|---|---|
+| No element focused, barcode scanned | ✅ Yes | Calls `onScan(barcode)`, handler focuses and populates barcode field |
+| Search bar focused, barcode scanned | 🚫 Suppressed | Characters type into search bar, no barcode action |
+| Patron name field focused, barcode scanned | 🚫 Suppressed | Characters append to patron name, no barcode action |
+| Barcode field focused manually, barcode scanned | ✅ Yes (but suppressed by focus check) | Actual behavior: focus check sees INPUT, so suppressed; barcode types directly into field |
+
+---
+
+## Implementation Notes
+
+- **Feature flag**: Always check `isBarcodeEnabled()` before rendering the `BarcodeInput` component or registering the `barcodeScanner` action. See the [Feature Flag](#feature-flag) section above.
+- **Global listener scope**: The `barcodeScanner` action should be attached to `<svelte:window>` in the view component (e.g., `CheckInTable.svelte`) so it is only active when that view is mounted.
+- **Timing threshold**: The 80ms inter-keystroke threshold is configurable. Different scanner models may have slightly different burst speeds; adjust if needed via the `SCAN_THRESHOLD_MS` constant in `barcodeScannerAction.ts`.
+- **Minimum barcode length**: The 4-character minimum prevents accidental triggering on very short key sequences. Adjust `MIN_BARCODE_LENGTH` if your barcodes are shorter.
+- **Barcode values**: Scanned barcodes are passed to `apiClient.getGameByBarcode()` or `apiClient.getPatronByBarcode()` — no additional sanitization is needed on the frontend (per the project's separation-of-concerns policy: backend handles all sanitization).
+- **Fallback mechanism**: If the global listener ever misfires or is disabled, users can always fall back to manually clicking the barcode input field and typing/pasting the barcode. The field is always available and always works.
 
 ---
 
