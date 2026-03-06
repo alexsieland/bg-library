@@ -63,10 +63,18 @@ The frontend is a Svelte application built with Vite and TypeScript.
   - Suppresses itself when an interactive element (INPUT, TEXTAREA, contentEditable) has focus
   - Should be mounted as `<svelte:window use:barcodeScanner={{ onScan: handleScanCallback }} />` in views
 
-**Critical Rule**: When a barcode scan is detected by the global listener, the `onScan` callback MUST:
+**Critical Rule (Single Source of Truth)**: When a barcode scan is detected by the global listener, the logic that ultimately processes the scan (API calls, navigation, error handling) MUST be the same logic that runs when the user types a barcode and presses Enter.
+
+Concretely this means:
+- The `onScan` / `onScanComplete` callback from `barcodeScanner` may:
+  - Focus the visible barcode input field and set its value, **or**
+  - Call a shared “submit barcode” handler directly (the same function used by the field’s Enter key handler).
+- Whatever approach is used, avoid duplicating business rules; reuse the same handler for both keyboard entry and scanner input.
+
+A common, recommended pattern is:
 1. Focus the visible barcode input field: `barcodeInputElement.focus()`
 2. Set the barcode value: `barcodeInputElement.value = barcode`
-3. Let the field's own `Enter` handler process it via its `onGameFound` or `onError` callbacks
+3. Call a shared `handleBarcodeSubmit(barcode)` function that is also invoked from the field’s Enter handler (e.g., via `onGameFound` / `onError` callbacks).
 
 **Never remove the explicit Approach 4 fields** — they are the fallback mechanism that ensures barcode input always works.
 
