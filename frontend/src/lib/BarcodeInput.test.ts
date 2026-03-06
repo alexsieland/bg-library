@@ -65,7 +65,10 @@ describe('BarcodeInput', () => {
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: [mockGame] });
     const onGameFound = vi.fn();
 
-    render(BarcodeInput, { props: { onGameFound } });
+    render(BarcodeInput, { props: {
+        onGameFound,
+        barcodeInputElement: undefined
+      } });
 
     const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -84,7 +87,10 @@ describe('BarcodeInput', () => {
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: conflictGames });
     const onError = vi.fn();
 
-    render(BarcodeInput, { props: { onError } });
+    render(BarcodeInput, { props: {
+        onError,
+        barcodeInputElement: undefined
+      } });
 
     const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -101,7 +107,10 @@ describe('BarcodeInput', () => {
     vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
     const onError = vi.fn();
 
-    render(BarcodeInput, { props: { onError } });
+    render(BarcodeInput, { props: {
+        onError,
+        barcodeInputElement: undefined
+      } });
 
     const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '0000000000000' } });
