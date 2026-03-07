@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/alexsieland/bg-library/db"
@@ -36,6 +37,7 @@ func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
 				return
 			}
 		}
+		log.Printf("Error creating play to win game: %v", err)
 		internalError(c, err)
 		return
 	}
@@ -54,12 +56,15 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)
+			return
 		}
+		log.Printf("Error getting game: %v", err)
+		internalError(c, err)
+		return
 	}
 
 	var request RemovePlayToWinGameJSONRequestBody
-	err = c.ShouldBindJSON(request)
-	if err != nil {
+	if err = c.ShouldBindJSON(&request); err != nil {
 		malformedJson(c)
 		return
 	}
@@ -90,6 +95,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 
 	err = s.queries.DeletePlayToWinGame(c.Request.Context(), params)
 	if err != nil {
+		log.Printf("Error deleting play to win game: %v", err)
 		internalError(c, err)
 		return
 	}
