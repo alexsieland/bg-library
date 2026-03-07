@@ -166,7 +166,7 @@ func (q *Queries) CreatePlayToWinSession(ctx context.Context, arg CreatePlayToWi
 
 const deleteGame = `-- name: DeleteGame :exec
 UPDATE games
-    SET deleted = now()
+    SET deleted_at = now()
 WHERE id = $1
 `
 
@@ -177,7 +177,7 @@ func (q *Queries) DeleteGame(ctx context.Context, id pgtype.UUID) error {
 
 const deletePatron = `-- name: DeletePatron :exec
 UPDATE patrons
-set deleted = now()
+set deleted_at = now()
 WHERE id = $1
 `
 
