@@ -11,6 +11,7 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -23,7 +24,11 @@ func (s Server) AddGame(c *gin.Context) {
 	}
 
 	var errorDetails []ErrorDetail
-	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, errorDetails, nil)
+	isPlayToWin := false
+	if jsonObject.IsPlayToWin != nil {
+		isPlayToWin = *jsonObject.IsPlayToWin
+	}
+	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, isPlayToWin, errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
 	}
@@ -32,10 +37,11 @@ func (s Server) AddGame(c *gin.Context) {
 		internalError(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, FromGame(dbGame))
+
+	c.JSON(http.StatusCreated, FromGame(dbGame, isPlayToWin))
 }
 
-func (s Server) insertGame(c *gin.Context, title string, barcode *string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {
+func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {
 	errorDetails = ValidateStringLength("title", title, 1, 100, errorDetails)
 	if barcode != nil {
 		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
@@ -54,10 +60,22 @@ func (s Server) insertGame(c *gin.Context, title string, barcode *string, errorD
 		Barcode:        dbBarcode,
 	}
 
+	var game db.Game
+	var err error
 	if tx != nil {
-		return s.queries.WithTx(*tx).CreateGame(c.Request.Context(), createGameParams)
+		game, err = s.queries.WithTx(*tx).CreateGame(c.Request.Context(), createGameParams)
+	} else {
+		game, err = s.queries.CreateGame(c.Request.Context(), createGameParams)
 	}
-	return s.queries.CreateGame(c.Request.Context(), createGameParams)
+
+	if err != nil {
+		return db.Game{}, err
+	}
+
+	if isPlayToWin {
+		err = s.addPlayToWin(c, pgUUIDToUUID(game.ID), errorDetails, tx)
+	}
+	return game, err
 }
 
 func (s Server) BulkAddGames(c *gin.Context) {
@@ -103,7 +121,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 		//	barcode = &record[1]
 		//}
 
-		_, err = s.insertGame(c, title, barcode, errorDetails, &tx)
+		_, err = s.insertGame(c, title, barcode, false, errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -216,7 +234,9 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 		Barcode:        dbBarcode,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		var pgErr *pgconn.PgError
+		// Postgres 23503 is the error code for a unique constraint violation
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
 			notFound(c)
 			return
 		}

@@ -118,10 +118,11 @@ func TestConversionUtils(t *testing.T) {
 			Title: "Catan",
 		}
 
-		game := FromGame(dbGame)
+		game := FromGame(dbGame, true)
 
 		assert.Equal(t, gameID, game.GameId)
 		assert.Equal(t, "Catan", game.Title)
+		assert.Equal(t, true, game.IsPlayToWin)
 	})
 }
 

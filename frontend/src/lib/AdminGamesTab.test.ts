@@ -39,7 +39,7 @@ describe('AdminGamesTab', () => {
   });
 
   it('Should add a game when clicking "Add Game" button', async () => {
-    vi.mocked(apiClient.addGame).mockResolvedValue({ gameId: 'g1', title: 'Everdell' });
+    vi.mocked(apiClient.addGame).mockResolvedValue({ gameId: 'g1', title: 'Everdell', isPlayToWin: false });
 
     render(AdminGamesTab);
 
@@ -48,7 +48,7 @@ describe('AdminGamesTab', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Add Game' }));
 
     await waitFor(() => {
-      expect(apiClient.addGame).toHaveBeenCalledWith({ title: 'Everdell' });
+      expect(apiClient.addGame).toHaveBeenCalledWith({ title: 'Everdell', isPlayToWin: false });
     });
 
     expect(toasts.add).toHaveBeenCalledWith('Successfully added Everdell to the library', 'success');
@@ -56,7 +56,7 @@ describe('AdminGamesTab', () => {
   });
 
   it('Should add a game when pressing Enter in the input field', async () => {
-    vi.mocked(apiClient.addGame).mockResolvedValue({ gameId: 'g2', title: 'Wingspan' });
+    vi.mocked(apiClient.addGame).mockResolvedValue({ gameId: 'g2', title: 'Wingspan', isPlayToWin: false });
 
     render(AdminGamesTab);
 
@@ -65,7 +65,7 @@ describe('AdminGamesTab', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.addGame).toHaveBeenCalledWith({ title: 'Wingspan' });
+      expect(apiClient.addGame).toHaveBeenCalledWith({ title: 'Wingspan', isPlayToWin: false });
     });
 
     expect(toasts.add).toHaveBeenCalledWith('Successfully added Wingspan to the library', 'success');

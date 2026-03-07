@@ -18,7 +18,7 @@ vi.mock('./api-client', async (importOriginal) => {
   };
 });
 
-const mockGame = { gameId: 'g1', title: 'Catan', barcode: '9780307455925' };
+const mockGame = { gameId: 'g1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false };
 
 describe('BarcodeInput', () => {
   beforeEach(() => {
@@ -81,8 +81,8 @@ describe('BarcodeInput', () => {
 
   it('Should call onError with a conflict message when multiple games are returned for a barcode', async () => {
     const conflictGames = [
-      { gameId: 'g1', title: 'Catan', barcode: '9780307455925' },
-      { gameId: 'g2', title: 'Catan (2nd Edition)', barcode: '9780307455925' },
+      { gameId: 'g1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false },
+      { gameId: 'g2', title: 'Catan (2nd Edition)', barcode: '9780307455925', isPlayToWin: false },
     ];
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: conflictGames });
     const onError = vi.fn();

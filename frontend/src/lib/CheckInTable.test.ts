@@ -25,13 +25,13 @@ vi.mock('./api-client', async (importOriginal) => {
 const mockCheckedOutGames = {
   games: [
     {
-      game: { gameId: '1', title: 'Catan' },
+      game: { gameId: '1', title: 'Catan', isPlayToWin: false },
       patron: { patronId: 'p1', name: 'Alice' },
       transactionId: 't1',
       checkedOutAt: '2026-01-31T12:00:00Z'
     },
     {
-      game: { gameId: '2', title: 'Ticket to Ride' },
+      game: { gameId: '2', title: 'Ticket to Ride', isPlayToWin: false },
       patron: { patronId: 'p2', name: 'Bob' },
       transactionId: 't2',
       checkedOutAt: '2026-02-01T14:30:00Z'
@@ -158,7 +158,7 @@ describe('CheckInTable (barcode enabled)', () => {
   it('Should call checkInGame when a barcode scan matches a checked out game', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: '1', title: 'Catan', barcode: '9780307455925' }],
+      games: [{ gameId: '1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false }],
     });
     vi.mocked(apiClient.checkInGame).mockResolvedValue({} as any);
 
@@ -178,7 +178,7 @@ describe('CheckInTable (barcode enabled)', () => {
   it('Should refresh the game list after a successful barcode check-in', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: '1', title: 'Catan', barcode: '9780307455925' }],
+      games: [{ gameId: '1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false }],
     });
     vi.mocked(apiClient.checkInGame).mockResolvedValue({} as any);
 
@@ -198,7 +198,7 @@ describe('CheckInTable (barcode enabled)', () => {
   it('Should show a warning toast when the scanned game is not in the checked out list', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: 'unknown-id', title: 'Azul', barcode: '1111111111111' }],
+      games: [{ gameId: 'unknown-id', title: 'Azul', barcode: '1111111111111', isPlayToWin: false }],
     });
 
     render(CheckInTable);
