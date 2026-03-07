@@ -29,6 +29,13 @@ const (
 	VALIDATIONERROR    ErrorResponseErrorCode = "VALIDATION_ERROR"
 )
 
+// Defines values for RemovePlayToWinGameRequestRemovalReason.
+const (
+	Claimed RemovePlayToWinGameRequestRemovalReason = "claimed"
+	Mistake RemovePlayToWinGameRequestRemovalReason = "mistake"
+	Other   RemovePlayToWinGameRequestRemovalReason = "other"
+)
+
 // Defines values for TransactionEventEventType.
 const (
 	CheckIn  TransactionEventEventType = "check_in"
@@ -172,6 +179,15 @@ type PatronList struct {
 	Patrons []Patron `json:"patrons"`
 }
 
+// RemovePlayToWinGameRequest Request payload for removing a game from Play to Win
+type RemovePlayToWinGameRequest struct {
+	// RemovalReason The reason for removing the game from Play to Win
+	RemovalReason *RemovePlayToWinGameRequestRemovalReason `json:"RemovalReason,omitempty"`
+}
+
+// RemovePlayToWinGameRequestRemovalReason The reason for removing the game from Play to Win
+type RemovePlayToWinGameRequestRemovalReason string
+
 // TransactionEvent Record of a library transaction event
 type TransactionEvent struct {
 	// EventTimestamp ISO 8601 timestamp when the transaction occurred in UTC
@@ -261,6 +277,9 @@ type UpdatePatronJSONRequestBody = CreatePatronRequest
 
 // BulkAddPatronsTextRequestBody defines body for BulkAddPatrons for text/plain ContentType.
 type BulkAddPatronsTextRequestBody = BulkAddPatronsTextBody
+
+// RemovePlayToWinGameJSONRequestBody defines body for RemovePlayToWinGame for application/json ContentType.
+type RemovePlayToWinGameJSONRequestBody = RemovePlayToWinGameRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -399,6 +418,14 @@ type ClientInterface interface {
 
 	// ListTransactionEvents request
 	ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemovePlayToWinGameWithBody request with any body
+	RemovePlayToWinGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RemovePlayToWinGame(ctx context.Context, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddPlayToWinGame request
+	AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -682,6 +709,42 @@ func (c *Client) BulkAddPatronsWithTextBody(ctx context.Context, body BulkAddPat
 
 func (c *Client) ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListTransactionEventsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RemovePlayToWinGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePlayToWinGameRequestWithBody(c.Server, gameId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RemovePlayToWinGame(ctx context.Context, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePlayToWinGameRequest(c.Server, gameId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPlayToWinGameRequest(c.Server, gameId)
 	if err != nil {
 		return nil, err
 	}
@@ -1450,6 +1513,87 @@ func NewListTransactionEventsRequest(server string, params *ListTransactionEvent
 	return req, nil
 }
 
+// NewRemovePlayToWinGameRequest calls the generic RemovePlayToWinGame builder with application/json body
+func NewRemovePlayToWinGameRequest(server string, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRemovePlayToWinGameRequestWithBody(server, gameId, "application/json", bodyReader)
+}
+
+// NewRemovePlayToWinGameRequestWithBody generates requests for RemovePlayToWinGame with any type of body
+func NewRemovePlayToWinGameRequestWithBody(server string, gameId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "gameId", runtime.ParamLocationPath, gameId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ptw/game/gameId/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAddPlayToWinGameRequest generates requests for AddPlayToWinGame
+func NewAddPlayToWinGameRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "gameId", runtime.ParamLocationPath, gameId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ptw/game/gameId/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetHealthRequest generates requests for GetHealth
 func NewGetHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -1584,6 +1728,14 @@ type ClientWithResponsesInterface interface {
 
 	// ListTransactionEventsWithResponse request
 	ListTransactionEventsWithResponse(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*ListTransactionEventsResponse, error)
+
+	// RemovePlayToWinGameWithBodyWithResponse request with any body
+	RemovePlayToWinGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error)
+
+	RemovePlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error)
+
+	// AddPlayToWinGameWithResponse request
+	AddPlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameResponse, error)
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
@@ -1976,6 +2128,50 @@ func (r ListTransactionEventsResponse) StatusCode() int {
 	return 0
 }
 
+type RemovePlayToWinGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r RemovePlayToWinGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemovePlayToWinGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AddPlayToWinGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r AddPlayToWinGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddPlayToWinGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetHealthResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2205,6 +2401,32 @@ func (c *ClientWithResponses) ListTransactionEventsWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseListTransactionEventsResponse(rsp)
+}
+
+// RemovePlayToWinGameWithBodyWithResponse request with arbitrary body returning *RemovePlayToWinGameResponse
+func (c *ClientWithResponses) RemovePlayToWinGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error) {
+	rsp, err := c.RemovePlayToWinGameWithBody(ctx, gameId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemovePlayToWinGameResponse(rsp)
+}
+
+func (c *ClientWithResponses) RemovePlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error) {
+	rsp, err := c.RemovePlayToWinGame(ctx, gameId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemovePlayToWinGameResponse(rsp)
+}
+
+// AddPlayToWinGameWithResponse request returning *AddPlayToWinGameResponse
+func (c *ClientWithResponses) AddPlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameResponse, error) {
+	rsp, err := c.AddPlayToWinGame(ctx, gameId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddPlayToWinGameResponse(rsp)
 }
 
 // GetHealthWithResponse request returning *GetHealthResponse
@@ -2749,6 +2971,58 @@ func ParseListTransactionEventsResponse(rsp *http.Response) (*ListTransactionEve
 	return response, nil
 }
 
+// ParseRemovePlayToWinGameResponse parses an HTTP response from a RemovePlayToWinGameWithResponse call
+func ParseRemovePlayToWinGameResponse(rsp *http.Response) (*RemovePlayToWinGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemovePlayToWinGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddPlayToWinGameResponse parses an HTTP response from a AddPlayToWinGameWithResponse call
+func ParseAddPlayToWinGameResponse(rsp *http.Response) (*AddPlayToWinGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddPlayToWinGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetHealthResponse parses an HTTP response from a GetHealthWithResponse call
 func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2828,6 +3102,12 @@ type ServerInterface interface {
 	// List transaction events
 	// (GET /api/v1/library/transactions)
 	ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams)
+	// Mark a library game as not Play to Win
+	// (DELETE /api/v1/ptw/game/gameId/{gameId})
+	RemovePlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
+	// Mark a library game as Play to Win
+	// (POST /api/v1/ptw/game/gameId/{gameId})
+	AddPlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
 
 	// (GET /health)
 	GetHealth(c *gin.Context)
@@ -3242,6 +3522,54 @@ func (siw *ServerInterfaceWrapper) ListTransactionEvents(c *gin.Context) {
 	siw.Handler.ListTransactionEvents(c, params)
 }
 
+// RemovePlayToWinGame operation middleware
+func (siw *ServerInterfaceWrapper) RemovePlayToWinGame(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "gameId" -------------
+	var gameId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter gameId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RemovePlayToWinGame(c, gameId)
+}
+
+// AddPlayToWinGame operation middleware
+func (siw *ServerInterfaceWrapper) AddPlayToWinGame(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "gameId" -------------
+	var gameId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter gameId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.AddPlayToWinGame(c, gameId)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(c *gin.Context) {
 
@@ -3299,5 +3627,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
 	router.POST(options.BaseURL+"/api/v1/library/patrons", wrapper.BulkAddPatrons)
 	router.GET(options.BaseURL+"/api/v1/library/transactions", wrapper.ListTransactionEvents)
+	router.DELETE(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.RemovePlayToWinGame)
+	router.POST(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.AddPlayToWinGame)
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth)
 }

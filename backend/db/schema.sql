@@ -39,7 +39,7 @@ CREATE TABLE transaction_events (
     PRIMARY KEY (id)
 );
 
-CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'other');
+CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'mistake', 'other');
 CREATE TABLE play_to_win_games (
     id UUID DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL UNIQUE REFERENCES games(id),

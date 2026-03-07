@@ -514,6 +514,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/ptw/game/gameId/{gameId}:
+    post:
+      tags:
+        - ptw, games
+      operationId: addPlayToWinGame
+      summary: Mark a library game as Play to Win
+      parameters:
+        - in: path
+          name: gameId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Game ID
+      responses:
+        '204':
+          description: Game marked as Play to Win successfully
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - ptw, games
+      operationId: removePlayToWinGame
+      summary: Mark a library game as not Play to Win
+      parameters:
+        - in: path
+          name: gameId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemovePlayToWinGameRequest'
+      responses:
+        '204':
+          description: Game marked as not Play to Win successfully
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     GameStatus:
@@ -824,3 +876,18 @@ components:
           description: Number of records imported successfully
           example: 10
       description: Response for bulk add operations
+
+    RemovePlayToWinGameRequest:
+      type: object
+      required:
+        - removalReason
+      properties:
+        RemovalReason:
+          type: string
+          enum:
+            - claimed
+            - mistake
+            - other
+          description: The reason for removing the game from Play to Win
+          example: "claimed"
+      description: Request payload for removing a game from Play to Win

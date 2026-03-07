@@ -60,6 +60,7 @@ type PlayToWinGameDeletionType string
 
 const (
 	PlayToWinGameDeletionTypeClaimed PlayToWinGameDeletionType = "claimed"
+	PlayToWinGameDeletionTypeMistake PlayToWinGameDeletionType = "mistake"
 	PlayToWinGameDeletionTypeOther   PlayToWinGameDeletionType = "other"
 )
 
