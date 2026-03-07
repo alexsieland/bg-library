@@ -11,77 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addPlayToWinEntry = `-- name: AddPlayToWinEntry :one
-INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
-RETURNING id, session_id, entrant_name, entrant_unique_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
-`
-
-type AddPlayToWinEntryParams struct {
-	SessionID       pgtype.UUID
-	EntrantName     string
-	EntrantUniqueID string
-}
-
-func (q *Queries) AddPlayToWinEntry(ctx context.Context, arg AddPlayToWinEntryParams) (PlayToWinEntry, error) {
-	row := q.db.QueryRow(ctx, addPlayToWinEntry, arg.SessionID, arg.EntrantName, arg.EntrantUniqueID)
-	var i PlayToWinEntry
-	err := row.Scan(
-		&i.ID,
-		&i.SessionID,
-		&i.EntrantName,
-		&i.EntrantUniqueID,
-		&i.CreatedAt,
-		&i.DeletedAt,
-		&i.DeletionReason,
-		&i.DeletionReasonComment,
-	)
-	return i, err
-}
-
-const addPlayToWinGame = `-- name: AddPlayToWinGame :one
-INSERT INTO play_to_win_games (game_id) VALUES ($1)
-RETURNING id, game_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
-`
-
-func (q *Queries) AddPlayToWinGame(ctx context.Context, gameID pgtype.UUID) (PlayToWinGame, error) {
-	row := q.db.QueryRow(ctx, addPlayToWinGame, gameID)
-	var i PlayToWinGame
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.CreatedAt,
-		&i.DeletedAt,
-		&i.DeletionReason,
-		&i.DeletionReasonComment,
-	)
-	return i, err
-}
-
-const addPlayToWinSession = `-- name: AddPlayToWinSession :one
-INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, $2)
-RETURNING id, play_to_win_id, playtime_minutes, created_at, deleted_at, deletion_reason, deletion_reason_comment
-`
-
-type AddPlayToWinSessionParams struct {
-	PlayToWinID     pgtype.UUID
-	PlaytimeMinutes pgtype.Int4
-}
-
-func (q *Queries) AddPlayToWinSession(ctx context.Context, arg AddPlayToWinSessionParams) (PlayToWinSession, error) {
-	row := q.db.QueryRow(ctx, addPlayToWinSession, arg.PlayToWinID, arg.PlaytimeMinutes)
-	var i PlayToWinSession
-	err := row.Scan(
-		&i.ID,
-		&i.PlayToWinID,
-		&i.PlaytimeMinutes,
-		&i.CreatedAt,
-		&i.DeletedAt,
-		&i.DeletionReason,
-		&i.DeletionReasonComment,
-	)
-	return i, err
-}
-
 const checkInGame = `-- name: CheckInGame :exec
 UPDATE transactions
 SET checkin_timestamp = now()
@@ -160,6 +89,77 @@ func (q *Queries) CreatePatron(ctx context.Context, arg CreatePatronParams) (Pat
 		&i.CreatedAt,
 		&i.DeletedAt,
 		&i.Barcode,
+	)
+	return i, err
+}
+
+const createPlayToWinEntry = `-- name: CreatePlayToWinEntry :one
+INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
+RETURNING id, session_id, entrant_name, entrant_unique_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
+`
+
+type CreatePlayToWinEntryParams struct {
+	SessionID       pgtype.UUID
+	EntrantName     string
+	EntrantUniqueID string
+}
+
+func (q *Queries) CreatePlayToWinEntry(ctx context.Context, arg CreatePlayToWinEntryParams) (PlayToWinEntry, error) {
+	row := q.db.QueryRow(ctx, createPlayToWinEntry, arg.SessionID, arg.EntrantName, arg.EntrantUniqueID)
+	var i PlayToWinEntry
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.EntrantName,
+		&i.EntrantUniqueID,
+		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.DeletionReason,
+		&i.DeletionReasonComment,
+	)
+	return i, err
+}
+
+const createPlayToWinGame = `-- name: CreatePlayToWinGame :one
+INSERT INTO play_to_win_games (game_id) VALUES ($1)
+RETURNING id, game_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
+`
+
+func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (PlayToWinGame, error) {
+	row := q.db.QueryRow(ctx, createPlayToWinGame, gameID)
+	var i PlayToWinGame
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.DeletionReason,
+		&i.DeletionReasonComment,
+	)
+	return i, err
+}
+
+const createPlayToWinSession = `-- name: CreatePlayToWinSession :one
+INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, $2)
+RETURNING id, play_to_win_id, playtime_minutes, created_at, deleted_at, deletion_reason, deletion_reason_comment
+`
+
+type CreatePlayToWinSessionParams struct {
+	PlayToWinID     pgtype.UUID
+	PlaytimeMinutes pgtype.Int4
+}
+
+func (q *Queries) CreatePlayToWinSession(ctx context.Context, arg CreatePlayToWinSessionParams) (PlayToWinSession, error) {
+	row := q.db.QueryRow(ctx, createPlayToWinSession, arg.PlayToWinID, arg.PlaytimeMinutes)
+	var i PlayToWinSession
+	err := row.Scan(
+		&i.ID,
+		&i.PlayToWinID,
+		&i.PlaytimeMinutes,
+		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.DeletionReason,
+		&i.DeletionReasonComment,
 	)
 	return i, err
 }
@@ -444,6 +444,18 @@ func (q *Queries) GetPlayToWinEntries(ctx context.Context, playToWinID pgtype.UU
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPlayToWinGame = `-- name: GetPlayToWinGame :one
+SELECT id, game_id, created_at FROM vw_play_to_win_games
+WHERE id = $1
+`
+
+func (q *Queries) GetPlayToWinGame(ctx context.Context, id pgtype.UUID) (VwPlayToWinGame, error) {
+	row := q.db.QueryRow(ctx, getPlayToWinGame, id)
+	var i VwPlayToWinGame
+	err := row.Scan(&i.ID, &i.GameID, &i.CreatedAt)
+	return i, err
 }
 
 const getPlayToWinSessions = `-- name: GetPlayToWinSessions :many

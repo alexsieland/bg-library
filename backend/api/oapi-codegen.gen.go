@@ -181,8 +181,11 @@ type PatronList struct {
 
 // RemovePlayToWinGameRequest Request payload for removing a game from Play to Win
 type RemovePlayToWinGameRequest struct {
+	// RemovalComment Optional comment explaining the reason for removing the game from Play to Win
+	RemovalComment *string `json:"RemovalComment,omitempty"`
+
 	// RemovalReason The reason for removing the game from Play to Win
-	RemovalReason *RemovePlayToWinGameRequestRemovalReason `json:"RemovalReason,omitempty"`
+	RemovalReason RemovePlayToWinGameRequestRemovalReason `json:"RemovalReason"`
 }
 
 // RemovePlayToWinGameRequestRemovalReason The reason for removing the game from Play to Win

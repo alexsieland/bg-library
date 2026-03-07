@@ -134,6 +134,10 @@ LEFT JOIN games AS g ON g.id = ptw.game_id
 WHERE sanitized_title ILIKE $1
 LIMIT $2 OFFSET $3;
 
+-- name: GetPlayToWinGame :one
+SELECT * FROM vw_play_to_win_games
+WHERE id = $1;
+
 -- name: GetPlayToWinSessions :many
 SELECT
     id AS session_id,
@@ -154,15 +158,15 @@ SELECT
 FROM vw_play_to_win_entries
 WHERE play_to_win_id = $1;
 
--- name: AddPlayToWinGame :one
+-- name: CreatePlayToWinGame :one
 INSERT INTO play_to_win_games (game_id) VALUES ($1)
 RETURNING *;
 
--- name: AddPlayToWinSession :one
+-- name: CreatePlayToWinSession :one
 INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, $2)
 RETURNING *;
 
--- name: AddPlayToWinEntry :one
+-- name: CreatePlayToWinEntry :one
 INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
 RETURNING *;
 

@@ -880,7 +880,7 @@ components:
     RemovePlayToWinGameRequest:
       type: object
       required:
-        - removalReason
+        - RemovalReason
       properties:
         RemovalReason:
           type: string
@@ -889,5 +889,10 @@ components:
             - mistake
             - other
           description: The reason for removing the game from Play to Win
-          example: "claimed"
+          example: "mistake"
+        RemovalComment:
+          type: string
+          description: Optional comment explaining the reason for removing the game from Play to Win
+          example: "The game was a library copy, not a Play to Win game"
+          maxLength: 500
       description: Request payload for removing a game from Play to Win
