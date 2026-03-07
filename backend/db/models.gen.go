@@ -11,6 +11,138 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type PlayToWinEntryDeletionType string
+
+const (
+	PlayToWinEntryDeletionTypeWinner           PlayToWinEntryDeletionType = "winner"
+	PlayToWinEntryDeletionTypeFailedToClaim    PlayToWinEntryDeletionType = "failed_to_claim"
+	PlayToWinEntryDeletionTypeFoulPlay         PlayToWinEntryDeletionType = "foul_play"
+	PlayToWinEntryDeletionTypeDuplicateEntrant PlayToWinEntryDeletionType = "duplicate_entrant"
+	PlayToWinEntryDeletionTypeOther            PlayToWinEntryDeletionType = "other"
+)
+
+func (e *PlayToWinEntryDeletionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PlayToWinEntryDeletionType(s)
+	case string:
+		*e = PlayToWinEntryDeletionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PlayToWinEntryDeletionType: %T", src)
+	}
+	return nil
+}
+
+type NullPlayToWinEntryDeletionType struct {
+	PlayToWinEntryDeletionType PlayToWinEntryDeletionType
+	Valid                      bool // Valid is true if PlayToWinEntryDeletionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPlayToWinEntryDeletionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.PlayToWinEntryDeletionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PlayToWinEntryDeletionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPlayToWinEntryDeletionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PlayToWinEntryDeletionType), nil
+}
+
+type PlayToWinGameDeletionType string
+
+const (
+	PlayToWinGameDeletionTypeClaimed PlayToWinGameDeletionType = "claimed"
+	PlayToWinGameDeletionTypeOther   PlayToWinGameDeletionType = "other"
+)
+
+func (e *PlayToWinGameDeletionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PlayToWinGameDeletionType(s)
+	case string:
+		*e = PlayToWinGameDeletionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PlayToWinGameDeletionType: %T", src)
+	}
+	return nil
+}
+
+type NullPlayToWinGameDeletionType struct {
+	PlayToWinGameDeletionType PlayToWinGameDeletionType
+	Valid                     bool // Valid is true if PlayToWinGameDeletionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPlayToWinGameDeletionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.PlayToWinGameDeletionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PlayToWinGameDeletionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPlayToWinGameDeletionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PlayToWinGameDeletionType), nil
+}
+
+type PlayToWinSessionDeletionType string
+
+const (
+	PlayToWinSessionDeletionTypeFoulPlay         PlayToWinSessionDeletionType = "foul_play"
+	PlayToWinSessionDeletionTypeTooManyPlayers   PlayToWinSessionDeletionType = "too_many_players"
+	PlayToWinSessionDeletionTypeTooFewPlayers    PlayToWinSessionDeletionType = "too_few_players"
+	PlayToWinSessionDeletionTypeAbnormalPlaytime PlayToWinSessionDeletionType = "abnormal_playtime"
+	PlayToWinSessionDeletionTypeOther            PlayToWinSessionDeletionType = "other"
+)
+
+func (e *PlayToWinSessionDeletionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PlayToWinSessionDeletionType(s)
+	case string:
+		*e = PlayToWinSessionDeletionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PlayToWinSessionDeletionType: %T", src)
+	}
+	return nil
+}
+
+type NullPlayToWinSessionDeletionType struct {
+	PlayToWinSessionDeletionType PlayToWinSessionDeletionType
+	Valid                        bool // Valid is true if PlayToWinSessionDeletionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPlayToWinSessionDeletionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.PlayToWinSessionDeletionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PlayToWinSessionDeletionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPlayToWinSessionDeletionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PlayToWinSessionDeletionType), nil
+}
+
 type TransactionEventType string
 
 const (
@@ -58,7 +190,7 @@ type Game struct {
 	Title          string
 	SanitizedTitle string
 	CreatedAt      pgtype.Timestamp
-	Deleted        bool
+	DeletedAt      pgtype.Timestamp
 	Barcode        pgtype.Text
 }
 
@@ -66,8 +198,38 @@ type Patron struct {
 	ID        pgtype.UUID
 	FullName  string
 	CreatedAt pgtype.Timestamp
-	Deleted   bool
+	DeletedAt pgtype.Timestamp
 	Barcode   pgtype.Text
+}
+
+type PlayToWinEntry struct {
+	ID                    pgtype.UUID
+	SessionID             pgtype.UUID
+	EntrantName           string
+	EntrantUniqueID       string
+	CreatedAt             pgtype.Timestamp
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinEntryDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
+type PlayToWinGame struct {
+	ID                    pgtype.UUID
+	GameID                pgtype.UUID
+	CreatedAt             pgtype.Timestamp
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinGameDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
+type PlayToWinSession struct {
+	ID                    pgtype.UUID
+	PlayToWinID           pgtype.UUID
+	PlaytimeMinutes       pgtype.Int4
+	CreatedAt             pgtype.Timestamp
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinSessionDeletionType
+	DeletionReasonComment pgtype.Text
 }
 
 type Transaction struct {
@@ -88,6 +250,30 @@ type TransactionEvent struct {
 	RecordedAt     pgtype.Timestamp
 }
 
+type VwDeletedPlayToWinEntry struct {
+	ID                    pgtype.UUID
+	SessionID             pgtype.UUID
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinEntryDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
+type VwDeletedPlayToWinGame struct {
+	ID                    pgtype.UUID
+	GameID                pgtype.UUID
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinGameDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
+type VwDeletedPlayToWinSession struct {
+	ID                    pgtype.UUID
+	PlayToWinID           pgtype.UUID
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinSessionDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
 type VwGameStatus struct {
 	GameID            pgtype.UUID
 	GameTitle         string
@@ -97,6 +283,7 @@ type VwGameStatus struct {
 	TransactionID     pgtype.UUID
 	CheckoutTimestamp pgtype.Timestamp
 	CheckinTimestamp  pgtype.Timestamp
+	PlayToWinGameID   pgtype.UUID
 }
 
 type VwLibraryGame struct {
@@ -123,4 +310,26 @@ type VwLibraryTransactionEvent struct {
 	PatronFullName string
 	EventTimestamp pgtype.Timestamp
 	EventType      TransactionEventType
+}
+
+type VwPlayToWinEntry struct {
+	ID              pgtype.UUID
+	SessionID       pgtype.UUID
+	PlayToWinID     pgtype.UUID
+	EntrantName     string
+	EntrantUniqueID string
+	CreatedAt       pgtype.Timestamp
+}
+
+type VwPlayToWinGame struct {
+	ID        pgtype.UUID
+	GameID    pgtype.UUID
+	CreatedAt pgtype.Timestamp
+}
+
+type VwPlayToWinSession struct {
+	ID              pgtype.UUID
+	PlayToWinID     pgtype.UUID
+	PlaytimeMinutes pgtype.Int4
+	CreatedAt       pgtype.Timestamp
 }

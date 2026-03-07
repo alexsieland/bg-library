@@ -121,3 +121,89 @@ SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_t
 FROM vw_library_transaction_events
 WHERE sanitized_title ILIKE $1 AND patron_full_name ILIKE $2
 LIMIT $3 OFFSET $4;
+
+-- name: ListPlayToWinGames :many
+SELECT
+    ptw.id AS play_to_win_id,
+    ptw.game_id AS game_id,
+    g.title AS game_title,
+    g.sanitized_title AS santized_title,
+    ptw.created_at AS created_at
+FROM vw_play_to_win_games AS ptw
+LEFT JOIN games AS g ON g.id = ptw.game_id
+WHERE sanitized_title ILIKE $1
+LIMIT $2 OFFSET $3;
+
+-- name: GetPlayToWinSessions :many
+SELECT
+    id AS session_id,
+    play_to_win_id,
+    playtime_minutes,
+    created_at
+FROM vw_play_to_win_sessions
+WHERE play_to_win_id = $1;
+
+-- name: GetPlayToWinEntries :many
+SELECT
+    id AS entry_id,
+    session_id,
+    play_to_win_id,
+    entrant_name,
+    entrant_unique_id,
+    created_at
+FROM vw_play_to_win_entries
+WHERE play_to_win_id = $1;
+
+-- name: AddPlayToWinGame :one
+INSERT INTO play_to_win_games (game_id) VALUES ($1)
+RETURNING *;
+
+-- name: AddPlayToWinSession :one
+INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, $2)
+RETURNING *;
+
+-- name: AddPlayToWinEntry :one
+INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: DeletePlayToWinGame :exec
+UPDATE play_to_win_games
+SET deleted_at = now(),
+    deletion_reason = $2,
+    deletion_reason_comment = $3
+WHERE id = $1;
+
+-- name: RestorePlayToWinGame :exec
+UPDATE play_to_win_games
+SET deleted_at = NULL,
+    deletion_reason = NULL,
+    deletion_reason_comment = NULL
+WHERE id = $1;
+
+-- name: DeletePlayToWinSession :exec
+UPDATE play_to_win_sessions
+SET deleted_at = now(),
+    deletion_reason = $2,
+    deletion_reason_comment = $3
+WHERE id = $1;
+
+-- name: RestorePlayToWinSession :exec
+UPDATE play_to_win_sessions
+SET deleted_at = NULL,
+    deletion_reason = NULL,
+    deletion_reason_comment = NULL
+WHERE id = $1;
+
+-- name: DeletePlayToWinEntry :exec
+UPDATE play_to_win_entries
+SET deleted_at = now(),
+    deletion_reason = $2,
+    deletion_reason_comment = $3
+WHERE id = $1;
+
+-- name: RestorePlayToWinEntry :exec
+UPDATE play_to_win_entries
+SET deleted_at = NULL,
+    deletion_reason = NULL,
+    deletion_reason_comment = NULL
+WHERE id = $1;

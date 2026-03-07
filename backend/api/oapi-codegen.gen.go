@@ -55,6 +55,9 @@ type CreateGameRequest struct {
 	// Barcode The barcode of the game
 	Barcode *string `json:"barcode,omitempty"`
 
+	// IsPlayToWin Indicates if the game is a play-to-win game
+	IsPlayToWin *bool `json:"isPlayToWin,omitempty"`
+
 	// Title The name of the board game
 	Title string `json:"title"`
 }
@@ -101,6 +104,9 @@ type Game struct {
 
 	// GameId Game ID
 	GameId openapi_types.UUID `json:"gameId"`
+
+	// IsPlayToWin Indicates if the game is a play-to-win game
+	IsPlayToWin bool `json:"isPlayToWin"`
 
 	// Title The name of the board game
 	Title string `json:"title"`
