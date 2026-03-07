@@ -104,6 +104,12 @@ CREATE INDEX idx_active_patrons
 ON patrons(deleted_at)
 WHERE deleted_at IS NULL;
 
+CREATE INDEX idx_active_play_to_win_games
+    ON play_to_win_games(deleted_at)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_play_to_win_game_game_id ON play_to_win_games(game_id);
+
 CREATE VIEW vw_library_games AS
 SELECT id, title, sanitized_title, barcode, created_at
 FROM games

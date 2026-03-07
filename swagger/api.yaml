@@ -542,6 +542,7 @@ components:
       required:
         - gameId
         - title
+        - isPlayToWin
       description: A game in the library
       properties:
         gameId:
@@ -561,6 +562,11 @@ components:
           maxLength: 48
           description: The barcode of the game
           example: "9780307455925"
+        isPlayToWin:
+          type: boolean
+          description: Indicates if the game is a play-to-win game
+          example: true
+          default: false
 
     GameList:
       type: object
@@ -591,6 +597,11 @@ components:
           maxLength: 48
           description: The barcode of the game
           example: "9780307455925"
+        isPlayToWin:
+          type: boolean
+          description: Indicates if the game is a play-to-win game
+          example: true
+          default: false
       description: Request payload for creating a new game
 
     Patron:
