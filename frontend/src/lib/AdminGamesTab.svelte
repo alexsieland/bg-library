@@ -16,7 +16,7 @@
     loading = true;
     error = null;
     try {
-      const newGame = await apiClient.addGame({ title: gameTitle.trim() });
+      const newGame = await apiClient.addGame({ title: gameTitle.trim(), isPlayToWin: false });
       toasts.add(`Successfully added ${newGame.title} to the library`, 'success');
       gameTitle = '';
     } catch (e) {

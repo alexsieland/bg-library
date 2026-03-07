@@ -30,7 +30,7 @@ vi.mock('./AddPatronModal.svelte', async () => {
   return { default: SvelteComponent };
 });
 
-const mockGame = { gameId: 'g1', title: 'Catan' };
+const mockGame = { gameId: 'g1', title: 'Catan', isPlayToWin: false };
 const mockPatrons = [
   { patronId: 'p1', name: 'Alice' },
   { patronId: 'p2', name: 'Bob' },

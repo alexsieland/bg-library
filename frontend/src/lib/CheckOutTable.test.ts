@@ -24,11 +24,11 @@ vi.mock('./api-client', async (importOriginal) => {
 const mockGamesResponse = {
   games: [
     {
-      game: { gameId: '1', title: 'Catan' },
+      game: { gameId: '1', title: 'Catan', isPlayToWin: false },
       patron: undefined
     },
     {
-      game: { gameId: '2', title: 'Ticket to Ride' },
+      game: { gameId: '2', title: 'Ticket to Ride', isPlayToWin: false },
       patron: { patronId: '101', name: 'John Doe' }
     }
   ]
@@ -148,7 +148,7 @@ describe('CheckOutTable (barcode enabled)', () => {
   it('Should open the loan modal with the found game when a barcode scan succeeds', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: 'g1', title: 'Catan', barcode: '9780307455925' }],
+      games: [{ gameId: 'g1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false }],
     });
 
     render(CheckOutTable);
