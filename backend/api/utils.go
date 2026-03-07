@@ -51,8 +51,9 @@ func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 
 func dbGameStatusToOpenAPIGame(dbGameStatus db.VwGameStatus) Game {
 	return Game{
-		GameId: pgUUIDToUUID(dbGameStatus.GameID),
-		Title:  dbGameStatus.GameTitle,
+		GameId:      pgUUIDToUUID(dbGameStatus.GameID),
+		Title:       dbGameStatus.GameTitle,
+		IsPlayToWin: dbGameStatus.PlayToWinGameID.Valid,
 	}
 }
 
@@ -116,7 +117,7 @@ func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
 	}
 }
 
-func FromGame(dbGame db.Game) Game {
+func FromGame(dbGame db.Game, isPlayToWin bool) Game {
 	game := Game{
 		GameId: pgUUIDToUUID(dbGame.ID),
 		Title:  dbGame.Title,

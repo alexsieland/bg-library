@@ -117,7 +117,7 @@ ORDER BY sanitized_title
 LIMIT $2 OFFSET $3;
 
 -- name: SearchTransactionEvents :many
-SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_type, event_timestamp
+SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_type, event_timestamp, play_to_win_game_id
 FROM vw_library_transaction_events
 WHERE sanitized_title ILIKE $1 AND patron_full_name ILIKE $2
 LIMIT $3 OFFSET $4;

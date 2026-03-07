@@ -84,7 +84,7 @@ func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEven
 
 	var events []TransactionEvent
 	for _, transaction := range transactions {
-		game := FromGame(db.Game{ID: transaction.GameID, Title: transaction.GameTitle})
+		game := FromGame(db.Game{ID: transaction.GameID, Title: transaction.GameTitle}, transaction.PlayToWinGameID.Valid)
 		patron := FromPatron(db.Patron{ID: transaction.PatronID, FullName: transaction.PatronFullName})
 		eventType := TransactionEventEventType(transaction.EventType)
 		events = append(events, TransactionEvent{

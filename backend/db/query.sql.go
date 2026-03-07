@@ -287,7 +287,7 @@ func (q *Queries) EditPatron(ctx context.Context, arg EditPatronParams) error {
 }
 
 const getGame = `-- name: GetGame :one
-SELECT id, title, sanitized_title, barcode, created_at
+SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 WHERE id = $1
 `
@@ -300,13 +300,14 @@ func (q *Queries) GetGame(ctx context.Context, id pgtype.UUID) (VwLibraryGame, e
 		&i.Title,
 		&i.SanitizedTitle,
 		&i.Barcode,
+		&i.PlayToWinGameID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getGameByBarcode = `-- name: GetGameByBarcode :many
-SELECT id, title, sanitized_title, barcode, created_at
+SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 WHERE barcode = $1
 `
@@ -325,6 +326,7 @@ func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) ([]
 			&i.Title,
 			&i.SanitizedTitle,
 			&i.Barcode,
+			&i.PlayToWinGameID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -530,7 +532,7 @@ func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGam
 }
 
 const listGames = `-- name: ListGames :many
-SELECT id, title, sanitized_title, barcode, created_at
+SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2
@@ -555,6 +557,7 @@ func (q *Queries) ListGames(ctx context.Context, arg ListGamesParams) ([]VwLibra
 			&i.Title,
 			&i.SanitizedTitle,
 			&i.Barcode,
+			&i.PlayToWinGameID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -827,7 +830,7 @@ func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusPara
 }
 
 const searchGames = `-- name: SearchGames :many
-SELECT id, title, sanitized_title, barcode, created_at
+SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
@@ -854,6 +857,7 @@ func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwL
 			&i.Title,
 			&i.SanitizedTitle,
 			&i.Barcode,
+			&i.PlayToWinGameID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -906,7 +910,7 @@ func (q *Queries) SearchPatrons(ctx context.Context, arg SearchPatronsParams) ([
 }
 
 const searchTransactionEvents = `-- name: SearchTransactionEvents :many
-SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_type, event_timestamp
+SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_type, event_timestamp, play_to_win_game_id
 FROM vw_library_transaction_events
 WHERE sanitized_title ILIKE $1 AND patron_full_name ILIKE $2
 LIMIT $3 OFFSET $4
@@ -920,13 +924,14 @@ type SearchTransactionEventsParams struct {
 }
 
 type SearchTransactionEventsRow struct {
-	TransactionID  pgtype.UUID
-	GameID         pgtype.UUID
-	GameTitle      string
-	PatronID       pgtype.UUID
-	PatronFullName string
-	EventType      TransactionEventType
-	EventTimestamp pgtype.Timestamp
+	TransactionID   pgtype.UUID
+	GameID          pgtype.UUID
+	GameTitle       string
+	PatronID        pgtype.UUID
+	PatronFullName  string
+	EventType       TransactionEventType
+	EventTimestamp  pgtype.Timestamp
+	PlayToWinGameID pgtype.UUID
 }
 
 func (q *Queries) SearchTransactionEvents(ctx context.Context, arg SearchTransactionEventsParams) ([]SearchTransactionEventsRow, error) {
@@ -951,6 +956,7 @@ func (q *Queries) SearchTransactionEvents(ctx context.Context, arg SearchTransac
 			&i.PatronFullName,
 			&i.EventType,
 			&i.EventTimestamp,
+			&i.PlayToWinGameID,
 		); err != nil {
 			return nil, err
 		}

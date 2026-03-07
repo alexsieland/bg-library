@@ -288,11 +288,12 @@ type VwGameStatus struct {
 }
 
 type VwLibraryGame struct {
-	ID             pgtype.UUID
-	Title          string
-	SanitizedTitle string
-	Barcode        pgtype.Text
-	CreatedAt      pgtype.Timestamp
+	ID              pgtype.UUID
+	Title           string
+	SanitizedTitle  string
+	Barcode         pgtype.Text
+	PlayToWinGameID pgtype.UUID
+	CreatedAt       pgtype.Timestamp
 }
 
 type VwLibraryPatron struct {
@@ -303,14 +304,15 @@ type VwLibraryPatron struct {
 }
 
 type VwLibraryTransactionEvent struct {
-	TransactionID  pgtype.UUID
-	GameID         pgtype.UUID
-	GameTitle      string
-	SanitizedTitle pgtype.Text
-	PatronID       pgtype.UUID
-	PatronFullName string
-	EventTimestamp pgtype.Timestamp
-	EventType      TransactionEventType
+	TransactionID   pgtype.UUID
+	GameID          pgtype.UUID
+	GameTitle       string
+	SanitizedTitle  pgtype.Text
+	PatronID        pgtype.UUID
+	PatronFullName  string
+	EventTimestamp  pgtype.Timestamp
+	EventType       TransactionEventType
+	PlayToWinGameID pgtype.UUID
 }
 
 type VwPlayToWinEntry struct {

@@ -32,7 +32,9 @@ func (s Server) AddGame(c *gin.Context) {
 		internalError(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, FromGame(dbGame))
+
+	//isPlayToWin is always false because games must exist to be marked as play to win
+	c.JSON(http.StatusCreated, FromGame(dbGame, false))
 }
 
 func (s Server) insertGame(c *gin.Context, title string, barcode *string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {

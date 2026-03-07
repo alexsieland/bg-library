@@ -110,19 +110,26 @@ CREATE INDEX idx_play_to_win_game_game_id ON play_to_win_games(game_id);
 CREATE INDEX idx_play_to_win_session_play_to_win_id ON play_to_win_sessions(play_to_win_id);
 CREATE INDEX idx_play_to_win_entries_session_id ON play_to_win_entries(session_id);
 
+CREATE VIEW vw_play_to_win_games AS
+SELECT  id, game_id, created_at
+FROM play_to_win_games
+WHERE deleted_at IS NULL;
+
 CREATE VIEW vw_library_games AS
-SELECT id, title, sanitized_title, barcode, created_at
-FROM games
+SELECT
+    g.id,
+    g.title,
+    g.sanitized_title,
+    g.barcode,
+    ptw.id AS play_to_win_game_id,
+    g.created_at
+FROM games AS g
+LEFT JOIN vw_play_to_win_games AS ptw ON g.id = ptw.game_id
 WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_library_patrons AS
 SELECT id, full_name, barcode, created_at
 FROM patrons
-WHERE deleted_at IS NULL;
-
-CREATE VIEW vw_play_to_win_games AS
-SELECT  id, game_id, created_at
-FROM play_to_win_games
 WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_deleted_play_to_win_games AS
@@ -165,10 +172,12 @@ SELECT
     te.patron_id,
     COALESCE(p.full_name, 'Missing Patron') AS patron_full_name,
     te.event_timestamp,
-    te.event_type
+    te.event_type,
+    ptw.id AS play_to_win_game_id
 FROM transaction_events AS te
          LEFT JOIN games AS g ON te.game_id = g.id
          LEFT JOIN patrons AS p ON te.patron_id = p.id
+         LEFT JOIN vw_play_to_win_games AS ptw ON te.game_id = ptw.game_id
 ORDER BY te.event_timestamp DESC;
 
 CREATE VIEW vw_game_status AS
@@ -185,7 +194,7 @@ SELECT DISTINCT ON (g.id)
 FROM vw_library_games AS g
 LEFT JOIN transactions AS t ON t.game_id = g.id
 LEFT JOIN vw_library_patrons AS p ON t.patron_id = p.id
-LEFT JOIN play_to_win_games AS ptw ON ptw.game_id = g.id
+LEFT JOIN vw_play_to_win_games AS ptw ON ptw.game_id = g.id
 ORDER BY g.id, t.checkout_timestamp DESC;
 
 CREATE OR REPLACE FUNCTION fn_record_checkout_event()
