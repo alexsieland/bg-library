@@ -48,7 +48,7 @@ func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
 	// 23503 is the error code for a foreign key violation, which would occur if the game ID does not exist
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if pgErr.Code == "23503" {
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
 			notFound(c)
 			return
 		}

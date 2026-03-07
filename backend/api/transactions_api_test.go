@@ -72,7 +72,7 @@ func TestCheckOutGame(t *testing.T) {
 
 		// 1. GetGameStatus - Game is available
 		mockRowStatus := new(MockRow)
-		mockRowStatus.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRowStatus.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = "Catan"
 			*args.Get(2).(*string) = "catan"
@@ -81,6 +81,7 @@ func TestCheckOutGame(t *testing.T) {
 			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Valid: false}
 			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
 			*args.Get(7).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(8).(*pgtype.UUID) = pgtype.UUID{Valid: false} // play_to_win_game_id
 		}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRowStatus).Once()
 
@@ -121,7 +122,7 @@ func TestCheckOutGame(t *testing.T) {
 		now := time.Now().UTC()
 
 		mockRowStatus := new(MockRow)
-		mockRowStatus.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRowStatus.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = "Catan"
 			*args.Get(2).(*string) = "catan"
@@ -130,6 +131,7 @@ func TestCheckOutGame(t *testing.T) {
 			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Bytes: transactionID, Valid: true}
 			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Time: now, Valid: true}
 			*args.Get(7).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(8).(*pgtype.UUID) = pgtype.UUID{Valid: false} // play_to_win_game_id
 		}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRowStatus)
 
@@ -159,7 +161,7 @@ func TestCheckOutGame(t *testing.T) {
 		now := time.Now().UTC()
 
 		mockRowStatus := new(MockRow)
-		mockRowStatus.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRowStatus.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(1).(*string) = "Catan"
 			*args.Get(2).(*string) = "catan"
@@ -168,6 +170,7 @@ func TestCheckOutGame(t *testing.T) {
 			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Bytes: transactionID, Valid: true}
 			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Time: now, Valid: true}
 			*args.Get(7).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(8).(*pgtype.UUID) = pgtype.UUID{Valid: false} // play_to_win_game_id
 		}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRowStatus)
 
@@ -203,7 +206,7 @@ func TestCheckOutGame(t *testing.T) {
 		patronID := uuid.New()
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
@@ -230,7 +233,7 @@ func TestListTransactionEvents(t *testing.T) {
 		mockRows := new(MockRows)
 		mockRows.On("Next").Return(true).Once()
 		mockRows.On("Next").Return(false).Once()
-		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: transactionID, Valid: true}
 			*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
 			*args.Get(2).(*string) = "Catan"
@@ -238,6 +241,7 @@ func TestListTransactionEvents(t *testing.T) {
 			*args.Get(4).(*string) = "John Doe"
 			*args.Get(5).(*db.TransactionEventType) = db.TransactionEventTypeCheckOut
 			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Time: now, Valid: true}
+			*args.Get(7).(*pgtype.UUID) = pgtype.UUID{Valid: false} // play_to_win_game_id
 		}).Return(nil)
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)

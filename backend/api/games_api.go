@@ -38,7 +38,6 @@ func (s Server) AddGame(c *gin.Context) {
 		return
 	}
 
-	//isPlayToWin is always false because games must exist to be marked as play to win
 	c.JSON(http.StatusCreated, FromGame(dbGame, isPlayToWin))
 }
 

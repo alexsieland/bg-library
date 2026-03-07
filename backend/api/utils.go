@@ -119,8 +119,9 @@ func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
 
 func FromGame(dbGame db.Game, isPlayToWin bool) Game {
 	game := Game{
-		GameId: pgUUIDToUUID(dbGame.ID),
-		Title:  dbGame.Title,
+		GameId:      pgUUIDToUUID(dbGame.ID),
+		Title:       dbGame.Title,
+		IsPlayToWin: isPlayToWin,
 	}
 	if dbGame.Barcode.Valid {
 		game.Barcode = &dbGame.Barcode.String
