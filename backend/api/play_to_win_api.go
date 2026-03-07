@@ -13,29 +13,44 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
-func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
+func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []ErrorDetail, tx *pgx.Tx) error {
 	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
 	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
+		return errValidation
 	}
 
-	_, err := s.queries.CreatePlayToWinGame(c.Request.Context(), gameUUID)
-	var pgErr *pgconn.PgError
+	var err error
+	if tx != nil {
+		_, err = s.queries.WithTx(*tx).CreatePlayToWinGame(c.Request.Context(), gameUUID)
+	} else {
+		_, err = s.queries.CreatePlayToWinGame(c.Request.Context(), gameUUID)
+	}
+
 	if err != nil {
+		var pgErr *pgconn.PgError
+
 		// check for specific Postgres error codes:
 		if errors.As(err, &pgErr) {
-			// 23503 is the error code for a foreign key violation, which would occur if the game ID does not exist
-			if pgErr.Code == "23503" {
-				notFound(c)
-				return
-			}
 
 			// 23505 is the error code for a unique constraint violation, which would occur if the game is already marked as play to win
 			if pgErr.Code == "23505" {
-				c.JSON(http.StatusNoContent, nil)
-				return
+				return nil
 			}
+		}
+		return err
+	}
+	return nil
+}
+
+func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
+	var errorDetails []ErrorDetail
+	err := s.addPlayToWin(c, gameId, errorDetails, nil)
+	// 23503 is the error code for a foreign key violation, which would occur if the game ID does not exist
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if pgErr.Code == "23503" {
+			notFound(c)
+			return
 		}
 		log.Printf("Error creating play to win game: %v", err)
 		internalError(c, err)
