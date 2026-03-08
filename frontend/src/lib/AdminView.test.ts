@@ -28,7 +28,7 @@ describe('AdminView', () => {
   it('Should render the Games tab as active by default', () => {
     render(AdminView);
     expect(screen.getByText('Add Games')).toBeInTheDocument();
-    expect(screen.getByLabelText('Game Title')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Game' })).toBeInTheDocument();
   });
 
   it('Should render the Games tab label', () => {
