@@ -39,6 +39,17 @@ const mockCheckedOutGames = {
   ],
 };
 
+const mockCheckedOutGamesWithP2W = {
+  games: [
+    {
+      game: { gameId: '1', title: 'Catan', isPlayToWin: true },
+      patron: { patronId: 'p1', name: 'Alice' },
+      transactionId: 't1',
+      checkedOutAt: '2026-01-31T12:00:00Z',
+    },
+  ],
+};
+
 describe('CheckInTable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -124,6 +135,17 @@ describe('CheckInTable', () => {
 
     await waitFor(() => {
       expect(screen.getByText('No checked out games found.')).toBeInTheDocument();
+    });
+  });
+
+  it('Should display P2W badge when game has isPlayToWin true', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGamesWithP2W);
+
+    render(CheckInTable);
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+      expect(screen.getByText('P2W')).toBeInTheDocument();
     });
   });
 });
