@@ -17,7 +17,7 @@
 
   <main class="container mx-auto px-4 py-8 space-y-8">
     <div class="space-y-2">
-      <h1 class="text-3xl text-center font-bold text-slate-900 dark:text-slate-100 ">
+      <h1 class="text-3xl text-center font-bold text-slate-900 dark:text-slate-100">
         {#if activeTab === 'checkout'}
           Checkout Games
         {:else if activeTab === 'checkin'}
@@ -28,7 +28,9 @@
       </h1>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+    >
       {#if activeTab === 'checkout'}
         <CheckOutTable />
       {:else if activeTab === 'checkin'}

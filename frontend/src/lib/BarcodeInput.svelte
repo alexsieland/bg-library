@@ -3,7 +3,7 @@
   import { apiClient } from './api-client';
   import type { components } from '../generated/library-api';
 
-  type Game = components["schemas"]["Game"];
+  type Game = components['schemas']['Game'];
 
   export let onGameFound: (game: Game) => void = () => {};
   export let onError: (message: string) => void = () => {};
@@ -23,7 +23,9 @@
       const result = await apiClient.getGameByBarcode(value);
 
       if (result.games.length > 1) {
-        onError('Barcode conflict handling not yet implemented. Please manually trigger the check out.');
+        onError(
+          'Barcode conflict handling not yet implemented. Please manually trigger the check out.'
+        );
         return;
       }
 
@@ -45,7 +47,9 @@
 </script>
 
 <div class="flex items-center gap-2">
-  <span class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none">
+  <span
+    class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none"
+  >
     Barcode
   </span>
   <div class="relative">

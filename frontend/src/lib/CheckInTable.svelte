@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Button } from 'flowbite-svelte';
+  import {
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHead,
+    TableHeadCell,
+    Button,
+  } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
   import { apiClient, type GameStatusList } from './api-client';
@@ -21,7 +29,7 @@
     try {
       gameStatusList = await apiClient.listGames({
         title: searchQuery || undefined,
-        checkedOut: true
+        checkedOut: true,
       });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
@@ -65,12 +73,12 @@
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   }
 
-  function handleBarcodeFound(game: components["schemas"]["Game"]) {
-    const match = gameStatusList.games.find(gs => gs.game.gameId === game.gameId);
+  function handleBarcodeFound(game: components['schemas']['Game']) {
+    const match = gameStatusList.games.find((gs) => gs.game.gameId === game.gameId);
     if (!match) {
       toasts.add(`${game.title} has already been returned.`, 'warn');
       return;
@@ -92,7 +100,10 @@
       }
       const result = await apiClient.getGameByBarcode(barcode);
       if (result.games.length > 1) {
-        toasts.add('Barcode conflict handling not yet implemented. Please manually trigger the check in.', 'error');
+        toasts.add(
+          'Barcode conflict handling not yet implemented. Please manually trigger the check in.',
+          'error'
+        );
         return;
       }
       handleBarcodeFound(result.games[0]);
@@ -114,10 +125,16 @@
 
 <svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
 
-<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+<div
+  class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50"
+>
   <div class="flex items-center justify-between gap-4">
     <div class="flex-1">
-      <SearchBar bind:searchQuery placeholder="Search checked out games..." onSearch={handleSearch} />
+      <SearchBar
+        bind:searchQuery
+        placeholder="Search checked out games..."
+        onSearch={handleSearch}
+      />
     </div>
     {#if isBarcodeEnabled()}
       <BarcodeInput
@@ -144,7 +161,9 @@
     <TableBody class="divide-y">
       {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
-          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">{gameStatus.game.title}</TableBodyCell>
+          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100"
+            >{gameStatus.game.title}</TableBodyCell
+          >
           <TableBodyCell class="text-slate-700 dark:text-slate-300">
             {gameStatus.patron?.name || 'Unknown'}
           </TableBodyCell>
@@ -164,7 +183,10 @@
       {/each}
       {#if gameStatusList.games.length === 0}
         <TableBodyRow>
-          <TableBodyCell colspan={4} class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+          <TableBodyCell
+            colspan={4}
+            class="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
+          >
             No checked out games found.
           </TableBodyCell>
         </TableBodyRow>

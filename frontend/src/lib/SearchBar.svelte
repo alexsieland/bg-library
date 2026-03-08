@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Search } from "flowbite-svelte";
+  import { Search } from 'flowbite-svelte';
 
   export let searchQuery: string = '';
-  export let placeholder: string = "Search...";
+  export let placeholder: string = 'Search...';
   export let onSearch: (query: string) => void = () => {};
 
   import Debounce from './snippets/debounce.svelte';
@@ -24,12 +24,12 @@
 
     // If we're already focusing an input/textarea/editable element, don't do anything
     const activeElement = document.activeElement;
-    const isEditing = activeElement && (
-      activeElement.tagName === 'INPUT' || 
-      activeElement.tagName === 'TEXTAREA' || 
-      (activeElement as HTMLElement).isContentEditable
-    );
-    
+    const isEditing =
+      activeElement &&
+      (activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).isContentEditable);
+
     if (isEditing) return;
 
     // Check if it's a single printable character (length 1) and not a modifier key
@@ -58,17 +58,24 @@
 <svelte:window on:keydown={handleWindowKeydown} />
 
 <!-- Render the extracted debounce logic as an invisible helper component -->
-<Debounce value={searchQuery} onTrigger={onSearch} delay={300} minLength={0} {lastValueRef} {cancelKey} />
+<Debounce
+  value={searchQuery}
+  onTrigger={onSearch}
+  delay={300}
+  minLength={0}
+  {lastValueRef}
+  {cancelKey}
+/>
 
 <div class="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
   <div class="relative flex-grow">
-    <Search 
-      {placeholder} 
-      bind:value={searchQuery} 
-      bind:elementRef={searchInput} 
+    <Search
+      {placeholder}
+      bind:value={searchQuery}
+      bind:elementRef={searchInput}
       onkeydown={handleKeydown}
     />
-    <button 
+    <button
       type="button"
       class="absolute inset-y-0 end-0 flex items-center pe-3 cursor-pointer"
       onclick={handleSearchClick}
@@ -87,7 +94,7 @@
           stroke-linecap="round"
           stroke-linejoin="round"
           stroke-width="2"
-        />
+        ></path>
       </svg>
     </button>
   </div>

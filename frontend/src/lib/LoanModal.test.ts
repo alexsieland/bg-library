@@ -106,7 +106,9 @@ describe("LoanModal", () => {
 
     await waitFor(
       () => expect(screen.getByText("Patron 0")).toBeInTheDocument(),
-      { timeout: 1000 },
+      {
+        timeout: 1000,
+      },
     );
 
     const patronButtons = screen
@@ -156,7 +158,9 @@ describe("LoanModal", () => {
 
     await waitFor(
       () => expect(screen.getByText("Unique 0")).toBeInTheDocument(),
-      { timeout: 1000 },
+      {
+        timeout: 1000,
+      },
     );
 
     const patronButtons = screen
@@ -284,7 +288,9 @@ describe("LoanModal", () => {
     await searchAndWaitForResults("Ali");
     await waitFor(
       () => expect(screen.getByText(/New Patron/)).toBeInTheDocument(),
-      { timeout: 1000 },
+      {
+        timeout: 1000,
+      },
     );
   });
 

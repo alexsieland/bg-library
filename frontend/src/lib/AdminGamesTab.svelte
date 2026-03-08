@@ -44,7 +44,10 @@
     try {
       const file = bulkUploadFile[0];
       const result = await apiClient.bulkAddGames(file);
-      toasts.add(`Successfully imported ${result.imported} game${result.imported !== 1 ? 's' : ''}`, 'success');
+      toasts.add(
+        `Successfully imported ${result.imported} game${result.imported !== 1 ? 's' : ''}`,
+        'success'
+      );
       bulkUploadFile = undefined;
     } catch (e) {
       console.error('Error uploading games:', e);
@@ -121,4 +124,3 @@
     </section>
   </div>
 </div>
-

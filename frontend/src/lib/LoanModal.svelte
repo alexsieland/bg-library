@@ -9,7 +9,7 @@
   import AddPatronModal from './AddPatronModal.svelte';
 
   export let open = false;
-  export let game: components["schemas"]["Game"] | null = null;
+  export let game: components['schemas']['Game'] | null = null;
   export let onLoanSuccess: () => void = () => {};
 
   let patronName = '';
@@ -70,7 +70,7 @@
       const data = await apiClient.listPatrons({ name });
       // Deduplicate by name (case-insensitive), keeping first occurrence, then slice to 5
       const seen = new Set<string>();
-      const deduplicated = data.patrons.filter(p => {
+      const deduplicated = data.patrons.filter((p) => {
         const key = p.name.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
@@ -150,22 +150,28 @@
   }
 </script>
 
-<Modal bind:open title={`Loan Game: ${game?.title || ''}`} size="md" autoclose={false} class="w-full">
+<Modal
+  bind:open
+  title={`Loan Game: ${game?.title || ''}`}
+  size="md"
+  autoclose={false}
+  class="w-full"
+>
   <div class="space-y-4 min-h-[300px]">
     <div class="flex items-end space-x-2">
       <div class="flex-grow relative">
         <Label for="patronName" class="mb-2">Patron Name</Label>
         <div class="relative">
           <Input
-                  id="patronName"
-                  type="text"
-                  placeholder="Enter patron name"
-                  bind:value={patronName}
-                  onkeydown={handleKeydown}
-                  oninput={handlePatronNameInput}
-                  autocomplete="off"
-                  maxlength={100}
-                  class="ps-9"
+            id="patronName"
+            type="text"
+            placeholder="Enter patron name"
+            bind:value={patronName}
+            onkeydown={handleKeydown}
+            oninput={handlePatronNameInput}
+            autocomplete="off"
+            maxlength={100}
+            class="ps-9"
           >
             {#snippet left()}
               {#if loading}
@@ -183,13 +189,15 @@
             {/snippet}
           </Input>
         </div>
-        
+
         {#if patrons.length > 0}
-          <ul class="absolute z-50 w-full mt-1 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <ul
+            class="absolute z-50 w-full mt-1 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+          >
             {#each patrons as patron}
               <li>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                   onclick={() => selectPatron(patron)}
                 >
@@ -212,7 +220,9 @@
     {#if isBarcodeEnabled()}
       <div class="flex justify-end">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none">
+          <span
+            class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none"
+          >
             Barcode
           </span>
           <div class="relative">
@@ -253,7 +263,16 @@
   bind:open={addPatronModalOpen}
   initialName={patronName}
   onPatronCreated={handleNewPatronCreated}
-  onCancel={() => { addPatronModalOpen = false; }}
+  onCancel={() => {
+    addPatronModalOpen = false;
+  }}
 />
 
-<Debounce value={patronName} onTrigger={searchPatrons} delay={300} minLength={3} {lastValueRef} {cancelKey} />
+<Debounce
+  value={patronName}
+  onTrigger={searchPatrons}
+  delay={300}
+  minLength={3}
+  {lastValueRef}
+  {cancelKey}
+/>
