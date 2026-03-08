@@ -1,7 +1,9 @@
 <script lang="ts">
   import { Button, Input, Label, Spinner, Fileupload, Helper } from 'flowbite-svelte';
-  import { apiClient } from './api-client';
+  import { apiClient, type Game } from './api-client';
   import { toasts } from './toast-store';
+  import AddPatronModal from './AddPatronModal.svelte';
+  import AddGameModal from './AddGameModal.svelte';
 
   let gameTitle = '';
   let loading = false;
@@ -11,31 +13,10 @@
   let bulkLoading = false;
   let bulkError: string | null = null;
 
-  async function handleAddGame() {
-    if (!gameTitle.trim()) return;
-    loading = true;
-    error = null;
-    try {
-      const newGame = await apiClient.addGame({
-        title: gameTitle.trim(),
-        isPlayToWin: false,
-      });
-      toasts.add(`Successfully added ${newGame.title} to the library`, 'success');
-      gameTitle = '';
-    } catch (e) {
-      console.error('Error adding game:', e);
-      const errorMessage = e instanceof Error ? e.message : 'Failed to add game';
-      error = errorMessage;
-      toasts.add(`Failed to add game: ${errorMessage}`, 'error');
-    } finally {
-      loading = false;
-    }
-  }
+  let addGameModalOpen = false;
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
-      handleAddGame();
-    }
+  function handleGameCreated(game: Game) {
+    toasts.add(`Successfully added game: ${game.title}`, 'success');
   }
 
   async function handleBulkUpload() {
@@ -68,29 +49,8 @@
     <section>
       <h2 class="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Add Games</h2>
       <div class="space-y-2">
-        <Label for="gameTitle">Game Title</Label>
-        <div class="flex items-center space-x-2">
-          <div class="grow">
-            <Input
-              id="gameTitle"
-              placeholder="Enter game title"
-              bind:value={gameTitle}
-              onkeydown={handleKeydown}
-              autocomplete="off"
-              maxlength={100}
-            />
-          </div>
-          <Button onclick={handleAddGame} disabled={loading || !gameTitle.trim()}>
-            {#if loading}
-              <Spinner size="4" class="me-2" />
-            {/if}
-            Add Game
-          </Button>
-        </div>
+        <Button onclick={() => (addGameModalOpen = true)}>Add Game</Button>
       </div>
-      {#if error}
-        <p class="mt-2 text-sm text-rose-500">{error}</p>
-      {/if}
     </section>
 
     <section>
@@ -127,3 +87,5 @@
     </section>
   </div>
 </div>
+
+<AddGameModal bind:open={addGameModalOpen} onGameSaved={handleGameCreated} />
