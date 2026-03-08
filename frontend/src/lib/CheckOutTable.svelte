@@ -34,7 +34,9 @@
     loading = true;
     error = null;
     try {
-      gameStatusList = await apiClient.listGames({ title: searchQuery || undefined });
+      gameStatusList = await apiClient.listGames({
+        title: searchQuery || undefined,
+      });
       console.log('Fetched games:', gameStatusList.games.length);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
@@ -106,7 +108,7 @@
 <svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
 
 <div
-  class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50"
+  class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
 >
   <div class="flex items-center justify-between gap-4">
     <!-- Primary: search -->

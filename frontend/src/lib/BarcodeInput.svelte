@@ -48,7 +48,7 @@
 
 <div class="flex items-center gap-2">
   <span
-    class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none"
+    class="text-xs font-medium tracking-wide whitespace-nowrap text-slate-400 uppercase select-none dark:text-slate-500"
   >
     Barcode
   </span>
@@ -63,17 +63,17 @@
       aria-label="Barcode Scanner"
       autocomplete="off"
       disabled={loading}
-      class="w-36 rounded-lg border border-slate-200 dark:border-slate-600
-             bg-white dark:bg-slate-800
-             px-3 py-2 text-sm
-             text-slate-500 dark:text-slate-400
-             placeholder:text-slate-300 dark:placeholder:text-slate-600
-             focus:border-slate-400 dark:focus:border-slate-500
-             focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500
-             disabled:opacity-50"
+      class="w-36 rounded-lg border border-slate-200 bg-white
+             px-3 py-2
+             text-sm text-slate-500 placeholder:text-slate-300
+             focus:border-slate-400 focus:ring-1
+             focus:ring-slate-300 focus:outline-none
+             disabled:opacity-50 dark:border-slate-600
+             dark:bg-slate-800 dark:text-slate-400 dark:placeholder:text-slate-600 dark:focus:border-slate-500
+             dark:focus:ring-slate-500"
     />
     {#if loading}
-      <div class="absolute inset-y-0 inset-e-0 flex items-center pe-2 pointer-events-none">
+      <div class="pointer-events-none absolute inset-y-0 inset-e-0 flex items-center pe-2">
         <Spinner size="4" />
       </div>
     {/if}

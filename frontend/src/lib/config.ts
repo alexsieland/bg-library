@@ -8,7 +8,7 @@ declare global {
 }
 
 export const getBackendUrl = () => {
-  return window.CONFIG?.API_URL || "http://localhost:8080";
+  return window.CONFIG?.API_URL || 'http://localhost:8080';
 };
 
 export const isBarcodeEnabled = () => {

@@ -67,7 +67,7 @@
   {cancelKey}
 />
 
-<div class="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
+<div class="flex flex-col space-y-4 md:flex-row md:items-center md:space-y-0 md:space-x-4">
   <div class="relative flex-grow">
     <Search
       {placeholder}
@@ -77,13 +77,13 @@
     />
     <button
       type="button"
-      class="absolute inset-y-0 end-0 flex items-center pe-3 cursor-pointer"
+      class="absolute inset-y-0 end-0 flex cursor-pointer items-center pe-3"
       onclick={handleSearchClick}
       aria-label="Search"
     >
       <svg
         aria-hidden="true"
-        class="text-gray-500 dark:text-gray-400 w-5 h-5"
+        class="h-5 w-5 text-gray-500 dark:text-gray-400"
         fill="none"
         viewBox="0 0 20 20"
         xmlns="http://www.w3.org/2000/svg"

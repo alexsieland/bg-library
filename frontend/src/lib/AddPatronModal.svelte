@@ -95,7 +95,7 @@
       <div>
         <Label for="addPatronBarcode" class="mb-2">
           <span
-            class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase"
+            class="text-xs font-medium tracking-wide text-slate-400 uppercase dark:text-slate-500"
           >
             Patron Barcode
           </span>
@@ -111,7 +111,7 @@
             disabled={loading || barcodeLoading}
           />
           {#if barcodeLoading}
-            <div class="absolute inset-y-0 inset-e-0 flex items-center pe-3 pointer-events-none">
+            <div class="pointer-events-none absolute inset-y-0 inset-e-0 flex items-center pe-3">
               <Spinner size="4" />
             </div>
           {/if}

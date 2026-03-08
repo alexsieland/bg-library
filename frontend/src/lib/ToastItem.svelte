@@ -17,7 +17,7 @@
   role="alert"
   in:slide={{ axis: 'y', duration: 300 }}
   out:fade={{ duration: 200 }}
-  class="w-full max-w-full p-4 flex items-center justify-between shadow-lg pointer-events-auto
+  class="pointer-events-auto flex w-full max-w-full items-center justify-between p-4 shadow-lg
     {toast.type === 'success'
     ? 'bg-emerald-500 text-white'
     : toast.type === 'warn'
@@ -26,19 +26,19 @@
 >
   <div class="flex items-center space-x-3">
     {#if toast.type === 'success'}
-      <CheckCircleSolid class="w-6 h-6" />
+      <CheckCircleSolid class="h-6 w-6" />
     {:else if toast.type === 'warn'}
-      <ExclamationCircleSolid class="w-6 h-6" />
+      <ExclamationCircleSolid class="h-6 w-6" />
     {:else}
-      <CloseCircleSolid class="w-6 h-6" />
+      <CloseCircleSolid class="h-6 w-6" />
     {/if}
-    <span class="font-medium text-lg">{toast.message}</span>
+    <span class="text-lg font-medium">{toast.message}</span>
   </div>
 
   {#if toast.dismissible}
     <CloseButton
       color="none"
-      class="text-white/80 hover:text-white hover:bg-white/10"
+      class="text-white/80 hover:bg-white/10 hover:text-white"
       onclick={close}
     />
   {/if}

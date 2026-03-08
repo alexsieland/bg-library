@@ -15,12 +15,12 @@
   --color-neutral-dark-bg: #1e293b;
 }
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @plugin 'flowbite/plugin';
 
-@source "../node_modules/flowbite-svelte/dist";
-@source "../node_modules/flowbite-svelte-icons/dist";
+@source '../node_modules/flowbite-svelte/dist';
+@source '../node_modules/flowbite-svelte-icons/dist';
 
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;

@@ -157,9 +157,9 @@
   autoclose={false}
   class="w-full"
 >
-  <div class="space-y-4 min-h-[300px]">
+  <div class="min-h-[300px] space-y-4">
     <div class="flex items-end space-x-2">
-      <div class="flex-grow relative">
+      <div class="relative flex-grow">
         <Label for="patronName" class="mb-2">Patron Name</Label>
         <div class="relative">
           <Input
@@ -177,13 +177,13 @@
               {#if loading}
                 <Spinner size="5" />
               {:else}
-                <UserSolid class="shrink-0 h-5 w-5" />
+                <UserSolid class="h-5 w-5 shrink-0" />
               {/if}
             {/snippet}
             {#snippet right()}
               {#if showNewPatronButton}
                 <Button size="xs" color="emerald" onclick={openAddPatronModal} class="gap-1">
-                  <UserAddSolid class="shrink-0 h-5 w-5" /> New Patron
+                  <UserAddSolid class="h-5 w-5 shrink-0" /> New Patron
                 </Button>
               {/if}
             {/snippet}
@@ -192,13 +192,13 @@
 
         {#if patrons.length > 0}
           <ul
-            class="absolute z-50 w-full mt-1 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+            class="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
             {#each patrons as patron}
               <li>
                 <button
                   type="button"
-                  class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
                   onclick={() => selectPatron(patron)}
                 >
                   {patron.name}
@@ -221,7 +221,7 @@
       <div class="flex justify-end">
         <div class="flex items-center gap-2">
           <span
-            class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase whitespace-nowrap select-none"
+            class="text-xs font-medium tracking-wide whitespace-nowrap text-slate-400 uppercase select-none dark:text-slate-500"
           >
             Barcode
           </span>
@@ -234,17 +234,17 @@
               aria-label="Patron Barcode Scanner"
               autocomplete="off"
               disabled={barcodeLoading}
-              class="w-36 rounded-lg border border-slate-200 dark:border-slate-600
-                     bg-white dark:bg-slate-800
-                     px-3 py-2 text-sm
-                     text-slate-500 dark:text-slate-400
-                     placeholder:text-slate-300 dark:placeholder:text-slate-600
-                     focus:border-slate-400 dark:focus:border-slate-500
-                     focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500
-                     disabled:opacity-50"
+              class="w-36 rounded-lg border border-slate-200 bg-white
+                     px-3 py-2
+                     text-sm text-slate-500 placeholder:text-slate-300
+                     focus:border-slate-400 focus:ring-1
+                     focus:ring-slate-300 focus:outline-none
+                     disabled:opacity-50 dark:border-slate-600
+                     dark:bg-slate-800 dark:text-slate-400 dark:placeholder:text-slate-600 dark:focus:border-slate-500
+                     dark:focus:ring-slate-500"
             />
             {#if barcodeLoading}
-              <div class="absolute inset-y-0 inset-e-0 flex items-center pe-2 pointer-events-none">
+              <div class="pointer-events-none absolute inset-y-0 inset-e-0 flex items-center pe-2">
                 <Spinner size="4" />
               </div>
             {/if}

@@ -6,7 +6,7 @@
 
 <Navbar fluid={true} class="bg-slate-800 text-white shadow-md">
   <NavBrand href="/">
-    <span class="self-center whitespace-nowrap text-2xl font-bold tracking-tight text-white"
+    <span class="self-center text-2xl font-bold tracking-tight whitespace-nowrap text-white"
       >BG Library</span
     >
   </NavBrand>

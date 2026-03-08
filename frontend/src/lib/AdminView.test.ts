@@ -1,13 +1,13 @@
-import { render, screen } from "@testing-library/svelte";
-import AdminView from "./AdminView.svelte";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen } from '@testing-library/svelte';
+import AdminView from './AdminView.svelte';
+import { describe, it, expect, vi } from 'vitest';
 
-vi.mock("./config", () => ({
-  getBackendUrl: () => "http://localhost:8080",
+vi.mock('./config', () => ({
+  getBackendUrl: () => 'http://localhost:8080',
   isBarcodeEnabled: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock("./api-client", async (importOriginal) => {
+vi.mock('./api-client', async (importOriginal) => {
   const actual = await importOriginal<any>();
   return {
     ...actual,
@@ -20,24 +20,24 @@ vi.mock("./api-client", async (importOriginal) => {
   };
 });
 
-vi.mock("./toast-store", () => ({
+vi.mock('./toast-store', () => ({
   toasts: { add: vi.fn() },
 }));
 
-describe("AdminView", () => {
-  it("Should render the Games tab as active by default", () => {
+describe('AdminView', () => {
+  it('Should render the Games tab as active by default', () => {
     render(AdminView);
-    expect(screen.getByText("Add Games")).toBeInTheDocument();
-    expect(screen.getByLabelText("Game Title")).toBeInTheDocument();
+    expect(screen.getByText('Add Games')).toBeInTheDocument();
+    expect(screen.getByLabelText('Game Title')).toBeInTheDocument();
   });
 
-  it("Should render the Games tab label", () => {
+  it('Should render the Games tab label', () => {
     render(AdminView);
-    expect(screen.getByText("Games")).toBeInTheDocument();
+    expect(screen.getByText('Games')).toBeInTheDocument();
   });
 
-  it("Should render the Patrons tab label", () => {
+  it('Should render the Patrons tab label', () => {
     render(AdminView);
-    expect(screen.getByText("Patrons")).toBeInTheDocument();
+    expect(screen.getByText('Patrons')).toBeInTheDocument();
   });
 });
