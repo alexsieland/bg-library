@@ -1,6 +1,11 @@
 #!/bin/sh
 
 # Pre-commit hook to run gofmt, goimports, and Prettier on staged files.
+# This hook works correctly regardless of which directory you commit from.
+
+# Determine the repository root to ensure all operations are relative to it
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT" || exit 1
 
 # Get staged Go files (excluding generated files)
 STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.go$' | grep -v 'gen\.go' | grep -v 'oapi-codegen\.gen\.go')
@@ -29,26 +34,23 @@ fi
 # We construct a null-separated list and use xargs -0 to handle filenames safely.
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
     echo "Installing frontend dependencies..."
-    cd frontend
+    cd "$REPO_ROOT/frontend"
     npm install
-    cd ..
 
     echo "Running Prettier on staged frontend files..."
 
-    # Run Prettier on only the staged frontend files using a pipeline that is safe for filenames.
-    # Steps:
-    # 1) git produces a null-delimited list (-z)
-    # 2) xargs -0 -n1 printf '%s\n' converts to newline-separated list
-    # 3) grep filters to paths under 'frontend/'
-    # 4) tr converts newlines back to nulls
-    # 5) xargs -0 invokes prettier with the matched files
+    # Run Prettier from the frontend directory so it can find plugins in node_modules.
+    # Get the list of staged frontend files and remove the 'frontend/' prefix for processing.
     git diff --cached --name-only --diff-filter=ACMR -z \
       | xargs -0 -n1 printf '%s\n' \
       | grep '^frontend/' \
+      | sed 's|^frontend/||' \
       | tr '\n' '\0' \
       | xargs -0 -- npx prettier --write --
 
-    # Re-stage any frontend files that Prettier modified by re-using the same safe pipeline.
+    cd "$REPO_ROOT"
+
+    # Re-stage any frontend files that Prettier modified.
     git diff --cached --name-only --diff-filter=ACMR -z \
       | xargs -0 -n1 printf '%s\n' \
       | grep '^frontend/' \
