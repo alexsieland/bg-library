@@ -34,6 +34,15 @@ const mockGamesResponse = {
   ],
 };
 
+const mockGamesResponseWithP2W = {
+  games: [
+    {
+      game: { gameId: '1', title: 'Catan', isPlayToWin: true },
+      patron: undefined,
+    },
+  ],
+};
+
 describe('CheckOutTable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -123,6 +132,17 @@ describe('CheckOutTable', () => {
 
     expect(screen.queryByLabelText('Barcode Scanner')).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Scan…')).not.toBeInTheDocument();
+  });
+
+  it('Should display P2W badge when game has isPlayToWin true', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue(mockGamesResponseWithP2W);
+
+    render(CheckOutTable);
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+      expect(screen.getByText('P2W')).toBeInTheDocument();
+    });
   });
 });
 

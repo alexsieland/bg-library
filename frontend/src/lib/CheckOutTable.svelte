@@ -143,9 +143,14 @@
     <TableBody class="divide-y">
       {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
-          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100"
-            >{gameStatus.game.title}</TableBodyCell
-          >
+          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">
+            <div class="flex items-center gap-1">
+              {gameStatus.game.title}
+              {#if gameStatus.game.isPlayToWin}
+                <Badge color="sky" class="ml-2">P2W</Badge>
+              {/if}
+            </div>
+          </TableBodyCell>
           <TableBodyCell>
             {#if gameStatus.patron}
               <div class="flex flex-col">
