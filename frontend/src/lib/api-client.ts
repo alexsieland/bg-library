@@ -1,27 +1,27 @@
-import createClient from 'openapi-fetch';
-import type { paths, components, operations } from '../generated/library-api';
-import { getBackendUrl } from './config';
+import createClient from "openapi-fetch";
+import type { paths, components, operations } from "../generated/library-api";
+import { getBackendUrl } from "./config";
 
 type ApiPath = keyof paths;
 
 const API_PATHS = {
-  health:              '/health',
-  addGame:             '/api/v1/library/game',
-  listGames:           '/api/v1/library/games',
-  bulkAddGames:        '/api/v1/library/games',
-  getGame:             '/api/v1/library/game/id/{gameId}',
-  updateGame:          '/api/v1/library/game/id/{gameId}',
-  deleteGame:          '/api/v1/library/game/id/{gameId}',
-  getGameByBarcode:    '/api/v1/library/game/barcode/{gameBarcode}',
-  addPatron:           '/api/v1/library/patron',
-  listPatrons:         '/api/v1/library/patrons',
-  bulkAddPatrons:      '/api/v1/library/patrons',
-  getPatron:           '/api/v1/library/patron/id/{patronId}',
-  updatePatron:        '/api/v1/library/patron/id/{patronId}',
-  deletePatron:        '/api/v1/library/patron/id/{patronId}',
-  getPatronByBarcode:  '/api/v1/library/patron/barcode/{patronBarcode}',
-  checkInGame:         '/api/v1/library/checkin',
-  checkOutGame:        '/api/v1/library/checkout',
+  health: "/health",
+  addGame: "/api/v1/library/game",
+  listGames: "/api/v1/library/games",
+  bulkAddGames: "/api/v1/library/games",
+  getGame: "/api/v1/library/game/id/{gameId}",
+  updateGame: "/api/v1/library/game/id/{gameId}",
+  deleteGame: "/api/v1/library/game/id/{gameId}",
+  getGameByBarcode: "/api/v1/library/game/barcode/{gameBarcode}",
+  addPatron: "/api/v1/library/patron",
+  listPatrons: "/api/v1/library/patrons",
+  bulkAddPatrons: "/api/v1/library/patrons",
+  getPatron: "/api/v1/library/patron/id/{patronId}",
+  updatePatron: "/api/v1/library/patron/id/{patronId}",
+  deletePatron: "/api/v1/library/patron/id/{patronId}",
+  getPatronByBarcode: "/api/v1/library/patron/barcode/{patronBarcode}",
+  checkInGame: "/api/v1/library/checkin",
+  checkOutGame: "/api/v1/library/checkout",
 } as const satisfies Record<string, ApiPath>;
 
 export type Game = components["schemas"]["Game"];
@@ -45,18 +45,22 @@ export type BulkAddResponse = components["schemas"]["BulkAddResponse"];
  */
 async function encodeCsvFile(file: File): Promise<string> {
   // Validate MIME type
-  const validMimeTypes = ['text/csv', 'text/plain', 'application/csv'];
+  const validMimeTypes = ["text/csv", "text/plain", "application/csv"];
   if (!validMimeTypes.includes(file.type)) {
-    throw new Error(`Invalid file type: ${file.type}. Please upload a CSV or text file.`);
+    throw new Error(
+      `Invalid file type: ${file.type}. Please upload a CSV or text file.`,
+    );
   }
 
   // Validate file size (10MB max)
   const maxSizeBytes = 10 * 1024 * 1024; // 10MB
   if (file.size === 0) {
-    throw new Error('File is empty. Please upload a file with content.');
+    throw new Error("File is empty. Please upload a file with content.");
   }
   if (file.size > maxSizeBytes) {
-    throw new Error(`File size exceeds 10MB limit. File size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+    throw new Error(
+      `File size exceeds 10MB limit. File size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+    );
   }
 
   // Read file as text and encode to base64
@@ -72,19 +76,25 @@ async function encodeCsvFile(file: File): Promise<string> {
         const utf8Bytes = new TextEncoder().encode(text);
 
         // Convert Uint8Array to binary string using Array.from
-        const binaryString = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
+        const binaryString = Array.from(utf8Bytes, (byte) =>
+          String.fromCharCode(byte),
+        ).join("");
 
         // Now encode to base64
         const base64 = btoa(binaryString);
 
         resolve(base64);
       } catch (error) {
-        reject(new Error(`Failed to encode file: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        reject(
+          new Error(
+            `Failed to encode file: ${error instanceof Error ? error.message : "Unknown error"}`,
+          ),
+        );
       }
     };
 
     reader.onerror = () => {
-      reject(new Error('Failed to read file'));
+      reject(new Error("Failed to read file"));
     };
 
     reader.readAsText(file);
@@ -103,13 +113,16 @@ class ApiClient {
       baseUrl: getBackendUrl(),
       fetch: (input: RequestInfo | URL, init?: RequestInit) => {
         return fetch(input, init);
-      }
+      },
     });
   }
 
   private async handleResponse<T>(response: any): Promise<T> {
     if (response.error) {
-      throw new Error(response.error.message || `Request failed with status ${response.response?.status}`);
+      throw new Error(
+        response.error.message ||
+          `Request failed with status ${response.response?.status}`,
+      );
     }
     if (response.response && response.response.status === 204) {
       return {} as T;
@@ -118,30 +131,32 @@ class ApiClient {
   }
 
   // Games
-  async listGames(query?: operations["listGames"]["parameters"]["query"]): Promise<GameStatusList> {
+  async listGames(
+    query?: operations["listGames"]["parameters"]["query"],
+  ): Promise<GameStatusList> {
     const res = await this.client.GET(API_PATHS.listGames, {
-      params: { query }
+      params: { query },
     });
     return this.handleResponse(res);
   }
 
   async addGame(game: CreateGameRequest): Promise<Game> {
     const res = await this.client.POST(API_PATHS.addGame, {
-      body: game
+      body: game,
     });
     return this.handleResponse(res);
   }
 
   async getGame(gameId: string): Promise<Game> {
     const res = await this.client.GET(API_PATHS.getGame, {
-      params: { path: { gameId } }
+      params: { path: { gameId } },
     });
     return this.handleResponse(res);
   }
 
   async getGameByBarcode(gameBarcode: string): Promise<GameList> {
     const res = await this.client.GET(API_PATHS.getGameByBarcode, {
-      params: { path: { gameBarcode } }
+      params: { path: { gameBarcode } },
     });
     return this.handleResponse(res);
   }
@@ -149,14 +164,14 @@ class ApiClient {
   async updateGame(gameId: string, game: CreateGameRequest): Promise<void> {
     const res = await this.client.PUT(API_PATHS.updateGame, {
       params: { path: { gameId } },
-      body: game
+      body: game,
     });
     return this.handleResponse(res);
   }
 
   async deleteGame(gameId: string): Promise<void> {
     const res = await this.client.DELETE(API_PATHS.deleteGame, {
-      params: { path: { gameId } }
+      params: { path: { gameId } },
     });
     return this.handleResponse(res);
   }
@@ -171,45 +186,50 @@ class ApiClient {
   }
 
   // Patrons
-  async listPatrons(query?: operations["listPatrons"]["parameters"]["query"]): Promise<components["schemas"]["PatronList"]> {
+  async listPatrons(
+    query?: operations["listPatrons"]["parameters"]["query"],
+  ): Promise<components["schemas"]["PatronList"]> {
     const res = await this.client.GET(API_PATHS.listPatrons, {
-      params: { query }
+      params: { query },
     });
     return this.handleResponse(res);
   }
 
   async addPatron(patron: CreatePatronRequest): Promise<Patron> {
     const res = await this.client.POST(API_PATHS.addPatron, {
-      body: patron
+      body: patron,
     });
     return this.handleResponse(res);
   }
 
   async getPatron(patronId: string): Promise<Patron> {
     const res = await this.client.GET(API_PATHS.getPatron, {
-      params: { path: { patronId } }
+      params: { path: { patronId } },
     });
     return this.handleResponse(res);
   }
 
   async getPatronByBarcode(patronBarcode: string): Promise<Patron> {
     const res = await this.client.GET(API_PATHS.getPatronByBarcode, {
-      params: { path: { patronBarcode } }
+      params: { path: { patronBarcode } },
     });
     return this.handleResponse(res);
   }
 
-  async updatePatron(patronId: string, patron: CreatePatronRequest): Promise<void> {
+  async updatePatron(
+    patronId: string,
+    patron: CreatePatronRequest,
+  ): Promise<void> {
     const res = await this.client.PUT(API_PATHS.updatePatron, {
       params: { path: { patronId } },
-      body: patron
+      body: patron,
     });
     return this.handleResponse(res);
   }
 
   async deletePatron(patronId: string): Promise<void> {
     const res = await this.client.DELETE(API_PATHS.deletePatron, {
-      params: { path: { patronId } }
+      params: { path: { patronId } },
     });
     return this.handleResponse(res);
   }
@@ -224,17 +244,20 @@ class ApiClient {
   }
 
   // Transactions
-  async checkOutGame(gameId: string, patronId: string): Promise<LibraryTransaction> {
+  async checkOutGame(
+    gameId: string,
+    patronId: string,
+  ): Promise<LibraryTransaction> {
     const reqBody: CheckOutRequest = { gameId, patronId };
     const res = await this.client.POST(API_PATHS.checkOutGame, {
-      body: reqBody
+      body: reqBody,
     });
     return this.handleResponse(res);
   }
 
   async checkInGame(transactionId: string): Promise<void> {
     const res = await this.client.POST(API_PATHS.checkInGame, {
-      params: { query: { transactionId } }
+      params: { query: { transactionId } },
     });
     return this.handleResponse(res);
   }
