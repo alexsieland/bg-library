@@ -28,6 +28,11 @@ fi
 # Run Prettier on staged frontend files (if any)
 # We construct a null-separated list and use xargs -0 to handle filenames safely.
 if [ -n "$STAGED_FRONTEND_FILES" ]; then
+    echo "Installing frontend dependencies..."
+    cd frontend
+    npm install
+    cd ..
+
     echo "Running Prettier on staged frontend files..."
 
     # Run Prettier on only the staged frontend files using a pipeline that is safe for filenames.
