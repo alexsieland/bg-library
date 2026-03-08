@@ -3,7 +3,7 @@ import { apiClient } from './api-client';
 
 // Mock getBackendUrl to return a consistent URL
 vi.mock('./config', () => ({
-  getBackendUrl: () => 'http://localhost:8080'
+  getBackendUrl: () => 'http://localhost:8080',
 }));
 
 describe('ApiClient', () => {
@@ -14,15 +14,16 @@ describe('ApiClient', () => {
     (apiClient as any).init();
   });
 
-  const mockResponse = (status: number, data?: any, ok: boolean = true) => ({
-    ok,
-    status,
-    headers: new Headers({
-      'Content-Type': 'application/json'
-    }),
-    json: async () => data,
-    text: async () => JSON.stringify(data),
-  } as Response);
+  const mockResponse = (status: number, data?: any, ok: boolean = true) =>
+    ({
+      ok,
+      status,
+      headers: new Headers({
+        'Content-Type': 'application/json',
+      }),
+      json: async () => data,
+      text: async () => JSON.stringify(data),
+    }) as Response;
 
   describe('request helper (via health check)', () => {
     it('should make a request with default headers', async () => {
@@ -37,7 +38,9 @@ describe('ApiClient', () => {
     });
 
     it('should throw an error when response is not ok', async () => {
-      vi.mocked(fetch).mockResolvedValue(mockResponse(500, { message: 'Something went wrong' }, false));
+      vi.mocked(fetch).mockResolvedValue(
+        mockResponse(500, { message: 'Something went wrong' }, false)
+      );
 
       await expect(apiClient.health()).rejects.toThrow('Something went wrong');
     });
@@ -48,8 +51,12 @@ describe('ApiClient', () => {
         ok: false,
         status: 404,
         headers: new Headers({ 'Content-Type': 'application/json' }),
-        json: async () => { throw new Error('No JSON'); },
-        text: async () => { return JSON.stringify({ message: 'Request failed with status 404' }); },
+        json: async () => {
+          throw new Error('No JSON');
+        },
+        text: async () => {
+          return JSON.stringify({ message: 'Request failed with status 404' });
+        },
       } as unknown as Response);
 
       await expect(apiClient.health()).rejects.toThrow('Request failed with status 404');
@@ -89,7 +96,7 @@ describe('ApiClient', () => {
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/game');
       expect(request.method).toBe('POST');
-      
+
       const body = await request.json();
       expect(body).toEqual(mockGame);
       expect(result).toHaveProperty('gameId', '123');
@@ -109,7 +116,9 @@ describe('ApiClient', () => {
 
     describe('getGameByBarcode', () => {
       it('Should make a GET request to the barcode URL with the provided barcode', async () => {
-        const mockGames = { games: [{ gameId: '123', title: 'Catan', barcode: '9780307455925' }] };
+        const mockGames = {
+          games: [{ gameId: '123', title: 'Catan', barcode: '9780307455925' }],
+        };
         vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
 
         await apiClient.getGameByBarcode('9780307455925');
@@ -121,7 +130,9 @@ describe('ApiClient', () => {
       });
 
       it('Should return a GameList when one game matches the barcode', async () => {
-        const mockGames = { games: [{ gameId: '123', title: 'Catan', barcode: '9780307455925' }] };
+        const mockGames = {
+          games: [{ gameId: '123', title: 'Catan', barcode: '9780307455925' }],
+        };
         vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
 
         const result = await apiClient.getGameByBarcode('9780307455925');
@@ -135,8 +146,12 @@ describe('ApiClient', () => {
         const mockGames = {
           games: [
             { gameId: '123', title: 'Catan', barcode: '9780307455925' },
-            { gameId: '456', title: 'Catan (2nd Edition)', barcode: '9780307455925' },
-          ]
+            {
+              gameId: '456',
+              title: 'Catan (2nd Edition)',
+              barcode: '9780307455925',
+            },
+          ],
         };
         vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
 
@@ -169,7 +184,7 @@ describe('ApiClient', () => {
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/game/id/123');
       expect(request.method).toBe('PUT');
-      
+
       const body = await request.json();
       expect(body).toEqual(updateData);
     });
@@ -189,7 +204,9 @@ describe('ApiClient', () => {
     describe('bulkAddGames', () => {
       it('Should successfully upload a CSV file and return imported count when file is valid', async () => {
         const csvContent = 'Catan\nTicket to Ride\nAzul';
-        const mockFile = new File([csvContent], 'games.csv', { type: 'text/csv' });
+        const mockFile = new File([csvContent], 'games.csv', {
+          type: 'text/csv',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
 
         const result = await apiClient.bulkAddGames(mockFile);
@@ -212,7 +229,9 @@ describe('ApiClient', () => {
       it('Should reject when file type is not CSV or text', async () => {
         const mockFile = new File(['data'], 'image.png', { type: 'image/png' });
 
-        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow('Invalid file type: image/png');
+        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow(
+          'Invalid file type: image/png'
+        );
       });
 
       it('Should reject when file is empty', async () => {
@@ -224,14 +243,20 @@ describe('ApiClient', () => {
       it('Should reject when file exceeds 10MB limit', async () => {
         // Create a file larger than 10MB
         const largeContent = 'x'.repeat(11 * 1024 * 1024); // 11MB
-        const mockFile = new File([largeContent], 'large.csv', { type: 'text/csv' });
+        const mockFile = new File([largeContent], 'large.csv', {
+          type: 'text/csv',
+        });
 
-        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow('File size exceeds 10MB limit');
+        await expect(apiClient.bulkAddGames(mockFile)).rejects.toThrow(
+          'File size exceeds 10MB limit'
+        );
       });
 
       it('Should accept text/plain MIME type', async () => {
         const csvContent = 'Game1\nGame2';
-        const mockFile = new File([csvContent], 'games.txt', { type: 'text/plain' });
+        const mockFile = new File([csvContent], 'games.txt', {
+          type: 'text/plain',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 2 }));
 
         const result = await apiClient.bulkAddGames(mockFile);
@@ -241,7 +266,9 @@ describe('ApiClient', () => {
 
       it('Should accept application/csv MIME type', async () => {
         const csvContent = 'Game1';
-        const mockFile = new File([csvContent], 'games.csv', { type: 'application/csv' });
+        const mockFile = new File([csvContent], 'games.csv', {
+          type: 'application/csv',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 1 }));
 
         const result = await apiClient.bulkAddGames(mockFile);
@@ -251,7 +278,9 @@ describe('ApiClient', () => {
 
       it('Should handle UTF-8 characters correctly', async () => {
         const csvContent = 'Catan\nCafé International\nPuerto Rico';
-        const mockFile = new File([csvContent], 'games.csv', { type: 'text/csv' });
+        const mockFile = new File([csvContent], 'games.csv', {
+          type: 'text/csv',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
 
         const result = await apiClient.bulkAddGames(mockFile);
@@ -293,7 +322,7 @@ describe('ApiClient', () => {
     it('listPatrons should call the correct URL with query params', async () => {
       vi.mocked(fetch).mockResolvedValue(mockResponse(200, { patrons: [] }));
 
-      await apiClient.listPatrons({ name: 'John Smith'});
+      await apiClient.listPatrons({ name: 'John Smith' });
 
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
@@ -314,7 +343,7 @@ describe('ApiClient', () => {
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/patron');
       expect(request.method).toBe('POST');
-      
+
       const body = await request.json();
       expect(body).toEqual(mockPatron);
       expect(result).toHaveProperty('patronId', 'p1');
@@ -334,7 +363,11 @@ describe('ApiClient', () => {
 
     describe('getPatronByBarcode', () => {
       it('Should make a GET request to the barcode URL with the provided barcode', async () => {
-        const mockPatron = { patronId: 'p1', name: 'John Doe', barcode: 'P-12345' };
+        const mockPatron = {
+          patronId: 'p1',
+          name: 'John Doe',
+          barcode: 'P-12345',
+        };
         vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockPatron));
 
         await apiClient.getPatronByBarcode('P-12345');
@@ -346,7 +379,11 @@ describe('ApiClient', () => {
       });
 
       it('Should return a Patron when the barcode matches', async () => {
-        const mockPatron = { patronId: 'p1', name: 'John Doe', barcode: 'P-12345' };
+        const mockPatron = {
+          patronId: 'p1',
+          name: 'John Doe',
+          barcode: 'P-12345',
+        };
         vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockPatron));
 
         const result = await apiClient.getPatronByBarcode('P-12345');
@@ -380,7 +417,7 @@ describe('ApiClient', () => {
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/patron/id/p1');
       expect(request.method).toBe('PUT');
-      
+
       const body = await request.json();
       expect(body).toEqual(updateData);
     });
@@ -400,7 +437,9 @@ describe('ApiClient', () => {
     describe('bulkAddPatrons', () => {
       it('Should successfully upload a CSV file and return imported count when file is valid', async () => {
         const csvContent = 'John Smith\nJane Doe\nAlice Baker';
-        const mockFile = new File([csvContent], 'patrons.csv', { type: 'text/csv' });
+        const mockFile = new File([csvContent], 'patrons.csv', {
+          type: 'text/csv',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
 
         const result = await apiClient.bulkAddPatrons(mockFile);
@@ -421,9 +460,13 @@ describe('ApiClient', () => {
       });
 
       it('Should reject when file type is not CSV or text', async () => {
-        const mockFile = new File(['data'], 'document.pdf', { type: 'application/pdf' });
+        const mockFile = new File(['data'], 'document.pdf', {
+          type: 'application/pdf',
+        });
 
-        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow('Invalid file type: application/pdf');
+        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow(
+          'Invalid file type: application/pdf'
+        );
       });
 
       it('Should reject when file is empty', async () => {
@@ -435,14 +478,20 @@ describe('ApiClient', () => {
       it('Should reject when file exceeds 10MB limit', async () => {
         // Create a file larger than 10MB
         const largeContent = 'x'.repeat(11 * 1024 * 1024); // 11MB
-        const mockFile = new File([largeContent], 'large.csv', { type: 'text/csv' });
+        const mockFile = new File([largeContent], 'large.csv', {
+          type: 'text/csv',
+        });
 
-        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow('File size exceeds 10MB limit');
+        await expect(apiClient.bulkAddPatrons(mockFile)).rejects.toThrow(
+          'File size exceeds 10MB limit'
+        );
       });
 
       it('Should accept text/plain MIME type', async () => {
         const csvContent = 'Patron1\nPatron2';
-        const mockFile = new File([csvContent], 'patrons.txt', { type: 'text/plain' });
+        const mockFile = new File([csvContent], 'patrons.txt', {
+          type: 'text/plain',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 2 }));
 
         const result = await apiClient.bulkAddPatrons(mockFile);
@@ -452,7 +501,9 @@ describe('ApiClient', () => {
 
       it('Should accept application/csv MIME type', async () => {
         const csvContent = 'Patron1';
-        const mockFile = new File([csvContent], 'patrons.csv', { type: 'application/csv' });
+        const mockFile = new File([csvContent], 'patrons.csv', {
+          type: 'application/csv',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 1 }));
 
         const result = await apiClient.bulkAddPatrons(mockFile);
@@ -462,7 +513,9 @@ describe('ApiClient', () => {
 
       it('Should handle UTF-8 characters correctly', async () => {
         const csvContent = 'José García\nMüller Schmidt\nFrançois Dupont';
-        const mockFile = new File([csvContent], 'patrons.csv', { type: 'text/csv' });
+        const mockFile = new File([csvContent], 'patrons.csv', {
+          type: 'text/csv',
+        });
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, { imported: 3 }));
 
         const result = await apiClient.bulkAddPatrons(mockFile);
@@ -488,7 +541,9 @@ describe('ApiClient', () => {
       });
 
       it('Should propagate API errors when backend returns error', async () => {
-        const mockFile = new File(['Patron1'], 'patrons.csv', { type: 'text/csv' });
+        const mockFile = new File(['Patron1'], 'patrons.csv', {
+          type: 'text/csv',
+        });
         vi.mocked(fetch).mockResolvedValue({
           ok: false,
           status: 400,
@@ -505,16 +560,21 @@ describe('ApiClient', () => {
   describe('Transactions API', () => {
     it('checkOutGame should make a POST request with transaction data', async () => {
       const checkoutRequest = { gameId: 'g1', patronId: 'p1' };
-      vi.mocked(fetch).mockResolvedValue(mockResponse(201, { transactionId: 't1', ...checkoutRequest }));
+      vi.mocked(fetch).mockResolvedValue(
+        mockResponse(201, { transactionId: 't1', ...checkoutRequest })
+      );
 
-      const result = await apiClient.checkOutGame(checkoutRequest.gameId as string, checkoutRequest.patronId as string);
+      const result = await apiClient.checkOutGame(
+        checkoutRequest.gameId as string,
+        checkoutRequest.patronId as string
+      );
 
       expect(fetch).toHaveBeenCalled();
       const firstCall = vi.mocked(fetch).mock.calls[0];
       const request = firstCall[0] as Request;
       expect(request.url).toContain('/api/v1/library/checkout');
       expect(request.method).toBe('POST');
-      
+
       const body = await request.json();
       expect(body).toEqual(checkoutRequest);
       expect(result).toHaveProperty('transactionId', 't1');

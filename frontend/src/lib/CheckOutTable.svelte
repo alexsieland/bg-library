@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Badge, Button } from 'flowbite-svelte';
+  import {
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHead,
+    TableHeadCell,
+    Badge,
+    Button,
+  } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
   import { apiClient, type GameStatusList } from './api-client';
@@ -13,7 +22,7 @@
 
   let searchQuery = '';
   let loanModalOpen = false;
-  let selectedGame: components["schemas"]["Game"] | null = null;
+  let selectedGame: components['schemas']['Game'] | null = null;
 
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
@@ -25,7 +34,9 @@
     loading = true;
     error = null;
     try {
-      gameStatusList = await apiClient.listGames({ title: searchQuery || undefined });
+      gameStatusList = await apiClient.listGames({
+        title: searchQuery || undefined,
+      });
       console.log('Fetched games:', gameStatusList.games.length);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
@@ -42,7 +53,7 @@
     fetchGames();
   });
 
-  function handleCheckout(game: components["schemas"]["Game"]) {
+  function handleCheckout(game: components['schemas']['Game']) {
     console.log('Initiating checkout for game:', game.gameId);
     selectedGame = game;
     loanModalOpen = true;
@@ -54,7 +65,7 @@
     fetchGames();
   }
 
-  function handleBarcodeFound(game: components["schemas"]["Game"]) {
+  function handleBarcodeFound(game: components['schemas']['Game']) {
     handleCheckout(game);
   }
 
@@ -71,7 +82,10 @@
       }
       const result = await apiClient.getGameByBarcode(barcode);
       if (result.games.length > 1) {
-        toasts.add('Barcode conflict handling not yet implemented. Please manually trigger the checkout.', 'error');
+        toasts.add(
+          'Barcode conflict handling not yet implemented. Please manually trigger the checkout.',
+          'error'
+        );
         return;
       }
       handleBarcodeFound(result.games[0]);
@@ -93,7 +107,9 @@
 
 <svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
 
-<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+<div
+  class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
+>
   <div class="flex items-center justify-between gap-4">
     <!-- Primary: search -->
     <div class="flex-1">
@@ -127,7 +143,9 @@
     <TableBody class="divide-y">
       {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
-          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">{gameStatus.game.title}</TableBodyCell>
+          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100"
+            >{gameStatus.game.title}</TableBodyCell
+          >
           <TableBodyCell>
             {#if gameStatus.patron}
               <div class="flex flex-col">
@@ -139,28 +157,21 @@
           </TableBodyCell>
           <TableBodyCell>
             {#if !gameStatus.patron}
-              <Button
-                onclick={() => handleCheckout(gameStatus.game)}
-                color="primary"
-                size="sm"
-              >
+              <Button onclick={() => handleCheckout(gameStatus.game)} color="primary" size="sm">
                 Loan
               </Button>
             {:else}
-              <Button
-                disabled
-                color="alternative"
-                size="sm"
-              >
-                Loan
-              </Button>
+              <Button disabled color="alternative" size="sm">Loan</Button>
             {/if}
           </TableBodyCell>
         </TableBodyRow>
       {/each}
       {#if gameStatusList.games.length === 0}
         <TableBodyRow>
-          <TableBodyCell colspan={3} class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+          <TableBodyCell
+            colspan={3}
+            class="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
+          >
             No games found.
           </TableBodyCell>
         </TableBodyRow>

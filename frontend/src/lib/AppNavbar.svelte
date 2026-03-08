@@ -6,33 +6,44 @@
 
 <Navbar fluid={true} class="bg-slate-800 text-white shadow-md">
   <NavBrand href="/">
-    <span class="self-center whitespace-nowrap text-2xl font-bold tracking-tight text-white">BG Library</span>
+    <span class="self-center text-2xl font-bold tracking-tight whitespace-nowrap text-white"
+      >BG Library</span
+    >
   </NavBrand>
   <NavHamburger />
   <NavUl class="text-white">
-    <NavLi 
-      href="#" 
+    <NavLi
+      href="#"
       activeClass="text-blue-300 bg-blue-700 md:bg-transparent md:text-blue-300"
       nonActiveClass="text-white hover:text-blue-200"
-      onclick={(e) => { e.preventDefault(); onTabChange('checkout'); }}
+      onclick={(e) => {
+        e.preventDefault();
+        onTabChange('checkout');
+      }}
       class="cursor-pointer {activeTab === 'checkout' ? 'text-blue-300' : 'text-white'}"
     >
       Check Out
     </NavLi>
-    <NavLi 
-      href="#" 
+    <NavLi
+      href="#"
       activeClass="text-blue-300 bg-blue-700 md:bg-transparent md:text-blue-300"
       nonActiveClass="text-white hover:text-blue-200"
-      onclick={(e) => { e.preventDefault(); onTabChange('checkin'); }}
+      onclick={(e) => {
+        e.preventDefault();
+        onTabChange('checkin');
+      }}
       class="cursor-pointer {activeTab === 'checkin' ? 'text-blue-300' : 'text-white'}"
     >
       Check In
     </NavLi>
-    <NavLi 
-      href="#" 
+    <NavLi
+      href="#"
       activeClass="text-blue-300 bg-blue-700 md:bg-transparent md:text-blue-300"
       nonActiveClass="text-white hover:text-blue-200"
-      onclick={(e) => { e.preventDefault(); onTabChange('admin'); }}
+      onclick={(e) => {
+        e.preventDefault();
+        onTabChange('admin');
+      }}
       class="cursor-pointer {activeTab === 'admin' ? 'text-blue-300' : 'text-white'}"
     >
       Admin

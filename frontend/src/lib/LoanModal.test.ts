@@ -70,7 +70,9 @@ describe('LoanModal', () => {
   // --- Search behaviour ---
 
   it('Should search patrons when typing 3 or more characters', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [{ patronId: 'p1', name: 'Alice' }] });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: [{ patronId: 'p1', name: 'Alice' }],
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
@@ -83,22 +85,29 @@ describe('LoanModal', () => {
     await typeInPatronField('Al');
 
     // Give the debounce time to fire if it were going to
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
     expect(apiClient.listPatrons).not.toHaveBeenCalled();
   });
 
   it('Should limit search results to 5 patrons', async () => {
-    const manyPatrons = Array.from({ length: 10 }, (_, i) => ({ patronId: `${i}`, name: `Patron ${i}` }));
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: manyPatrons });
+    const manyPatrons = Array.from({ length: 10 }, (_, i) => ({
+      patronId: `${i}`,
+      name: `Patron ${i}`,
+    }));
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: manyPatrons,
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Patron');
 
-    await waitFor(() => expect(screen.getByText('Patron 0')).toBeInTheDocument(), { timeout: 1000 });
+    await waitFor(() => expect(screen.getByText('Patron 0')).toBeInTheDocument(), {
+      timeout: 1000,
+    });
 
     const patronButtons = screen
       .getAllByRole('button', { hidden: true })
-      .filter(b => b.textContent?.trim().startsWith('Patron'));
+      .filter((b) => b.textContent?.trim().startsWith('Patron'));
     expect(patronButtons.length).toBe(5);
   });
 
@@ -114,30 +123,40 @@ describe('LoanModal', () => {
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Alice');
 
-    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument(), { timeout: 1000 });
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument(), {
+      timeout: 1000,
+    });
 
     const patronButtons = screen
       .getAllByRole('button', { hidden: true })
-      .filter(b => b.textContent?.trim() === 'Alice');
+      .filter((b) => b.textContent?.trim() === 'Alice');
     expect(patronButtons.length).toBe(1);
   });
 
   it('Should deduplicate before slicing so the 5-result limit applies to unique names only', async () => {
     // 8 distinct names + 4 duplicates = 12 records; after dedup → 8; after slice → 5
     const patrons = [
-      ...Array.from({ length: 8 }, (_, i) => ({ patronId: `u${i}`, name: `Unique ${i}` })),
-      ...Array.from({ length: 4 }, (_, i) => ({ patronId: `d${i}`, name: `Unique ${i}` })),
+      ...Array.from({ length: 8 }, (_, i) => ({
+        patronId: `u${i}`,
+        name: `Unique ${i}`,
+      })),
+      ...Array.from({ length: 4 }, (_, i) => ({
+        patronId: `d${i}`,
+        name: `Unique ${i}`,
+      })),
     ];
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Unique');
 
-    await waitFor(() => expect(screen.getByText('Unique 0')).toBeInTheDocument(), { timeout: 1000 });
+    await waitFor(() => expect(screen.getByText('Unique 0')).toBeInTheDocument(), {
+      timeout: 1000,
+    });
 
     const patronButtons = screen
       .getAllByRole('button', { hidden: true })
-      .filter(b => b.textContent?.trim().startsWith('Unique'));
+      .filter((b) => b.textContent?.trim().startsWith('Unique'));
     expect(patronButtons.length).toBe(5);
   });
 
@@ -149,7 +168,9 @@ describe('LoanModal', () => {
   });
 
   it('Should enable the Loan button after a patron is selected from the dropdown', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
@@ -161,7 +182,9 @@ describe('LoanModal', () => {
   });
 
   it('Should dismiss the dropdown when a patron is selected', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
@@ -175,7 +198,9 @@ describe('LoanModal', () => {
   // --- Deselection behaviour ---
 
   it('Should deselect the patron and disable the Loan button when the name input is modified after a dropdown selection', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
@@ -191,7 +216,9 @@ describe('LoanModal', () => {
   });
 
   it('Should require explicit re-selection even if modified text matches a patron name exactly', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
@@ -218,7 +245,9 @@ describe('LoanModal', () => {
   });
 
   it('Should trigger loan when Enter is pressed and a patron is selected', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
     vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     const onLoanSuccess = vi.fn();
@@ -248,22 +277,31 @@ describe('LoanModal', () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
-    await waitFor(() => expect(screen.getByText(/New Patron/)).toBeInTheDocument(), { timeout: 1000 });
+    await waitFor(() => expect(screen.getByText(/New Patron/)).toBeInTheDocument(), {
+      timeout: 1000,
+    });
   });
 
   it('Should show the New Patron button even when search results are present', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
 
-    await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
-      expect(screen.getByText(/New Patron/)).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+        expect(screen.getByText(/New Patron/)).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
   });
 
   it('Should not show the New Patron button when a patron is already selected', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Ali');
     await waitFor(() => screen.getByText('Alice'), { timeout: 1000 });
@@ -307,7 +345,9 @@ describe('LoanModal', () => {
   // --- Successful checkout with selected patron ---
 
   it('Should checkout to the selected patron when Loan is clicked', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
     vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     const onLoanSuccess = vi.fn();
@@ -326,7 +366,9 @@ describe('LoanModal', () => {
   });
 
   it('Should never call addPatron during a loan — patron creation is only via AddPatronModal', async () => {
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: mockPatrons });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: mockPatrons,
+    });
     vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     render(LoanModal, { open: true, game: mockGame });
@@ -343,7 +385,10 @@ describe('LoanModal', () => {
 
   it('Should select the new patron and populate the name field after AddPatronModal succeeds', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p-new', name: 'Charlie' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      patronId: 'p-new',
+      name: 'Charlie',
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Charlie');
@@ -365,7 +410,10 @@ describe('LoanModal', () => {
 
   it('Should enable the Loan button immediately after patron creation without requiring a search', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p-new', name: 'Charlie' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      patronId: 'p-new',
+      name: 'Charlie',
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Charlie');
@@ -383,7 +431,10 @@ describe('LoanModal', () => {
 
   it('Should not refetch patrons after patron creation — uses the returned Patron object directly', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p-new', name: 'Charlie' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      patronId: 'p-new',
+      name: 'Charlie',
+    });
 
     render(LoanModal, { open: true, game: mockGame });
     await searchAndWaitForResults('Charlie');
@@ -396,16 +447,17 @@ describe('LoanModal', () => {
     const callCountBefore = vi.mocked(apiClient.listPatrons).mock.calls.length;
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
-    await waitFor(() =>
-      expect(screen.getByText('Loan').closest('button')).not.toBeDisabled()
-    );
+    await waitFor(() => expect(screen.getByText('Loan').closest('button')).not.toBeDisabled());
 
     expect(vi.mocked(apiClient.listPatrons).mock.calls.length).toBe(callCountBefore);
   });
 
   it('Should complete a full loan after patron creation when the Loan button is clicked', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p-new', name: 'Charlie' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      patronId: 'p-new',
+      name: 'Charlie',
+    });
     vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     const onLoanSuccess = vi.fn();
@@ -418,9 +470,7 @@ describe('LoanModal', () => {
     await waitFor(() => expect(screen.getByTestId('add-patron-submit')).toBeInTheDocument());
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
-    await waitFor(() =>
-      expect(screen.getByText('Loan').closest('button')).not.toBeDisabled()
-    );
+    await waitFor(() => expect(screen.getByText('Loan').closest('button')).not.toBeDisabled());
     await fireEvent.click(screen.getByText('Loan').closest('button')!);
 
     await waitFor(() => {
@@ -461,7 +511,10 @@ describe('LoanModal (barcode enabled)', () => {
   });
 
   it('Should call getPatronByBarcode with the scanned value when Enter is pressed', async () => {
-    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
 
     render(LoanModal, { open: true, game: mockGame });
 
@@ -475,7 +528,10 @@ describe('LoanModal (barcode enabled)', () => {
   });
 
   it('Should populate the patron name field when a barcode scan succeeds', async () => {
-    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
 
     render(LoanModal, { open: true, game: mockGame });
 
@@ -490,7 +546,10 @@ describe('LoanModal (barcode enabled)', () => {
   });
 
   it('Should clear the barcode field after a successful scan', async () => {
-    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
 
     render(LoanModal, { open: true, game: mockGame });
 
@@ -514,7 +573,9 @@ describe('LoanModal (barcode enabled)', () => {
 
     await waitFor(() => {
       let toastMessages: string[] = [];
-      toasts.subscribe(t => { toastMessages = t.map(x => x.message); })();
+      toasts.subscribe((t) => {
+        toastMessages = t.map((x) => x.message);
+      })();
       expect(toastMessages).toContain('Barcode scan failed: Not found');
     });
   });
@@ -529,8 +590,13 @@ describe('LoanModal (barcode enabled)', () => {
   });
 
   it('Should allow immediate loan submission after patron is populated by barcode scan', async () => {
-    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [{ patronId: 'p1', name: 'Alice' }] });
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: [{ patronId: 'p1', name: 'Alice' }],
+    });
     vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
     const onLoanSuccess = vi.fn();
@@ -553,4 +619,3 @@ describe('LoanModal (barcode enabled)', () => {
     });
   });
 });
-

@@ -13,4 +13,4 @@ export const getBackendUrl = () => {
 
 export const isBarcodeEnabled = () => {
   return window.CONFIG?.BARCODE_ENABLED || false;
-}
+};

@@ -39,7 +39,11 @@ describe('AdminGamesTab', () => {
   });
 
   it('Should add a game when clicking "Add Game" button', async () => {
-    vi.mocked(apiClient.addGame).mockResolvedValue({ gameId: 'g1', title: 'Everdell', isPlayToWin: false });
+    vi.mocked(apiClient.addGame).mockResolvedValue({
+      gameId: 'g1',
+      title: 'Everdell',
+      isPlayToWin: false,
+    });
 
     render(AdminGamesTab);
 
@@ -48,15 +52,25 @@ describe('AdminGamesTab', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Add Game' }));
 
     await waitFor(() => {
-      expect(apiClient.addGame).toHaveBeenCalledWith({ title: 'Everdell', isPlayToWin: false });
+      expect(apiClient.addGame).toHaveBeenCalledWith({
+        title: 'Everdell',
+        isPlayToWin: false,
+      });
     });
 
-    expect(toasts.add).toHaveBeenCalledWith('Successfully added Everdell to the library', 'success');
+    expect(toasts.add).toHaveBeenCalledWith(
+      'Successfully added Everdell to the library',
+      'success'
+    );
     expect((input as HTMLInputElement).value).toBe('');
   });
 
   it('Should add a game when pressing Enter in the input field', async () => {
-    vi.mocked(apiClient.addGame).mockResolvedValue({ gameId: 'g2', title: 'Wingspan', isPlayToWin: false });
+    vi.mocked(apiClient.addGame).mockResolvedValue({
+      gameId: 'g2',
+      title: 'Wingspan',
+      isPlayToWin: false,
+    });
 
     render(AdminGamesTab);
 
@@ -65,10 +79,16 @@ describe('AdminGamesTab', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.addGame).toHaveBeenCalledWith({ title: 'Wingspan', isPlayToWin: false });
+      expect(apiClient.addGame).toHaveBeenCalledWith({
+        title: 'Wingspan',
+        isPlayToWin: false,
+      });
     });
 
-    expect(toasts.add).toHaveBeenCalledWith('Successfully added Wingspan to the library', 'success');
+    expect(toasts.add).toHaveBeenCalledWith(
+      'Successfully added Wingspan to the library',
+      'success'
+    );
   });
 
   it('Should show error toast when adding a game fails', async () => {
@@ -125,12 +145,16 @@ describe('AdminGamesTab', () => {
   });
 
   it('Should upload games when file is selected and button clicked', async () => {
-    const mockFile = new File(['Catan\nTicket to Ride\nAzul'], 'games.csv', { type: 'text/csv' });
+    const mockFile = new File(['Catan\nTicket to Ride\nAzul'], 'games.csv', {
+      type: 'text/csv',
+    });
     vi.mocked(apiClient.bulkAddGames).mockResolvedValue({ imported: 3 });
 
     render(AdminGamesTab);
 
-    await fireEvent.change(screen.getByLabelText('Upload CSV File'), { target: { files: [mockFile] } });
+    await fireEvent.change(screen.getByLabelText('Upload CSV File'), {
+      target: { files: [mockFile] },
+    });
     await fireEvent.click(screen.getByRole('button', { name: 'Upload Games' }));
 
     await waitFor(() => {
@@ -146,7 +170,9 @@ describe('AdminGamesTab', () => {
 
     render(AdminGamesTab);
 
-    await fireEvent.change(screen.getByLabelText('Upload CSV File'), { target: { files: [mockFile] } });
+    await fireEvent.change(screen.getByLabelText('Upload CSV File'), {
+      target: { files: [mockFile] },
+    });
     await fireEvent.click(screen.getByRole('button', { name: 'Upload Games' }));
 
     await waitFor(() => {
@@ -158,11 +184,15 @@ describe('AdminGamesTab', () => {
 
   it('Should show error toast when bulk upload fails', async () => {
     const mockFile = new File(['Invalid'], 'games.csv', { type: 'text/csv' });
-    vi.mocked(apiClient.bulkAddGames).mockRejectedValue(new Error('Invalid file type: image/png. Please upload a CSV or text file.'));
+    vi.mocked(apiClient.bulkAddGames).mockRejectedValue(
+      new Error('Invalid file type: image/png. Please upload a CSV or text file.')
+    );
 
     render(AdminGamesTab);
 
-    await fireEvent.change(screen.getByLabelText('Upload CSV File'), { target: { files: [mockFile] } });
+    await fireEvent.change(screen.getByLabelText('Upload CSV File'), {
+      target: { files: [mockFile] },
+    });
     await fireEvent.click(screen.getByRole('button', { name: 'Upload Games' }));
 
     await waitFor(() => {
@@ -203,4 +233,3 @@ describe('AdminGamesTab', () => {
     });
   });
 });
-

@@ -76,12 +76,8 @@
     }
   }
 </script>
-<Modal
-  bind:open
-  title="Add Patron"
-  size="sm"
-  autoclose={false}
->
+
+<Modal bind:open title="Add Patron" size="sm" autoclose={false}>
   <div class="space-y-4">
     <div>
       <Label for="addPatronName" class="mb-2">Patron Name</Label>
@@ -98,7 +94,9 @@
     {#if isBarcodeEnabled()}
       <div>
         <Label for="addPatronBarcode" class="mb-2">
-          <span class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500 uppercase">
+          <span
+            class="text-xs font-medium tracking-wide text-slate-400 uppercase dark:text-slate-500"
+          >
             Patron Barcode
           </span>
         </Label>
@@ -113,7 +111,7 @@
             disabled={loading || barcodeLoading}
           />
           {#if barcodeLoading}
-            <div class="absolute inset-y-0 inset-e-0 flex items-center pe-3 pointer-events-none">
+            <div class="pointer-events-none absolute inset-y-0 inset-e-0 flex items-center pe-3">
               <Spinner size="4" />
             </div>
           {/if}
@@ -125,9 +123,7 @@
     {/if}
 
     <div class="flex justify-end gap-2 pt-2">
-      <Button color="alternative" onclick={handleCancel} disabled={loading}>
-        Cancel
-      </Button>
+      <Button color="alternative" onclick={handleCancel} disabled={loading}>Cancel</Button>
       <Button
         data-testid="add-patron-submit"
         onclick={handleSubmit}

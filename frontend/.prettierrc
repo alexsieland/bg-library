@@ -1,0 +1,29 @@
+printWidth: 100
+tabWidth: 2
+useTabs: false
+semi: true
+singleQuote: true
+trailingComma: es5
+bracketSpacing: true
+arrowParens: always
+endOfLine: lf
+plugins:
+  - prettier-plugin-svelte
+  - prettier-plugin-tailwindcss
+
+# Svelte plugin options (choose a valid sort order that includes options)
+svelteSortOrder: scripts-markup-styles-options
+svelteStrictMode: true
+svelteAllowShorthand: true
+
+# Optional: ensure Prettier formats these file types
+overrides:
+  - files: '*.svelte'
+    options:
+      parser: 'svelte'
+  - files: '*.ts'
+    options:
+      parser: 'typescript'
+  - files: '*.css'
+    options:
+      parser: 'css'

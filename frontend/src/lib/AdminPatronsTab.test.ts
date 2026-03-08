@@ -56,12 +56,17 @@ describe('AdminPatronsTab', () => {
   });
 
   it('Should show a success toast when a patron is created', async () => {
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
 
     render(AdminPatronsTab);
 
     await fireEvent.click(screen.getByRole('button', { name: 'Add Patron' }));
-    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), { target: { value: 'Alice' } });
+    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), {
+      target: { value: 'Alice' },
+    });
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
     await waitFor(() => {
@@ -70,12 +75,17 @@ describe('AdminPatronsTab', () => {
   });
 
   it('Should close the modal after a patron is successfully created', async () => {
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p1', name: 'Alice' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
 
     render(AdminPatronsTab);
 
     await fireEvent.click(screen.getByRole('button', { name: 'Add Patron' }));
-    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), { target: { value: 'Alice' } });
+    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), {
+      target: { value: 'Alice' },
+    });
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
     // After success the submit button becomes disabled again (modal reset) and toast fires
@@ -99,8 +109,3 @@ describe('AdminPatronsTab', () => {
     });
   });
 });
-
-
-
-
-

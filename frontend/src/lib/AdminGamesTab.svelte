@@ -16,7 +16,10 @@
     loading = true;
     error = null;
     try {
-      const newGame = await apiClient.addGame({ title: gameTitle.trim(), isPlayToWin: false });
+      const newGame = await apiClient.addGame({
+        title: gameTitle.trim(),
+        isPlayToWin: false,
+      });
       toasts.add(`Successfully added ${newGame.title} to the library`, 'success');
       gameTitle = '';
     } catch (e) {
@@ -44,7 +47,10 @@
     try {
       const file = bulkUploadFile[0];
       const result = await apiClient.bulkAddGames(file);
-      toasts.add(`Successfully imported ${result.imported} game${result.imported !== 1 ? 's' : ''}`, 'success');
+      toasts.add(
+        `Successfully imported ${result.imported} game${result.imported !== 1 ? 's' : ''}`,
+        'success'
+      );
       bulkUploadFile = undefined;
     } catch (e) {
       console.error('Error uploading games:', e);
@@ -58,9 +64,9 @@
 </script>
 
 <div class="p-6">
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
     <section>
-      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Add Games</h2>
+      <h2 class="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Add Games</h2>
       <div class="space-y-2">
         <Label for="gameTitle">Game Title</Label>
         <div class="flex items-center space-x-2">
@@ -88,7 +94,7 @@
     </section>
 
     <section>
-      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Bulk Add Games</h2>
+      <h2 class="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Bulk Add Games</h2>
       <div class="space-y-4">
         <div>
           <Label for="bulkGameUpload" class="mb-2">Upload CSV File</Label>
@@ -121,4 +127,3 @@
     </section>
   </div>
 </div>
-

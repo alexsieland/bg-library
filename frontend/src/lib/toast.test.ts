@@ -7,8 +7,8 @@ import { get } from 'svelte/store';
 describe('Toast System', () => {
   beforeEach(() => {
     // Clear all toasts before each test
-    toasts.subscribe(t => {
-      t.forEach(toast => toasts.remove(toast.id));
+    toasts.subscribe((t) => {
+      t.forEach((toast) => toasts.remove(toast.id));
     })();
     vi.useFakeTimers();
   });
@@ -73,9 +73,9 @@ describe('Toast System', () => {
 
   it('should render toasts in ToastContainer', async () => {
     render(ToastContainer);
-    
+
     toasts.add('Visible toast', 'success');
-    
+
     await waitFor(() => {
       expect(screen.getByText('Visible toast')).toBeInTheDocument();
     });
@@ -83,16 +83,16 @@ describe('Toast System', () => {
 
   it('should allow manual closing of toasts', async () => {
     render(ToastContainer);
-    
+
     toasts.add('Closable', 'error');
-    
+
     let closeButton: HTMLElement;
     await waitFor(() => {
       closeButton = screen.getByRole('button');
     });
-    
+
     await fireEvent.click(closeButton!);
-    
+
     await waitFor(() => {
       expect(get(toasts)).toHaveLength(0);
     });

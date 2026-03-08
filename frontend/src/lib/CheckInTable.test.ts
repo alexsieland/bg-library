@@ -18,7 +18,7 @@ vi.mock('./api-client', async (importOriginal) => {
       listGames: vi.fn(),
       checkInGame: vi.fn(),
       getGameByBarcode: vi.fn(),
-    }
+    },
   };
 });
 
@@ -28,15 +28,15 @@ const mockCheckedOutGames = {
       game: { gameId: '1', title: 'Catan', isPlayToWin: false },
       patron: { patronId: 'p1', name: 'Alice' },
       transactionId: 't1',
-      checkedOutAt: '2026-01-31T12:00:00Z'
+      checkedOutAt: '2026-01-31T12:00:00Z',
     },
     {
       game: { gameId: '2', title: 'Ticket to Ride', isPlayToWin: false },
       patron: { patronId: 'p2', name: 'Bob' },
       transactionId: 't2',
-      checkedOutAt: '2026-02-01T14:30:00Z'
-    }
-  ]
+      checkedOutAt: '2026-02-01T14:30:00Z',
+    },
+  ],
 };
 
 describe('CheckInTable', () => {
@@ -53,7 +53,7 @@ describe('CheckInTable', () => {
     render(CheckInTable);
 
     expect(apiClient.listGames).toHaveBeenCalledWith(expect.objectContaining({ checkedOut: true }));
-    
+
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
       expect(screen.getByText('Alice')).toBeInTheDocument();
@@ -82,15 +82,15 @@ describe('CheckInTable', () => {
     render(CheckInTable);
 
     await waitFor(() => screen.getByText('Catan'));
-    
+
     const returnedButtons = screen.getAllByText('Returned');
     await fireEvent.click(returnedButtons[0]);
 
     expect(apiClient.checkInGame).toHaveBeenCalledWith('t1');
-    
+
     await waitFor(() => {
-        // Should refresh the list
-        expect(apiClient.listGames).toHaveBeenCalledTimes(2);
+      // Should refresh the list
+      expect(apiClient.listGames).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -98,20 +98,22 @@ describe('CheckInTable', () => {
     vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
 
     render(CheckInTable);
-    
+
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
 
     const input = screen.getByPlaceholderText('Search checked out games...');
     await fireEvent.input(input, { target: { value: 'catan' } });
-    
+
     // Press Enter to trigger immediate search
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.listGames).toHaveBeenCalledWith(expect.objectContaining({ 
-        title: 'catan',
-        checkedOut: true 
-      }));
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'catan',
+          checkedOut: true,
+        })
+      );
     });
   });
 
@@ -158,7 +160,14 @@ describe('CheckInTable (barcode enabled)', () => {
   it('Should call checkInGame when a barcode scan matches a checked out game', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: '1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false }],
+      games: [
+        {
+          gameId: '1',
+          title: 'Catan',
+          barcode: '9780307455925',
+          isPlayToWin: false,
+        },
+      ],
     });
     vi.mocked(apiClient.checkInGame).mockResolvedValue({} as any);
 
@@ -178,7 +187,14 @@ describe('CheckInTable (barcode enabled)', () => {
   it('Should refresh the game list after a successful barcode check-in', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: '1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false }],
+      games: [
+        {
+          gameId: '1',
+          title: 'Catan',
+          barcode: '9780307455925',
+          isPlayToWin: false,
+        },
+      ],
     });
     vi.mocked(apiClient.checkInGame).mockResolvedValue({} as any);
 
@@ -198,7 +214,14 @@ describe('CheckInTable (barcode enabled)', () => {
   it('Should show a warning toast when the scanned game is not in the checked out list', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: 'unknown-id', title: 'Azul', barcode: '1111111111111', isPlayToWin: false }],
+      games: [
+        {
+          gameId: 'unknown-id',
+          title: 'Azul',
+          barcode: '1111111111111',
+          isPlayToWin: false,
+        },
+      ],
     });
 
     render(CheckInTable);
@@ -231,4 +254,3 @@ describe('CheckInTable (barcode enabled)', () => {
     });
   });
 });
-

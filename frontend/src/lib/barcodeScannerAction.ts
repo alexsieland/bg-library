@@ -32,10 +32,7 @@ export interface BarcodeScannerOptions {
  * }
  * ```
  */
-export function barcodeScanner(
-  node: Window,
-  options: BarcodeScannerOptions
-) {
+export function barcodeScanner(node: Window, options: BarcodeScannerOptions) {
   let scanBuffer = '';
   let lastKeyTime = 0;
 
@@ -89,9 +86,6 @@ export function barcodeScanner(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     destroy() {
       node.removeEventListener('keydown', handleGlobalKeydown);
-    }
+    },
   };
 }
-
-
-

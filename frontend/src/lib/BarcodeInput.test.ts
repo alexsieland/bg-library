@@ -18,7 +18,12 @@ vi.mock('./api-client', async (importOriginal) => {
   };
 });
 
-const mockGame = { gameId: 'g1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false };
+const mockGame = {
+  gameId: 'g1',
+  title: 'Catan',
+  barcode: '9780307455925',
+  isPlayToWin: false,
+};
 
 describe('BarcodeInput', () => {
   beforeEach(() => {
@@ -34,7 +39,9 @@ describe('BarcodeInput', () => {
   });
 
   it('Should call getGameByBarcode with the scanned value when Enter is pressed', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: [mockGame] });
+    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+      games: [mockGame],
+    });
 
     render(BarcodeInput);
 
@@ -48,7 +55,9 @@ describe('BarcodeInput', () => {
   });
 
   it('Should clear the input field after a scan', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: [mockGame] });
+    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+      games: [mockGame],
+    });
 
     render(BarcodeInput);
 
@@ -62,13 +71,17 @@ describe('BarcodeInput', () => {
   });
 
   it('Should call onGameFound with the matched game when exactly one game is returned', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: [mockGame] });
+    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+      games: [mockGame],
+    });
     const onGameFound = vi.fn();
 
-    render(BarcodeInput, { props: {
+    render(BarcodeInput, {
+      props: {
         onGameFound,
-        barcodeInputElement: undefined
-      } });
+        barcodeInputElement: undefined,
+      },
+    });
 
     const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -81,16 +94,30 @@ describe('BarcodeInput', () => {
 
   it('Should call onError with a conflict message when multiple games are returned for a barcode', async () => {
     const conflictGames = [
-      { gameId: 'g1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false },
-      { gameId: 'g2', title: 'Catan (2nd Edition)', barcode: '9780307455925', isPlayToWin: false },
+      {
+        gameId: 'g1',
+        title: 'Catan',
+        barcode: '9780307455925',
+        isPlayToWin: false,
+      },
+      {
+        gameId: 'g2',
+        title: 'Catan (2nd Edition)',
+        barcode: '9780307455925',
+        isPlayToWin: false,
+      },
     ];
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({ games: conflictGames });
+    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+      games: conflictGames,
+    });
     const onError = vi.fn();
 
-    render(BarcodeInput, { props: {
+    render(BarcodeInput, {
+      props: {
         onError,
-        barcodeInputElement: undefined
-      } });
+        barcodeInputElement: undefined,
+      },
+    });
 
     const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -107,10 +134,12 @@ describe('BarcodeInput', () => {
     vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
     const onError = vi.fn();
 
-    render(BarcodeInput, { props: {
+    render(BarcodeInput, {
+      props: {
         onError,
-        barcodeInputElement: undefined
-      } });
+        barcodeInputElement: undefined,
+      },
+    });
 
     const input = screen.getByPlaceholderText('Scan…');
     await fireEvent.input(input, { target: { value: '0000000000000' } });
@@ -155,4 +184,3 @@ describe('BarcodeInput', () => {
     });
   });
 });
-

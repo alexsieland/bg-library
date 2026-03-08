@@ -12,13 +12,10 @@
 </script>
 
 <div class="p-6">
-  <div class="flex items-center justify-between mb-4">
+  <div class="mb-4 flex items-center justify-between">
     <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Patrons</h2>
-    <Button onclick={() => addPatronModalOpen = true}>Add Patron</Button>
+    <Button onclick={() => (addPatronModalOpen = true)}>Add Patron</Button>
   </div>
 </div>
 
-<AddPatronModal
-  bind:open={addPatronModalOpen}
-  onPatronCreated={handlePatronCreated}
-/>
+<AddPatronModal bind:open={addPatronModalOpen} onPatronCreated={handlePatronCreated} />

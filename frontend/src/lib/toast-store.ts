@@ -17,7 +17,7 @@ export const toasts = {
   add: (message: string, type: ToastType = 'success', timeout?: number) => {
     const id = crypto.randomUUID();
     const dismissible = true;
-    
+
     // Default timeouts by type
     if (type === 'success' && timeout === undefined) {
       timeout = 3000;
@@ -26,7 +26,7 @@ export const toasts = {
     }
 
     const toast: Toast = { id, message, type, dismissible, timeout };
-    update(all => [...all, toast]);
+    update((all) => [...all, toast]);
 
     if (timeout) {
       setTimeout(() => {
@@ -37,6 +37,6 @@ export const toasts = {
     return id;
   },
   remove: (id: string) => {
-    update(all => all.filter(t => t.id !== id));
-  }
+    update((all) => all.filter((t) => t.id !== id));
+  },
 };

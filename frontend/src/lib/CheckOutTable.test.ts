@@ -17,7 +17,7 @@ vi.mock('./api-client', async (importOriginal) => {
     apiClient: {
       listGames: vi.fn(),
       getGameByBarcode: vi.fn(),
-    }
+    },
   };
 });
 
@@ -25,13 +25,13 @@ const mockGamesResponse = {
   games: [
     {
       game: { gameId: '1', title: 'Catan', isPlayToWin: false },
-      patron: undefined
+      patron: undefined,
     },
     {
       game: { gameId: '2', title: 'Ticket to Ride', isPlayToWin: false },
-      patron: { patronId: '101', name: 'John Doe' }
-    }
-  ]
+      patron: { patronId: '101', name: 'John Doe' },
+    },
+  ],
 };
 
 describe('CheckOutTable', () => {
@@ -49,7 +49,7 @@ describe('CheckOutTable', () => {
     render(CheckOutTable);
 
     expect(apiClient.listGames).toHaveBeenCalled();
-    
+
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
       expect(screen.getByText('Ticket to Ride')).toBeInTheDocument();
@@ -99,13 +99,13 @@ describe('CheckOutTable', () => {
     vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
 
     render(CheckOutTable);
-    
+
     // Wait for initial fetch
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
 
     const input = screen.getByRole('searchbox');
     await fireEvent.input(input, { target: { value: 'catan' } });
-    
+
     // Press Enter to trigger immediate search
     await fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -148,7 +148,14 @@ describe('CheckOutTable (barcode enabled)', () => {
   it('Should open the loan modal with the found game when a barcode scan succeeds', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
     vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [{ gameId: 'g1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false }],
+      games: [
+        {
+          gameId: 'g1',
+          title: 'Catan',
+          barcode: '9780307455925',
+          isPlayToWin: false,
+        },
+      ],
     });
 
     render(CheckOutTable);

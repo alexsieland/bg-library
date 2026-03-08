@@ -105,9 +105,14 @@ describe('AddPatronModal', () => {
   });
 
   it('Should reset fields when the modal is closed after cancellation', async () => {
-    const { rerender } = render(AddPatronModal, { open: true, initialName: 'Alice' });
+    const { rerender } = render(AddPatronModal, {
+      open: true,
+      initialName: 'Alice',
+    });
 
-    expect((screen.getByPlaceholderText('Enter patron name') as HTMLInputElement).value).toBe('Alice');
+    expect((screen.getByPlaceholderText('Enter patron name') as HTMLInputElement).value).toBe(
+      'Alice'
+    );
 
     await fireEvent.click(screen.getByText('Cancel'));
 
@@ -149,7 +154,10 @@ describe('AddPatronModal (barcode enabled)', () => {
   });
 
   it('Should show an error toast and clear the barcode field when the barcode already belongs to a patron', async () => {
-    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({ patronId: 'p2', name: 'Bob' });
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
+      patronId: 'p2',
+      name: 'Bob',
+    });
 
     render(AddPatronModal, { open: true });
 
@@ -180,12 +188,17 @@ describe('AddPatronModal (barcode enabled)', () => {
 
   it('Should submit with the barcode value included when a patron is created', async () => {
     vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Not found'));
-    vi.mocked(apiClient.addPatron).mockResolvedValue({ ...mockPatron, barcode: '1234567890' });
+    vi.mocked(apiClient.addPatron).mockResolvedValue({
+      ...mockPatron,
+      barcode: '1234567890',
+    });
     const onPatronCreated = vi.fn();
 
     render(AddPatronModal, { open: true, onPatronCreated });
 
-    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), { target: { value: 'Alice' } });
+    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), {
+      target: { value: 'Alice' },
+    });
 
     const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
@@ -195,7 +208,10 @@ describe('AddPatronModal (barcode enabled)', () => {
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
     await waitFor(() => {
-      expect(apiClient.addPatron).toHaveBeenCalledWith({ name: 'Alice', barcode: '1234567890' });
+      expect(apiClient.addPatron).toHaveBeenCalledWith({
+        name: 'Alice',
+        barcode: '1234567890',
+      });
       expect(onPatronCreated).toHaveBeenCalled();
     });
   });
@@ -204,7 +220,10 @@ describe('AddPatronModal (barcode enabled)', () => {
     vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Not found'));
     vi.mocked(apiClient.addPatron).mockResolvedValue(mockPatron);
 
-    const { rerender } = render(AddPatronModal, { open: true, initialName: 'Alice' });
+    const { rerender } = render(AddPatronModal, {
+      open: true,
+      initialName: 'Alice',
+    });
 
     const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
@@ -218,8 +237,9 @@ describe('AddPatronModal (barcode enabled)', () => {
 
     await waitFor(() => {
       expect((screen.getByPlaceholderText('Enter patron name') as HTMLInputElement).value).toBe('');
-      expect((screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement).value).toBe('');
+      expect((screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement).value).toBe(
+        ''
+      );
     });
   });
 });
-
