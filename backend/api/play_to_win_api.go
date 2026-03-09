@@ -220,9 +220,9 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	}
 
 	// Create the play to win session response
-	var dbPtwSessionPlayTime int32
+	var dbPtwSessionPlayTime *int32
 	if dbPtwSession.PlaytimeMinutes.Valid {
-		dbPtwSessionPlayTime = dbPtwSession.PlaytimeMinutes.Int32
+		dbPtwSessionPlayTime = &dbPtwSession.PlaytimeMinutes.Int32
 	}
 	ptwSession := PlayToWinSession{
 		PlayToWinEntries: make([]PlayToWinEntry, len(ptwEntries)),
