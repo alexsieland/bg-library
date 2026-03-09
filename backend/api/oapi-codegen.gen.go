@@ -221,7 +221,7 @@ type PlayToWinSession struct {
 	PlayToWinEntries []PlayToWinEntry `json:"playToWinEntries"`
 
 	// PlaytimeMinutes The estimated playtime for this session in minutes
-	PlaytimeMinutes int32 `json:"playtimeMinutes"`
+	PlaytimeMinutes *int32 `json:"playtimeMinutes,omitempty"`
 
 	// SessionId The ID of the session
 	SessionId openapi_types.UUID `json:"sessionId"`
@@ -2312,7 +2312,6 @@ type GetPlayToWinSessionEntriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PlayToWinEntryList
-	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2378,7 +2377,7 @@ func (r AddPlayToWinGameResponse) StatusCode() int {
 type AddPlayToWinSessionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *PlayToWinSession
+	JSON201      *PlayToWinSession
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -3245,13 +3244,6 @@ func ParseGetPlayToWinSessionEntriesResponse(rsp *http.Response) (*GetPlayToWinS
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
 	}
 
 	return response, nil
@@ -3323,12 +3315,12 @@ func ParseAddPlayToWinSessionResponse(rsp *http.Response) (*AddPlayToWinSessionR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest PlayToWinSession
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse

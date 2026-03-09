@@ -158,6 +158,25 @@ FROM play_to_win_entries ptw_entries
 LEFT JOIN vw_play_to_win_sessions ptw_sessions ON ptw_sessions.id = ptw_entries.session_id
 WHERE ptw_entries.deleted_at IS NULL;
 
+CREATE VIEW vw_play_to_win_entry_events AS
+SELECT ptw.id as entry_id,
+       ptw.session_id,
+       ps.play_to_win_id,
+       ptw.entrant_name,
+       ptw.entrant_unique_id,
+       ptw.deletion_reason,
+       ps.playtime_minutes,
+       pg.deletion_reason AS game_deletion_reason,
+       g.title AS game_title,
+       ptw.created_at
+FROM play_to_win_entries ptw
+LEFT JOIN play_to_win_sessions ps ON ps.id = ptw.session_id
+LEFT JOIN play_to_win_games pg ON pg.id = ps.play_to_win_id
+LEFT JOIN games g ON g.id = pg.game_id
+WHERE (ptw.deletion_reason IN ('winner', 'failed_to_claim') OR ptw.deletion_reason IS NULL)
+  AND ps.deletion_reason IS NULL
+ORDER BY ptw.created_at DESC;
+
 CREATE VIEW vw_deleted_play_to_win_entries AS
 SELECT id, session_id, deleted_at, deletion_reason, deletion_reason_comment
 FROM play_to_win_entries
