@@ -134,7 +134,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 }
 
 func (s Server) DeletePatron(c *gin.Context, patronId string) {
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
+	patronUUID, errorDetails := stringToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -150,7 +150,7 @@ func (s Server) DeletePatron(c *gin.Context, patronId string) {
 }
 
 func (s Server) GetPatron(c *gin.Context, patronId string) {
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
+	patronUUID, errorDetails := stringToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -197,7 +197,7 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 		return
 	}
 	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, errorDetails)
+	patronUUID, errorDetails := stringToPgTypeUUID("PatronId", patronId, errorDetails)
 	if jsonObject.Barcode != nil {
 		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
 	}

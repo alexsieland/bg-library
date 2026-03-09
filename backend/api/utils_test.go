@@ -129,7 +129,7 @@ func TestConversionUtils(t *testing.T) {
 func TestValidationUtils(t *testing.T) {
 	t.Run("Should convert valid string to pgtype.UUID", func(t *testing.T) {
 		u := uuid.New()
-		pgUUID, errors := ConvertToPgTypeUUID("test", u.String(), nil)
+		pgUUID, errors := stringToPgTypeUUID("test", u.String(), nil)
 
 		assert.Nil(t, errors)
 		assert.True(t, pgUUID.Valid)
@@ -137,7 +137,7 @@ func TestValidationUtils(t *testing.T) {
 	})
 
 	t.Run("Should return error for invalid UUID string", func(t *testing.T) {
-		_, errors := ConvertToPgTypeUUID("test", "invalid", nil)
+		_, errors := stringToPgTypeUUID("test", "invalid", nil)
 
 		assert.Len(t, errors, 1)
 		assert.Equal(t, "test", errors[0].Field)

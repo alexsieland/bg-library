@@ -167,7 +167,7 @@ func (q *Queries) CreatePlayToWinSession(ctx context.Context, arg CreatePlayToWi
 const deleteGame = `-- name: DeleteGame :exec
 UPDATE games
     SET deleted_at = now()
-WHERE id = $1
+WHERE deleted_at IS NULL AND id = $1
 `
 
 func (q *Queries) DeleteGame(ctx context.Context, id pgtype.UUID) error {
@@ -178,7 +178,7 @@ func (q *Queries) DeleteGame(ctx context.Context, id pgtype.UUID) error {
 const deletePatron = `-- name: DeletePatron :exec
 UPDATE patrons
 set deleted_at = now()
-WHERE id = $1
+WHERE deleted_at IS NULL AND id = $1
 `
 
 func (q *Queries) DeletePatron(ctx context.Context, id pgtype.UUID) error {
@@ -191,7 +191,7 @@ UPDATE play_to_win_entries
 SET deleted_at = now(),
     deletion_reason = $2,
     deletion_reason_comment = $3
-WHERE id = $1
+WHERE deleted_at IS NULL AND id = $1
 `
 
 type DeletePlayToWinEntryParams struct {
@@ -210,17 +210,17 @@ UPDATE play_to_win_games
 SET deleted_at = now(),
     deletion_reason = $2,
     deletion_reason_comment = $3
-WHERE id = $1
+WHERE deleted_at IS NULL AND game_id = $1
 `
 
 type DeletePlayToWinGameParams struct {
-	ID                    pgtype.UUID
+	GameID                pgtype.UUID
 	DeletionReason        NullPlayToWinGameDeletionType
 	DeletionReasonComment pgtype.Text
 }
 
 func (q *Queries) DeletePlayToWinGame(ctx context.Context, arg DeletePlayToWinGameParams) error {
-	_, err := q.db.Exec(ctx, deletePlayToWinGame, arg.ID, arg.DeletionReason, arg.DeletionReasonComment)
+	_, err := q.db.Exec(ctx, deletePlayToWinGame, arg.GameID, arg.DeletionReason, arg.DeletionReasonComment)
 	return err
 }
 
@@ -229,7 +229,7 @@ UPDATE play_to_win_sessions
 SET deleted_at = now(),
     deletion_reason = $2,
     deletion_reason_comment = $3
-WHERE id = $1
+WHERE deleted_at IS NULL AND id = $1
 `
 
 type DeletePlayToWinSessionParams struct {
@@ -732,7 +732,7 @@ UPDATE play_to_win_games
 SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
-WHERE id = $1
+WHERE deleted_at IS NOT NULL AND id = $1
 `
 
 func (q *Queries) RestorePlayToWinGame(ctx context.Context, id pgtype.UUID) error {
@@ -745,7 +745,7 @@ UPDATE play_to_win_sessions
 SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
-WHERE id = $1
+WHERE deleted_at IS NOT NULL AND id = $1
 `
 
 func (q *Queries) RestorePlayToWinSession(ctx context.Context, id pgtype.UUID) error {

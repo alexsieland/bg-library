@@ -131,20 +131,6 @@ func FromGame(dbGame db.Game, isPlayToWin bool) Game {
 
 // Validation Utils
 
-func ConvertToPgTypeUUID(fieldName string, str string, errorDetails []ErrorDetail) (pgtype.UUID, []ErrorDetail) {
-	dbUuid, err := uuid.Parse(str)
-	if err != nil {
-		return pgtype.UUID{}, append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Invalid UUID format",
-		})
-	}
-	return pgtype.UUID{
-		Bytes: dbUuid,
-		Valid: true,
-	}, errorDetails
-}
-
 func ValidateStringLength(fieldName string, str string, minLength int, maxLength int, errorDetails []ErrorDetail) []ErrorDetail {
 	if minLength > 0 && str == "" {
 		return append(errorDetails, ErrorDetail{

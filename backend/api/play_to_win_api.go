@@ -13,27 +13,39 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
-func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []ErrorDetail, tx *pgx.Tx) error {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
+func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []ErrorDetail, optTx *pgx.Tx) error {
+	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		return errValidation
 	}
 
 	var err error
-	if tx != nil {
-		_, err = s.queries.WithTx(*tx).CreatePlayToWinGame(c.Request.Context(), gameUUID)
+	var tx pgx.Tx
+	if tx == nil {
+		tx, err = s.Database.BeginTx(c, pgx.TxOptions{})
+		if err != nil {
+			defer tx.Rollback(c)
+			return err
+		}
 	} else {
-		_, err = s.queries.CreatePlayToWinGame(c.Request.Context(), gameUUID)
+		tx = *optTx
 	}
+
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), gameUUID)
 
 	if err != nil {
-		// if unique constraint violation, then this means the game id is a duplicate, so return nil as it is already marked as play to win
+		// if unique constraint violation, then this means the game id is a duplicate, so attempt to restore it instead
 		if isUniqueConstraintViolation(err) {
+			err = s.queries.RestorePlayToWinGame(c.Request.Context(), gameUUID)
+			if err != nil {
+				return err
+			}
+			tx = nil
 			return nil
 		}
-
 		return err
 	}
+	tx = nil
 	return nil
 }
 
@@ -55,8 +67,38 @@ func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
+func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReason *string, deletionComment *string, tx *pgx.Tx) error {
+	var errorDetails []ErrorDetail
+	if deletionComment != nil {
+		errorDetails = ValidateStringLength("deletionComment", *deletionComment, 0, 500, errorDetails)
+	}
+	reason, errorDetails := playToWinGameDeletionReason(deletionReason, errorDetails)
+	if len(errorDetails) > 0 {
+		return errValidation
+	}
+
+	deleteParams := db.DeletePlayToWinGameParams{
+		GameID:                uuidToPgTypeUUID(gameId),
+		DeletionReason:        reason,
+		DeletionReasonComment: stringToPgText(deletionComment),
+	}
+
+	var err error
+	if tx != nil {
+		err = s.queries.WithTx(*tx).DeletePlayToWinGame(c.Request.Context(), deleteParams)
+	} else {
+		err = s.queries.DeletePlayToWinGame(c.Request.Context(), deleteParams)
+	}
+	if err != nil {
+		log.Printf("Error deleting play to win game: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
+	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -115,7 +157,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 
 func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
 	var errorDetails []ErrorDetail
-	ptwId, errorDetails := ConvertToPgTypeUUID("PlayToWinId", playToWinId.String(), errorDetails)
+	ptwId, errorDetails := stringToPgTypeUUID("PlayToWinId", playToWinId.String(), errorDetails)
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -167,7 +209,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 
 	//Validate request body fields
 	var errorDetails []ErrorDetail
-	ptwId, errorDetails := ConvertToPgTypeUUID("PlayToWinId", jsonObject.PlayToWinId.String(), errorDetails)
+	ptwId, errorDetails := stringToPgTypeUUID("PlayToWinId", jsonObject.PlayToWinId.String(), errorDetails)
 	var playtimeMinutes pgtype.Int4
 	if jsonObject.PlaytimeMinutes != nil {
 		playtimeMinutes = pgtype.Int4{

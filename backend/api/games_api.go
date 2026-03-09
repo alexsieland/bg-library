@@ -150,7 +150,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 }
 
 func (s Server) DeleteGame(c *gin.Context, gameId string) {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, []ErrorDetail{})
+	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId, []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -166,7 +166,7 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 }
 
 func (s Server) GetGame(c *gin.Context, gameId string) {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, []ErrorDetail{})
+	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId, []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -212,7 +212,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 		return
 	}
 	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, errorDetails)
+	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId, errorDetails)
 	if jsonObject.Barcode != nil {
 		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
 	}

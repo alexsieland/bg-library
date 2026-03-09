@@ -11,7 +11,7 @@ import (
 )
 
 func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
-	transactionUUID, errorDetails := ConvertToPgTypeUUID("TransactionId", params.TransactionId, []ErrorDetail{})
+	transactionUUID, errorDetails := stringToPgTypeUUID("TransactionId", params.TransactionId, []ErrorDetail{})
 	if len(errorDetails) > 0 {
 		validationError(c, errorDetails)
 		return
@@ -33,8 +33,8 @@ func (s Server) CheckOutGame(c *gin.Context) {
 		return
 	}
 
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", jsonObject.GameId.String(), []ErrorDetail{})
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", jsonObject.PatronId.String(), errorDetails)
+	gameUUID, errorDetails := stringToPgTypeUUID("GameId", jsonObject.GameId.String(), []ErrorDetail{})
+	patronUUID, errorDetails := stringToPgTypeUUID("PatronId", jsonObject.PatronId.String(), errorDetails)
 	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), gameUUID)
 	if err != nil {
 		log.Printf("Error getting game status: %v", err)
