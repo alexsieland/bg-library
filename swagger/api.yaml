@@ -517,7 +517,8 @@ paths:
   /api/v1/ptw/game/gameId/{gameId}:
     post:
       tags:
-        - ptw, games
+        - ptw
+        - games
       operationId: addPlayToWinGame
       summary: Mark a library game as Play to Win
       parameters:
@@ -539,7 +540,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
-        - ptw, games
+        - ptw
+        - games
       operationId: removePlayToWinGame
       summary: Mark a library game as not Play to Win
       parameters:
@@ -561,6 +563,38 @@ paths:
           description: Game marked as not Play to Win successfully
         '404':
           description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ptw/session:
+    post:
+      tags:
+        - ptw
+      operationId: addPlayToWinSession
+      summary: Add a Play to Win session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlayToWinSessionRequest'
+      responses:
+        '201':
+          description: Play to Win session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayToWinSession'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Play to Win game not found
           content:
             application/json:
               schema:
@@ -896,3 +930,68 @@ components:
           example: "The game was a library copy, not a Play to Win game"
           maxLength: 500
       description: Request payload for removing a game from Play to Win
+
+    CreatePlayToWinSessionRequest:
+      type: object
+      required:
+        - entries
+      properties:
+        playToWinGameId:
+          type: string
+          format: uuid
+          description: The Play to Win game ID this session is tied to
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        playtimeMinutes:
+          type: integer
+          description: The estimated playtime for this session in minutes
+          example: 60
+          minimum: 0
+        entries:
+          type: array
+          items:
+            type: object
+            required:
+              - entrantName
+              - entrantUniqueId
+            properties:
+              entrantName:
+                type: string
+                maxLength: 100
+                minLength: 1
+                example: "John Smith"
+                description: The name of the entrant
+              entrantUniqueId:
+                type: string
+                maxLength: 100
+                minLength: 1
+                example: "1234567890"
+                description: The unique ID of the entrant
+            description: An entry in the Play to Win session
+          description: Array of entries in the Play to Win session
+      description: Request payload for creating a Play to Win session
+
+    PlayToWinEntry:
+      type: object
+      required:
+        - entryId
+        - entrantName
+        - entrantUniqueId
+      properties:
+        entryId:
+          type: string
+          format: uuid
+          description: The ID of the entry
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        entrantName:
+          type: string
+          maxLength: 100
+          minLength: 1
+          example: "John Smith"
+          description: The name of the entrant
+        entrantUniqueId:
+          type: string
+          maxLength: 100
+          minLength: 1
+          example: "1234567890"
+          description: The unique ID of the entrant
+      description: An single Play to Win entry
