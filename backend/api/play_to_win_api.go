@@ -27,16 +27,11 @@ func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []E
 	}
 
 	if err != nil {
-		var pgErr *pgconn.PgError
-
-		// check for specific Postgres error codes:
-		if errors.As(err, &pgErr) {
-
-			// 23505 is the error code for a unique constraint violation, which would occur if the game is already marked as play to win
-			if pgErr.Code == "23505" {
-				return nil
-			}
+		// if unique constraint violation, then this means the game id is a duplicate, so return nil as it is already marked as play to win
+		if isUniqueConstraintViolation(err) {
+			return nil
 		}
+
 		return err
 	}
 	return nil
@@ -79,7 +74,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	}
 
 	var request RemovePlayToWinGameJSONRequestBody
-	if err = c.ShouldBindJSON(&request); err != nil {
+	if err = c.ShouldBindBodyWithJSON(&request); err != nil {
 		malformedJson(c)
 		return
 	}
@@ -116,4 +111,75 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type ptwEntry struct {
+	EntrantName     string `json:"entrantName"`
+	EntrantUniqueId string `json:"entrantUniqueId"`
+}
+
+func (s Server) AddPlayToWinSession(c *gin.Context) {
+	var jsonObject CreatePlayToWinSessionRequest
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		malformedJson(c)
+		return
+	}
+
+	var errorDetails []ErrorDetail
+	ptwId, errorDetails := ConvertToPgTypeUUID("PlayToWinId", jsonObject.PlayToWinId.String(), errorDetails)
+	var playtimeMinutes pgtype.Int4
+	if jsonObject.PlaytimeMinutes != nil {
+		playtimeMinutes = pgtype.Int4{
+			Int32: int32(*jsonObject.PlaytimeMinutes),
+			Valid: true,
+		}
+		errorDetails = ValidateIntMin("playtimeMinutes", *jsonObject.PlaytimeMinutes, 0, errorDetails)
+	}
+	ptwEntries := make([]ptwEntry, len(jsonObject.Entries))
+	for i, entry := range jsonObject.Entries {
+		errorDetails = ValidateStringLength("entrantName", entry.EntrantName, 1, 100, errorDetails)
+		errorDetails = ValidateStringLength("entrantUniqueId", entry.EntrantUniqueId, 1, 100, errorDetails)
+		ptwEntries[i] = ptwEntry{
+			EntrantName:     entry.EntrantName,
+			EntrantUniqueId: entry.EntrantUniqueId,
+		}
+	}
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+	ptwSessionParams := db.CreatePlayToWinSessionParams{
+		PlayToWinID:     ptwId,
+		PlaytimeMinutes: playtimeMinutes,
+	}
+
+	tx, err := s.Database.BeginTx(c, pgx.TxOptions{})
+	if err != nil {
+		log.Printf("Error creating play to win session: %v", err)
+		internalError(c, err)
+		return
+	}
+	defer tx.Rollback(c)
+
+	ptwSession, err := s.queries.WithTx(tx).CreatePlayToWinSession(c, ptwSessionParams)
+	if err != nil {
+		// if FK violation, then this means the play to win game id is invalid, so return 404
+		if isForeignKeyConstraintViolation(err) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error creating play to win session: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	// Set tx to nil so that it is not closed by the defer
+	tx = nil
+	//TODO do the thing
 }

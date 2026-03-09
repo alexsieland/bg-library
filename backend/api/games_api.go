@@ -11,7 +11,6 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -234,9 +233,8 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 		Barcode:        dbBarcode,
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		// Postgres 23503 is the error code for a unique constraint violation
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		// if FK violation, then this means the game id is invalid, so return 404
+		if isForeignKeyConstraintViolation(err) {
 			notFound(c)
 			return
 		}
