@@ -1,6 +1,5 @@
 <script lang="ts">
   import {
-    Table,
     TableBody,
     TableBodyCell,
     TableBodyRow,
@@ -11,13 +10,13 @@
     Dropdown,
     DropdownItem,
     Badge,
-    Modal,
   } from 'flowbite-svelte';
   import { PlusOutline, ChevronDownOutline } from 'flowbite-svelte-icons';
   import { apiClient, type GameStatusList, type Game } from './api-client';
   import { toasts } from './toast-store';
   import AddGameModal from './AddGameModal.svelte';
   import DeleteConfirmationPrompt from './DeleteConfirmationPrompt.svelte';
+  import CsvUploadModal from './CsvUploadModal.svelte';
   import { onMount } from 'svelte';
 
   let divClass = 'bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden';
@@ -32,6 +31,7 @@
 
   let addGameModalOpen = $state(false);
   let deleteConfirmationOpen = $state(false);
+  let csvUploadModalOpen = $state(false);
   let selectedGame: Game | null = $state(null);
 
   async function fetchGames() {
@@ -53,11 +53,6 @@
   onMount(() => {
     fetchGames();
   });
-
-  function handleSearch(query: string) {
-    searchTerm = query;
-    fetchGames();
-  }
 
   function openAddModal() {
     selectedGame = null;
@@ -92,6 +87,10 @@
     }
   }
 
+  async function handleBulkUpload(file: File) {
+    return await apiClient.bulkAddGames(file);
+  }
+
   let filteredGames = $derived(
     gameStatusList.games.filter(
       (gs) =>
@@ -113,6 +112,19 @@
   bind:open={deleteConfirmationOpen}
   itemName={selectedGame?.title ?? 'this item'}
   onConfirm={handleDeleteConfirmed}
+/>
+
+<CsvUploadModal
+  bind:open={csvUploadModalOpen}
+  title="Bulk Add Games"
+  successMessage={(count) => `Successfully imported ${count} game${count !== 1 ? 's' : ''}`}
+  onUpload={handleBulkUpload}
+  onSuccess={() => {
+    fetchGames();
+  }}
+  onCancel={() => {
+    // Handle cancel if needed
+  }}
 />
 
 <div class={divClass}>
@@ -137,7 +149,7 @@
           <ChevronDownOutline class="ml-2 h-3 w-3 " />
         </Button>
         <Dropdown simple class="w-44 divide-y divide-gray-100">
-          <DropdownItem disabled>Bulk Add</DropdownItem>
+          <DropdownItem onclick={() => (csvUploadModalOpen = true)}>Bulk Add</DropdownItem>
         </Dropdown>
       </div>
     {/snippet}
