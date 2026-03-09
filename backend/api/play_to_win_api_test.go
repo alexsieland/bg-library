@@ -108,6 +108,74 @@ func TestAddPlayToWinGame(t *testing.T) {
 	})
 }
 
+func TestAddPlayToWin(t *testing.T) {
+	t.Run("Should return nil when game is successfully marked as Play to Win", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		ptwID := uuid.New()
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+				*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+				*args.Get(4).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
+				*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
+			}).Return(nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
+
+		err := server.addPlayToWin(c, gameID, []ErrorDetail{}, nil)
+
+		assert.NoError(t, err)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return nil when game is already marked as Play to Win (idempotent)", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(&pgconn.PgError{Code: "23505"})
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
+
+		err := server.addPlayToWin(c, gameID, []ErrorDetail{}, nil)
+
+		assert.NoError(t, err)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return error when DB returns an unexpected error", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		gameID := uuid.New()
+		expectedErr := errors.New("unexpected db error")
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(expectedErr)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
+
+		err := server.addPlayToWin(c, gameID, []ErrorDetail{}, nil)
+
+		assert.ErrorIs(t, err, expectedErr)
+		mockDB.AssertExpectations(t)
+	})
+}
+
 // --- RemovePlayToWinGame ---
 
 func mockGetGameRow(mockDB *MockDatabase, gameID uuid.UUID, ptwGameID uuid.UUID) {
