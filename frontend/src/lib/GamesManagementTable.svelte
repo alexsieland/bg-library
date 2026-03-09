@@ -170,7 +170,7 @@
         {#if filteredGames.length === 0}
           <TableBodyRow>
             <TableBodyCell
-              colspan="2"
+              colspan={2}
               class="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
             >
               No games found.
