@@ -114,8 +114,32 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 }
 
 func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	var errorDetails []ErrorDetail
+	ptwId, errorDetails := ConvertToPgTypeUUID("PlayToWinId", playToWinId.String(), errorDetails)
+	if len(errorDetails) > 0 {
+		validationError(c, errorDetails)
+		return
+	}
+
+	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, ptwId)
+	if err != nil {
+		log.Printf("Error getting play to win entries: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	ptwEntryList := PlayToWinEntryList{
+		Entries: make([]PlayToWinEntry, len(dbPtwEntries)),
+	}
+	for i, dbPtwEntry := range dbPtwEntries {
+		ptwEntryList.Entries[i] = PlayToWinEntry{
+			EntryId:         pgUUIDToUUID(dbPtwEntry.EntryID),
+			EntrantName:     dbPtwEntry.EntrantName,
+			EntrantUniqueId: dbPtwEntry.EntrantUniqueID,
+		}
+	}
+
+	c.JSON(http.StatusOK, ptwEntryList)
 }
 
 type ptwEntry struct {

@@ -622,12 +622,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlayToWinEntryList'
-        '404':
-          description: Play to win game not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
