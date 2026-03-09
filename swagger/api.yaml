@@ -581,8 +581,12 @@ paths:
             schema:
               $ref: '#/components/schemas/CreatePlayToWinSessionRequest'
       responses:
-        '204':
+        '201':
           description: Play to win session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayToWinSession'
         '400':
           description: Validation error
           content:
@@ -1026,7 +1030,7 @@ components:
       type: object
       required:
         - sessionId
-        - playtimeMinutes
+        - playToWinEntries
       properties:
         sessionId:
           type: string
@@ -1034,10 +1038,16 @@ components:
           description: The ID of the session
           example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
         playtimeMinutes:
-          type: number
+          type: integer
+          format: int32
           minLength: 0
           example: 60
           description: The estimated playtime for this session in minutes
+        playToWinEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayToWinEntry'
+          description: Array of entries in the play to win session
       description: A play to win game session
 
     PlayToWinEntryList:

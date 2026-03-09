@@ -123,7 +123,17 @@ type ptwEntry struct {
 	EntrantUniqueId string `json:"entrantUniqueId"`
 }
 
+func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
+	playToWinEntryParams := db.CreatePlayToWinEntryParams{
+		SessionID:       ptwSessionId,
+		EntrantName:     entry.EntrantName,
+		EntrantUniqueID: entry.EntrantUniqueId,
+	}
+	return s.queries.WithTx(tx).CreatePlayToWinEntry(c.Request.Context(), playToWinEntryParams)
+}
+
 func (s Server) AddPlayToWinSession(c *gin.Context) {
+	//Check that request body is valid json
 	var jsonObject CreatePlayToWinSessionRequest
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
@@ -131,6 +141,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 		return
 	}
 
+	//Validate request body fields
 	var errorDetails []ErrorDetail
 	ptwId, errorDetails := ConvertToPgTypeUUID("PlayToWinId", jsonObject.PlayToWinId.String(), errorDetails)
 	var playtimeMinutes pgtype.Int4
@@ -141,6 +152,8 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 		}
 		errorDetails = ValidateIntMin("playtimeMinutes", *jsonObject.PlaytimeMinutes, 0, errorDetails)
 	}
+
+	//Create all ptw entries and validate before creating the session
 	ptwEntries := make([]ptwEntry, len(jsonObject.Entries))
 	for i, entry := range jsonObject.Entries {
 		errorDetails = ValidateStringLength("entrantName", entry.EntrantName, 1, 100, errorDetails)
@@ -154,11 +167,14 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 		validationError(c, errorDetails)
 		return
 	}
+
+	// Create the play to win session params
 	ptwSessionParams := db.CreatePlayToWinSessionParams{
 		PlayToWinID:     ptwId,
 		PlaytimeMinutes: playtimeMinutes,
 	}
 
+	// Create the play to win session
 	tx, err := s.Database.BeginTx(c, pgx.TxOptions{})
 	if err != nil {
 		log.Printf("Error creating play to win session: %v", err)
@@ -167,7 +183,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	}
 	defer tx.Rollback(c)
 
-	ptwSession, err := s.queries.WithTx(tx).CreatePlayToWinSession(c, ptwSessionParams)
+	dbPtwSession, err := s.queries.WithTx(tx).CreatePlayToWinSession(c, ptwSessionParams)
 	if err != nil {
 		// if FK violation, then this means the play to win game id is invalid, so return 404
 		if isForeignKeyConstraintViolation(err) {
@@ -179,7 +195,35 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 		return
 	}
 
+	// Create the play to win session response
+	var dbPtwSessionPlayTime int32
+	if dbPtwSession.PlaytimeMinutes.Valid {
+		dbPtwSessionPlayTime = dbPtwSession.PlaytimeMinutes.Int32
+	}
+	ptwSession := PlayToWinSession{
+		PlayToWinEntries: make([]PlayToWinEntry, len(ptwEntries)),
+		PlaytimeMinutes:  dbPtwSessionPlayTime,
+		SessionId:        pgUUIDToUUID(dbPtwSession.ID),
+	}
+
+	// Create all play to win entries for session
+	for i, entry := range ptwEntries {
+		entry, err := s.addPlayToWinEntry(c, dbPtwSession.ID, entry, tx)
+		if err != nil {
+			log.Printf("Error creating play to win entry: %v", err)
+			internalError(c, err)
+			return
+		}
+
+		// Add entries to the session response
+		ptwSession.PlayToWinEntries[i] = PlayToWinEntry{
+			EntrantName:     entry.EntrantName,
+			EntrantUniqueId: entry.EntrantUniqueID,
+			EntryId:         pgUUIDToUUID(entry.ID),
+		}
+	}
+
 	// Set tx to nil so that it is not closed by the defer
 	tx = nil
-	//TODO do the thing
+	c.JSON(http.StatusCreated, ptwSession)
 }

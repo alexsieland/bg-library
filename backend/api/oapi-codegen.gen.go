@@ -215,6 +215,18 @@ type PlayToWinEntryList struct {
 	Entries []PlayToWinEntry `json:"entries"`
 }
 
+// PlayToWinSession A play to win game session
+type PlayToWinSession struct {
+	// PlayToWinEntries Array of entries in the play to win session
+	PlayToWinEntries []PlayToWinEntry `json:"playToWinEntries"`
+
+	// PlaytimeMinutes The estimated playtime for this session in minutes
+	PlaytimeMinutes int32 `json:"playtimeMinutes"`
+
+	// SessionId The ID of the session
+	SessionId openapi_types.UUID `json:"sessionId"`
+}
+
 // RemovePlayToWinGameRequest Request payload for removing a game from play to win
 type RemovePlayToWinGameRequest struct {
 	// RemovalComment Optional comment explaining the reason for removing the game from play to win
@@ -2366,6 +2378,7 @@ func (r AddPlayToWinGameResponse) StatusCode() int {
 type AddPlayToWinSessionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *PlayToWinSession
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -3310,6 +3323,13 @@ func ParseAddPlayToWinSessionResponse(rsp *http.Response) (*AddPlayToWinSessionR
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlayToWinSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
