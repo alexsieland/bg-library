@@ -9,12 +9,11 @@
     Button,
     Dropdown,
     DropdownItem,
-    Badge,
   } from 'flowbite-svelte';
   import { PlusOutline, ChevronDownOutline } from 'flowbite-svelte-icons';
-  import { apiClient, type GameStatusList, type Game } from './api-client';
+  import { apiClient, type Patron } from './api-client';
   import { toasts } from './toast-store';
-  import AddGameModal from './AddGameModal.svelte';
+  import AddPatronModal from './AddPatronModal.svelte';
   import DeleteConfirmationPrompt from './DeleteConfirmationPrompt.svelte';
   import CsvUploadModal from './CsvUploadModal.svelte';
   import SearchBar from './SearchBar.svelte';
@@ -22,29 +21,29 @@
   import { onMount } from 'svelte';
 
   let searchQuery = $state('');
-  let gameStatusList: GameStatusList = $state({ games: [] });
+  let patronList: { patrons: Patron[] } = $state({ patrons: [] });
   let loading = $state(true);
   let error: string | null = $state(null);
 
-  let addGameModalOpen = $state(false);
+  let addPatronModalOpen = $state(false);
   let deleteConfirmationOpen = $state(false);
   let csvUploadModalOpen = $state(false);
-  let selectedGame: Game | null = $state(null);
+  let selectedPatron: Patron | null = $state(null);
 
   let cancelKey = 0;
   let lastValueRef = $state({ v: '' });
 
-  async function fetchGames() {
+  async function fetchPatrons() {
     loading = true;
     error = null;
     try {
-      gameStatusList = await apiClient.listGames({
-        title: searchQuery || undefined,
+      patronList = await apiClient.listPatrons({
+        name: searchQuery || undefined,
       });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
-      toasts.add(`Failed to load games: ${errorMessage}`, 'error');
+      toasts.add(`Failed to load patrons: ${errorMessage}`, 'error');
     } finally {
       loading = false;
     }
@@ -52,75 +51,75 @@
 
   function handleSearch(query: string) {
     searchQuery = query;
-    fetchGames();
+    fetchPatrons();
   }
 
   onMount(() => {
-    fetchGames();
+    fetchPatrons();
   });
 
   function openAddModal() {
-    selectedGame = null;
-    addGameModalOpen = true;
+    selectedPatron = null;
+    addPatronModalOpen = true;
   }
 
-  function openEditModal(game: Game) {
-    selectedGame = game;
-    addGameModalOpen = true;
+  function openEditModal(patron: Patron) {
+    selectedPatron = patron;
+    addPatronModalOpen = true;
   }
 
-  function handleGameSaved() {
-    toasts.add('Game saved successfully', 'success');
-    fetchGames();
+  function handlePatronSaved() {
+    toasts.add('Patron saved successfully', 'success');
+    fetchPatrons();
   }
 
-  function openDeleteModal(game: Game) {
-    selectedGame = game;
+  function openDeleteModal(patron: Patron) {
+    selectedPatron = patron;
     deleteConfirmationOpen = true;
   }
 
   async function handleDeleteConfirmed() {
-    if (!selectedGame) return;
+    if (!selectedPatron) return;
 
     try {
-      await apiClient.deleteGame(selectedGame.gameId);
-      toasts.add(`Deleted ${selectedGame.title} from the library`, 'success');
-      fetchGames();
+      await apiClient.deletePatron(selectedPatron.patronId);
+      toasts.add(`Deleted ${selectedPatron.name} from the library`, 'success');
+      fetchPatrons();
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
-      toasts.add(`Failed to delete game: ${errorMessage}`, 'error');
+      toasts.add(`Failed to delete patron: ${errorMessage}`, 'error');
     }
   }
 
   async function handleBulkUpload(file: File) {
-    return await apiClient.bulkAddGames(file);
+    return await apiClient.bulkAddPatrons(file);
   }
 
-  let filteredGames = $derived(gameStatusList.games);
+  let filteredPatrons = $derived(patronList.patrons);
 </script>
 
-<AddGameModal
-  bind:open={addGameModalOpen}
-  gameId={selectedGame?.gameId ?? null}
-  onGameSaved={handleGameSaved}
+<AddPatronModal
+  bind:open={addPatronModalOpen}
+  initialName={selectedPatron?.name ?? ''}
+  onPatronCreated={handlePatronSaved}
   onCancel={() => {
-    selectedGame = null;
+    selectedPatron = null;
   }}
 />
 
 <DeleteConfirmationPrompt
   bind:open={deleteConfirmationOpen}
-  itemName={selectedGame?.title ?? 'this item'}
+  itemName={selectedPatron?.name ?? 'this item'}
   onConfirm={handleDeleteConfirmed}
 />
 
 <CsvUploadModal
   bind:open={csvUploadModalOpen}
-  title="Bulk Add Games"
-  successMessage={(count) => `Successfully imported ${count} game${count !== 1 ? 's' : ''}`}
+  title="Bulk Add Patrons"
+  successMessage={(count) => `Successfully imported ${count} patron${count !== 1 ? 's' : ''}`}
   onUpload={handleBulkUpload}
   onSuccess={() => {
-    fetchGames();
+    fetchPatrons();
   }}
   onCancel={() => {
     // Handle cancel if needed
@@ -133,12 +132,12 @@
 >
   <div class="flex items-center justify-between gap-4">
     <div class="flex-1">
-      <SearchBar bind:searchQuery placeholder="Search games by title..." onSearch={handleSearch} />
+      <SearchBar bind:searchQuery placeholder="Search patrons by name..." onSearch={handleSearch} />
     </div>
     <div class="flex items-center gap-2">
       <Button onclick={openAddModal} color="primary" size="sm">
         <PlusOutline class="mr-2 h-3.5 w-3.5" />
-        Add Game
+        Add Patron
       </Button>
       <Button color="alternative" size="sm">
         Actions
@@ -155,46 +154,41 @@
 
 <!-- Main table -->
 <div class="relative overflow-hidden bg-white shadow-md sm:rounded-lg dark:bg-slate-800">
-  {#if loading && gameStatusList.games.length === 0}
-    <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
+  {#if loading && patronList.patrons.length === 0}
+    <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading patrons...</div>
   {:else if error}
     <div class="p-8 text-center text-rose-500">{error}</div>
   {:else}
     <Table shadow hoverable={true} class="w-full">
       <TableHead>
-        <TableHeadCell class="px-4 py-3" scope="col">Game Title</TableHeadCell>
+        <TableHeadCell class="px-4 py-3" scope="col">Patron Name</TableHeadCell>
         <TableHeadCell class="px-4 py-3" scope="col">Action</TableHeadCell>
       </TableHead>
 
       <TableBody class="divide-y">
-        {#if filteredGames.length === 0}
+        {#if filteredPatrons.length === 0}
           <TableBodyRow>
             <TableBodyCell
               colspan={2}
               class="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
             >
-              No games found.
+              No patrons found.
             </TableBodyCell>
           </TableBodyRow>
         {:else}
-          {#each filteredGames as gameStatus (gameStatus.game.gameId)}
+          {#each filteredPatrons as patron (patron.patronId)}
             <TableBodyRow>
               <TableBodyCell
                 class="px-4 py-3 text-lg font-medium text-slate-900 dark:text-slate-100"
               >
-                <div class="flex items-center gap-2">
-                  {gameStatus.game.title}
-                  {#if gameStatus.game.isPlayToWin}
-                    <Badge color="sky">P2W</Badge>
-                  {/if}
-                </div>
+                {patron.name}
               </TableBodyCell>
               <TableBodyCell class="px-4 py-3">
                 <div class="flex gap-2">
-                  <Button size="sm" color="yellow" onclick={() => openEditModal(gameStatus.game)}>
+                  <Button size="sm" color="yellow" onclick={() => openEditModal(patron)}>
                     Edit
                   </Button>
-                  <Button size="sm" color="red" onclick={() => openDeleteModal(gameStatus.game)}>
+                  <Button size="sm" color="red" onclick={() => openDeleteModal(patron)}>
                     Delete
                   </Button>
                 </div>

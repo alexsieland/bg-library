@@ -204,6 +204,32 @@ describe('ComponentName', () => {
 });
 ```
 
+#### Component Isolation Rule
+Each test file (`Foo.test.ts`) must **only test the behavior of its own component** (`Foo.svelte`). If `Foo.svelte` renders a child component `Bar.svelte`, mock `Bar.svelte` — do not write assertions that depend on `Bar`'s internal DOM structure or behavior. `Bar.svelte` has its own test file for that.
+
+This matters in practice because UI library components (e.g., Flowbite `Modal`, `Dropdown`) may not render their content into the accessible DOM tree in jsdom. If a parent component test reaches into a child's DOM to find a button or text, it will be fragile and environment-dependent.
+
+**What to test in a parent component:**
+- That the child component is opened/shown when the correct action occurs (e.g., a state flag is set)
+- That the correct props/callbacks are wired up (verify via the mock)
+- That the parent calls the right API methods after a callback fires
+
+**What NOT to test in a parent component:**
+- The internal buttons or text of a child modal/dropdown
+- Any DOM structure owned by a child component
+
+```typescript
+// ✅ Correct — mock the child, test the wiring
+vi.mock('./DeleteConfirmationPrompt.svelte', () => ({
+  default: vi.fn(), // or a minimal stub
+}));
+
+// Then verify the parent passed the right props / called the right API
+
+// ❌ Wrong — reaches into a child modal's DOM
+const confirmButton = screen.getByRole('button', { name: "Yes, I'm sure" });
+```
+
 ### Test Naming Convention
 **Pattern**: `Should <exhibit behavior> when <thing happens>`
 
@@ -286,6 +312,7 @@ frontend/
 7. ❌ Creating custom TypeScript types instead of using generated ones
 8. ❌ Pre-processing search queries on frontend
 9. ❌ Forgetting to run `make generate` after API spec changes
+10. ❌ Writing frontend tests that reach into child component DOM — `Foo.test.ts` should only test `Foo.svelte`; mock child components like modals and dropdowns, and test their behavior in their own dedicated test files
 
 ---
 
@@ -329,8 +356,9 @@ npm run build    # Build for production
 3. Run tests to validate changes
 4. Check for errors with `get_errors` tool after editing files
 5. Commit to type safety and contract compliance
+6. **You always have read access to all files in the project and its dependencies.** If you believe you cannot read a file, do not attempt to work around it with grep or assumptions — stop and explicitly request read access before continuing.
 
 ---
 
-**Last Updated**: Generated based on project documentation as of March 3, 2026
+**Last Updated**: March 9, 2026
 
