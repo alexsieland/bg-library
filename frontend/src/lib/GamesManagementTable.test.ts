@@ -86,7 +86,24 @@ describe('GamesManagementTable', () => {
   });
 
   it('Should filter games by search term', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue(mockGames);
+    vi.mocked(apiClient.listGames).mockImplementation(async (params) => {
+      if (params?.title?.toLowerCase().includes('ticket')) {
+        return {
+          games: [
+            {
+              game: {
+                gameId: 'g2',
+                title: 'Ticket to Ride',
+                barcode: '9780387455926',
+                isPlayToWin: true,
+              },
+              patron: undefined,
+            },
+          ],
+        };
+      }
+      return mockGames;
+    });
 
     render(GamesManagementTable);
 
@@ -104,7 +121,12 @@ describe('GamesManagementTable', () => {
   });
 
   it('Should show message when no games match search', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue(mockGames);
+    vi.mocked(apiClient.listGames).mockImplementation(async (params) => {
+      if (params?.title) {
+        return { games: [] };
+      }
+      return mockGames;
+    });
 
     render(GamesManagementTable);
 
