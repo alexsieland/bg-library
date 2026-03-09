@@ -58,7 +58,7 @@ describe('GamesManagementTable', () => {
 
     render(GamesManagementTable);
 
-    expect(screen.getByPlaceholderText('Search by game title')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search games by title...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add Game' })).toBeInTheDocument();
   });
 
@@ -94,7 +94,7 @@ describe('GamesManagementTable', () => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText('Search by game title');
+    const searchInput = screen.getByPlaceholderText('Search games by title...');
     await fireEvent.input(searchInput, { target: { value: 'ticket' } });
 
     await waitFor(() => {
@@ -108,7 +108,7 @@ describe('GamesManagementTable', () => {
 
     render(GamesManagementTable);
 
-    const searchInput = screen.getByPlaceholderText('Search by game title');
+    const searchInput = screen.getByPlaceholderText('Search games by title...');
     await fireEvent.input(searchInput, { target: { value: 'nonexistent' } });
 
     await waitFor(() => {

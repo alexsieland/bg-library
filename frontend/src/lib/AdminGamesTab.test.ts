@@ -60,14 +60,14 @@ describe('AdminGamesTab', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Game Title')).toBeInTheDocument();
-      expect(screen.getByText('Actions')).toBeInTheDocument();
+      expect(screen.getByText('Action')).toBeInTheDocument();
     });
   });
 
   it('Should render search input', async () => {
     render(AdminGamesTab);
 
-    expect(screen.getByPlaceholderText('Search by game title')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search games by title...')).toBeInTheDocument();
   });
 
   it('Should load and display games on mount', async () => {

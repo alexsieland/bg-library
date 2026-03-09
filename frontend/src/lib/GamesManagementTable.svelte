@@ -5,7 +5,7 @@
     TableBodyRow,
     TableHead,
     TableHeadCell,
-    TableSearch,
+    Table,
     Button,
     Dropdown,
     DropdownItem,
@@ -17,14 +17,11 @@
   import AddGameModal from './AddGameModal.svelte';
   import DeleteConfirmationPrompt from './DeleteConfirmationPrompt.svelte';
   import CsvUploadModal from './CsvUploadModal.svelte';
+  import SearchBar from './SearchBar.svelte';
+  import Debounce from './snippets/debounce.svelte';
   import { onMount } from 'svelte';
 
-  let divClass = 'bg-white dark:bg-slate-800 relative shadow-md sm:rounded-lg overflow-hidden';
-  let innerDivClass =
-    'flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4';
-  let searchClass = 'w-full md:w-1/2 relative';
-
-  let searchTerm = $state('');
+  let searchQuery = $state('');
   let gameStatusList: GameStatusList = $state({ games: [] });
   let loading = $state(true);
   let error: string | null = $state(null);
@@ -34,12 +31,15 @@
   let csvUploadModalOpen = $state(false);
   let selectedGame: Game | null = $state(null);
 
+  let cancelKey = 0;
+  const lastValueRef = { v: searchQuery };
+
   async function fetchGames() {
     loading = true;
     error = null;
     try {
       gameStatusList = await apiClient.listGames({
-        title: searchTerm || undefined,
+        title: searchQuery || undefined,
       });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
@@ -48,6 +48,11 @@
     } finally {
       loading = false;
     }
+  }
+
+  function handleSearch(query: string) {
+    searchQuery = query;
+    fetchGames();
   }
 
   onMount(() => {
@@ -91,12 +96,7 @@
     return await apiClient.bulkAddGames(file);
   }
 
-  let filteredGames = $derived(
-    gameStatusList.games.filter(
-      (gs) =>
-        searchTerm === '' || gs.game.title.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1
-    )
-  );
+  let filteredGames = $derived(gameStatusList.games);
 </script>
 
 <AddGameModal
@@ -127,87 +127,82 @@
   }}
 />
 
-<div class={divClass}>
-  <TableSearch
-    placeholder="Search by game title"
-    hoverable={true}
-    bind:inputValue={searchTerm}
-    {divClass}
-    {innerDivClass}
-    {searchClass}
-  >
-    {#snippet header()}
-      <div
-        class="flex w-full flex-shrink-0 flex-col items-stretch justify-end space-y-2 md:w-auto md:flex-row md:items-center md:space-y-0 md:space-x-3"
-      >
-        <Button onclick={openAddModal} color="primary">
-          <PlusOutline class="mr-2 h-3.5 w-3.5" />
-          Add Game
-        </Button>
-        <Button color="alternative">
-          Actions
-          <ChevronDownOutline class="ml-2 h-3 w-3 " />
-        </Button>
-        <Dropdown simple class="w-44 divide-y divide-gray-100">
-          <DropdownItem onclick={() => (csvUploadModalOpen = true)}>Bulk Add</DropdownItem>
-        </Dropdown>
-      </div>
-    {/snippet}
+<!-- Search bar with debounce -->
+<div
+  class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
+>
+  <div class="flex items-center justify-between gap-4">
+    <div class="flex-1">
+      <SearchBar bind:searchQuery placeholder="Search games by title..." onSearch={handleSearch} />
+    </div>
+    <div class="flex items-center gap-2">
+      <Button onclick={openAddModal} color="primary" size="sm">
+        <PlusOutline class="mr-2 h-3.5 w-3.5" />
+        Add Game
+      </Button>
+      <Button color="alternative" size="sm">
+        Actions
+        <ChevronDownOutline class="ml-2 h-3 w-3" />
+      </Button>
+      <Dropdown simple class="w-44 divide-y divide-gray-100">
+        <DropdownItem onclick={() => (csvUploadModalOpen = true)}>Bulk Add</DropdownItem>
+      </Dropdown>
+    </div>
+  </div>
+</div>
 
-    <TableHead>
-      <TableHeadCell class="px-4 py-3" scope="col">Game Title</TableHeadCell>
-      <TableHeadCell class="px-4 py-3" scope="col">Actions</TableHeadCell>
-    </TableHead>
+<Debounce value={searchQuery} onTrigger={handleSearch} delay={300} {lastValueRef} {cancelKey} />
 
-    <TableBody class="divide-y">
-      {#if loading}
-        <TableBodyRow>
-          <TableBodyCell
-            colspan="2"
-            class="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
-          >
-            Loading games...
-          </TableBodyCell>
-        </TableBodyRow>
-      {:else if error}
-        <TableBodyRow>
-          <TableBodyCell colspan="2" class="px-4 py-12 text-center text-rose-500">
-            {error}
-          </TableBodyCell>
-        </TableBodyRow>
-      {:else if filteredGames.length === 0}
-        <TableBodyRow>
-          <TableBodyCell
-            colspan="2"
-            class="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
-          >
-            No games found.
-          </TableBodyCell>
-        </TableBodyRow>
-      {:else}
-        {#each filteredGames as gameStatus (gameStatus.game.gameId)}
+<!-- Main table -->
+<div class="relative overflow-hidden bg-white shadow-md sm:rounded-lg dark:bg-slate-800">
+  {#if loading && gameStatusList.games.length === 0}
+    <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
+  {:else if error}
+    <div class="p-8 text-center text-rose-500">{error}</div>
+  {:else}
+    <Table shadow hoverable={true} class="w-full">
+      <TableHead>
+        <TableHeadCell class="px-4 py-3" scope="col">Game Title</TableHeadCell>
+        <TableHeadCell class="px-4 py-3" scope="col">Action</TableHeadCell>
+      </TableHead>
+
+      <TableBody class="divide-y">
+        {#if filteredGames.length === 0}
           <TableBodyRow>
-            <TableBodyCell class="px-4 py-3 text-lg font-medium text-slate-900 dark:text-slate-100">
-              <div class="flex items-center gap-2">
-                {gameStatus.game.title}
-                {#if gameStatus.game.isPlayToWin}
-                  <Badge color="sky">P2W</Badge>
-                {/if}
-              </div>
-            </TableBodyCell>
-            <TableBodyCell class="px-4 py-3">
-              <div class="flex gap-2">
-                <Button size="sm" color="yellow" onclick={() => openEditModal(gameStatus.game)}>
-                  Edit
-                </Button>
-                <Button size="sm" color="red" onclick={() => openDeleteModal(gameStatus.game)}>
-                  Delete
-                </Button>
-              </div>
+            <TableBodyCell
+              colspan="2"
+              class="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
+            >
+              No games found.
             </TableBodyCell>
           </TableBodyRow>
-        {/each}
-      {/if}
-    </TableBody>
-  </TableSearch>
+        {:else}
+          {#each filteredGames as gameStatus (gameStatus.game.gameId)}
+            <TableBodyRow>
+              <TableBodyCell
+                class="px-4 py-3 text-lg font-medium text-slate-900 dark:text-slate-100"
+              >
+                <div class="flex items-center gap-2">
+                  {gameStatus.game.title}
+                  {#if gameStatus.game.isPlayToWin}
+                    <Badge color="sky">P2W</Badge>
+                  {/if}
+                </div>
+              </TableBodyCell>
+              <TableBodyCell class="px-4 py-3">
+                <div class="flex gap-2">
+                  <Button size="sm" color="yellow" onclick={() => openEditModal(gameStatus.game)}>
+                    Edit
+                  </Button>
+                  <Button size="sm" color="red" onclick={() => openDeleteModal(gameStatus.game)}>
+                    Delete
+                  </Button>
+                </div>
+              </TableBodyCell>
+            </TableBodyRow>
+          {/each}
+        {/if}
+      </TableBody>
+    </Table>
+  {/if}
 </div>
