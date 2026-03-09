@@ -36,6 +36,7 @@
   "dependencies": {
     "flowbite": "^4.0.1",
     "flowbite-svelte": "^1.31.0",
+    "flowbite-svelte-blocks": "^2.1.0",
     "flowbite-svelte-icons": "^3.1.0",
     "openapi-fetch": "^0.17.0",
     "tailwind-merge": "^3.5.0"

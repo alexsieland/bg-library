@@ -192,13 +192,13 @@
 
         {#if patrons.length > 0}
           <ul
-            class="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            class="dark:border-grey-700 absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:bg-slate-800"
           >
             {#each patrons as patron}
               <li>
                 <button
                   type="button"
-                  class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                  class="w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700"
                   onclick={() => selectPatron(patron)}
                 >
                   {patron.name}
