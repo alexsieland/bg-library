@@ -31,7 +31,7 @@
   let selectedPatron: Patron | null = $state(null);
 
   let cancelKey = 0;
-  const lastValueRef = { v: searchQuery };
+  let lastValueRef = $state({ v: '' });
 
   async function fetchPatrons() {
     loading = true;
