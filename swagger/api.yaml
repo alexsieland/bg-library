@@ -581,12 +581,8 @@ paths:
             schema:
               $ref: '#/components/schemas/CreatePlayToWinSessionRequest'
       responses:
-        '201':
+        '204':
           description: Play to Win session created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlayToWinSession'
         '400':
           description: Validation error
           content:
