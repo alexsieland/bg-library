@@ -124,7 +124,7 @@ func TestCheckoutWorkflow(t *testing.T) {
 
 	// 8. Check in the Game
 	checkinResp, err := client.CheckInGameWithResponse(ctx, &api.CheckInGameParams{
-		TransactionId: transactionID.String(),
+		TransactionId: transactionID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, checkinResp.StatusCode())

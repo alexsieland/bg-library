@@ -103,7 +103,7 @@ func TestDuplicateCheckoutWorkflow(t *testing.T) {
 
 	// 6. Check in the Game from Patron A (Expect Success 204)
 	checkinResp, err := client.CheckInGameWithResponse(ctx, &api.CheckInGameParams{
-		TransactionId: transactionA.Id.String(),
+		TransactionId: transactionA.Id,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, checkinResp.StatusCode())

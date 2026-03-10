@@ -75,20 +75,20 @@ func TestGameLifecycleWorkflow(t *testing.T) {
 
 	// 3. Update the Game's title via UpdateGame
 	updatedTitle := "Wingspan (Asia Expansion)"
-	updateResp, err := client.UpdateGameWithResponse(ctx, gameID.String(), api.UpdateGameJSONRequestBody{
+	updateResp, err := client.UpdateGameWithResponse(ctx, gameID, api.UpdateGameJSONRequestBody{
 		Title: updatedTitle,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, updateResp.StatusCode())
 
 	// 4. Verify the title change via GetGame
-	getResp, err := client.GetGameWithResponse(ctx, gameID.String())
+	getResp, err := client.GetGameWithResponse(ctx, gameID)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, getResp.StatusCode())
 	assert.Equal(t, updatedTitle, getResp.JSON200.Title)
 
 	// 5. Delete the Game via DeleteGame
-	deleteResp, err := client.DeleteGameWithResponse(ctx, gameID.String())
+	deleteResp, err := client.DeleteGameWithResponse(ctx, gameID)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
 
@@ -107,7 +107,7 @@ func TestGameLifecycleWorkflow(t *testing.T) {
 	assert.False(t, found, "Deleted game should not be in the list")
 
 	// 7. Verify that attempting to GetGame by the deleted Game's ID returns 404 Not Found
-	getResp2, err := client.GetGameWithResponse(ctx, gameID.String())
+	getResp2, err := client.GetGameWithResponse(ctx, gameID)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, getResp2.StatusCode())
 }

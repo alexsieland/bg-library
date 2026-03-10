@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -177,7 +178,9 @@ func TestAddGame(t *testing.T) {
 		}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title), pgtype.Text{Valid: false}}).Return(mockCreateRow).Once()
 
-		// CreatePlayToWinGame call
+		// addPlayToWin now uses tx-scoped query
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
 		mockPtwRow := new(MockRow)
 		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
@@ -187,7 +190,7 @@ func TestAddGame(t *testing.T) {
 			*args.Get(4).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
 			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
 		}).Return(nil)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -202,8 +205,8 @@ func TestAddGame(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, title, response.Title)
-		// Both CreateGame and CreatePlayToWinGame DB calls are made
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 500 Internal Server Error when addPlayToWin fails after game creation", func(t *testing.T) {
@@ -224,10 +227,11 @@ func TestAddGame(t *testing.T) {
 		}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title), pgtype.Text{Valid: false}}).Return(mockCreateRow).Once()
 
-		// CreatePlayToWinGame fails
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
 		mockPtwRow := new(MockRow)
 		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("ptw db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -239,6 +243,7 @@ func TestAddGame(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }
 
@@ -252,21 +257,10 @@ func TestDeleteGame(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("DELETE", "/games/"+gameID.String(), nil)
-		server.DeleteGame(c, gameID.String())
+		server.DeleteGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
-	})
-
-	t.Run("Should return 400 Bad Request when gameId is invalid UUID", func(t *testing.T) {
-		server, _ := setupTestServer()
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		server.DeleteGame(c, "invalid-uuid")
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
 	t.Run("Should return 500 Internal Server Error when DB error occurs on delete", func(t *testing.T) {
@@ -278,7 +272,7 @@ func TestDeleteGame(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("DELETE", "/games/"+gameID.String(), nil)
-		server.DeleteGame(c, gameID.String())
+		server.DeleteGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
@@ -306,7 +300,7 @@ func TestGetGame(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/games/"+gameID.String(), nil)
-		server.GetGame(c, gameID.String())
+		server.GetGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response Game
@@ -327,7 +321,7 @@ func TestGetGame(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/games/"+gameID.String(), nil)
-		server.GetGame(c, gameID.String())
+		server.GetGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
@@ -445,7 +439,7 @@ func TestUpdateGame(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/games/"+gameID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdateGame(c, gameID.String())
+		server.UpdateGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 	})
@@ -463,7 +457,7 @@ func TestUpdateGame(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/games/"+gameID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdateGame(c, gameID.String())
+		server.UpdateGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
@@ -482,7 +476,7 @@ func TestUpdateGame(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/games/"+gameID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdateGame(c, gameID.String())
+		server.UpdateGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
@@ -620,7 +614,7 @@ func TestBulkAddGames(t *testing.T) {
 		var response BulkAddResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, response.Imported)
+		assert.Equal(t, int32(2), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
@@ -662,7 +656,7 @@ func TestBulkAddGames(t *testing.T) {
 		var response BulkAddResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, response.Imported)
+		assert.Equal(t, int32(1), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
@@ -770,7 +764,7 @@ func TestBulkAddGames(t *testing.T) {
 		var response BulkAddResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, 0, response.Imported)
+		assert.Equal(t, int32(0), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})

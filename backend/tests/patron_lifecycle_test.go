@@ -76,20 +76,20 @@ func TestPatronLifecycleWorkflow(t *testing.T) {
 
 	// 3. Update the Patron's name via UpdatePatron
 	newName := "Updated Name"
-	updateResp, err := client.UpdatePatronWithResponse(ctx, patronID.String(), api.UpdatePatronJSONRequestBody{
+	updateResp, err := client.UpdatePatronWithResponse(ctx, patronID, api.UpdatePatronJSONRequestBody{
 		Name: newName,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, updateResp.StatusCode())
 
 	// 4. Verify the name change via GetPatron
-	getResp, err := client.GetPatronWithResponse(ctx, patronID.String())
+	getResp, err := client.GetPatronWithResponse(ctx, patronID)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, getResp.StatusCode())
 	assert.Equal(t, newName, getResp.JSON200.Name)
 
 	// 5. Delete the Patron via DeletePatron
-	deleteResp, err := client.DeletePatronWithResponse(ctx, patronID.String())
+	deleteResp, err := client.DeletePatronWithResponse(ctx, patronID)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, deleteResp.StatusCode())
 

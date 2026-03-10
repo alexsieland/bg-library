@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -164,21 +165,10 @@ func TestDeletePatron(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("DELETE", "/patrons/"+patronID.String(), nil)
-		server.DeletePatron(c, patronID.String())
+		server.DeletePatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
-	})
-
-	t.Run("Should return 400 Bad Request when patronId is invalid UUID", func(t *testing.T) {
-		server, _ := setupTestServer()
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		server.DeletePatron(c, "invalid-uuid")
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
 	t.Run("Should return 500 Internal Server Error when DB error occurs on delete", func(t *testing.T) {
@@ -190,7 +180,7 @@ func TestDeletePatron(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("DELETE", "/patrons/"+patronID.String(), nil)
-		server.DeletePatron(c, patronID.String())
+		server.DeletePatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
@@ -216,7 +206,7 @@ func TestGetPatron(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/patrons/"+patronID.String(), nil)
-		server.GetPatron(c, patronID.String())
+		server.GetPatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response Patron
@@ -237,20 +227,9 @@ func TestGetPatron(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/patrons/"+patronID.String(), nil)
-		server.GetPatron(c, patronID.String())
+		server.GetPatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-
-	t.Run("Should return 400 Bad Request when patronId is invalid UUID", func(t *testing.T) {
-		server, _ := setupTestServer()
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		server.GetPatron(c, "invalid-uuid")
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
 	t.Run("Should return 500 Internal Server Error when DB error occurs on get", func(t *testing.T) {
@@ -264,7 +243,7 @@ func TestGetPatron(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/patrons/"+patronID.String(), nil)
-		server.GetPatron(c, patronID.String())
+		server.GetPatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
@@ -374,7 +353,7 @@ func TestUpdatePatron(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdatePatron(c, patronID.String())
+		server.UpdatePatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 	})
@@ -392,24 +371,9 @@ func TestUpdatePatron(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdatePatron(c, patronID.String())
+		server.UpdatePatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-
-	t.Run("Should return 400 Bad Request when patronId is invalid UUID", func(t *testing.T) {
-		server, _ := setupTestServer()
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(UpdatePatronJSONRequestBody{Name: "Name"})
-		c.Request = httptest.NewRequest("PUT", "/patrons/invalid-uuid", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.UpdatePatron(c, "invalid-uuid")
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
 	t.Run("Should return 500 Internal Server Error when DB error occurs on update", func(t *testing.T) {
@@ -425,7 +389,7 @@ func TestUpdatePatron(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdatePatron(c, patronID.String())
+		server.UpdatePatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
@@ -445,7 +409,7 @@ func TestUpdatePatron(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.UpdatePatron(c, patronID.String())
+		server.UpdatePatron(c, types.UUID(patronID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
@@ -570,7 +534,7 @@ func TestBulkAddPatrons(t *testing.T) {
 		var response BulkAddResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, response.Imported)
+		assert.Equal(t, int32(2), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
@@ -611,7 +575,7 @@ func TestBulkAddPatrons(t *testing.T) {
 		var response BulkAddResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, response.Imported)
+		assert.Equal(t, int32(1), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
@@ -718,7 +682,7 @@ func TestBulkAddPatrons(t *testing.T) {
 		var response BulkAddResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, 0, response.Imported)
+		assert.Equal(t, int32(0), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
