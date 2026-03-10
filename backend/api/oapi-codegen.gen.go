@@ -78,19 +78,16 @@ type CreatePatronRequest struct {
 	Name string `json:"name"`
 }
 
-// CreatePlayToWinEntryRequest defines model for CreatePlayToWinEntryRequest.
-type CreatePlayToWinEntryRequest struct {
-	// EntrantName The name of the entrant
-	EntrantName string `json:"entrantName"`
-
-	// EntrantUniqueId The unique ID of the entrant
-	EntrantUniqueId string `json:"entrantUniqueId"`
-}
-
 // CreatePlayToWinSessionRequest Request payload for creating a play to win session
 type CreatePlayToWinSessionRequest struct {
 	// Entries Array of entries in the play to win session
-	Entries []CreatePlayToWinEntryRequest `json:"entries"`
+	Entries []struct {
+		// EntrantName The name of the entrant
+		EntrantName string `json:"entrantName"`
+
+		// EntrantUniqueId The unique ID of the entrant
+		EntrantUniqueId string `json:"entrantUniqueId"`
+	} `json:"entries"`
 
 	// PlayToWinId The play to win ID this session is tied to
 	PlayToWinId openapi_types.UUID `json:"playToWinId"`
@@ -2444,6 +2441,7 @@ type GetPlayToWinSessionEntriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PlayToWinEntryList
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -3406,6 +3404,13 @@ func ParseGetPlayToWinSessionEntriesResponse(rsp *http.Response) (*GetPlayToWinS
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

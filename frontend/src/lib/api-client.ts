@@ -126,9 +126,12 @@ class ApiClient {
 
   private async handleResponse<T>(response: any): Promise<T> {
     if (response.error) {
-      throw new Error(
-        response.error.message || `Request failed with status ${response.response?.status}`
-      );
+      const errorMessage =
+        response.error?.error?.message ??
+        response.error?.message ??
+        `Request failed with status ${response.response?.status}`;
+      console.error('Request failed: ', errorMessage);
+      throw new Error(errorMessage);
     }
     if (response.response && response.response.status === 204) {
       return {} as T;
