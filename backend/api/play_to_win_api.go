@@ -15,25 +15,24 @@ import (
 
 func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
 	var (
-		err       error
-		tx        pgx.Tx
-		requestCx = c.Request.Context()
+		err error
+		tx  pgx.Tx
 	)
 
 	if optTx != nil {
 		tx = *optTx
 	} else {
-		tx, err = s.Database.BeginTx(requestCx, pgx.TxOptions{})
+		tx, err = s.Database.BeginTx(c, pgx.TxOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(requestCx, uuidToPgTypeUUID(gameId))
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c, uuidToPgTypeUUID(gameId))
 	if err != nil {
 		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.RestorePlayToWinGame(requestCx, uuidToPgTypeUUID(gameId))
+			err = s.queries.RestorePlayToWinGame(c, uuidToPgTypeUUID(gameId))
 			if err != nil {
 				return err
 			}
