@@ -147,21 +147,21 @@ func ValidateStringLength(fieldName string, str string, minLength int, maxLength
 	return nil
 }
 
-func ValidateIntMin(fieldName string, i int, minVal int, errorDetails []ErrorDetail) []ErrorDetail {
+func ValidateIntMin(fieldName string, i int32, minVal int32, errorDetails []ErrorDetail) []ErrorDetail {
 	if i < minVal {
 		return append(errorDetails, ErrorDetail{
 			Field:   fieldName,
-			Message: "Must be greater than or equal to " + strconv.Itoa(minVal),
+			Message: "Must be greater than or equal to " + strconv.Itoa(int(minVal)),
 		})
 	}
 	return errorDetails
 }
 
-func ValidateIntMax(fieldName string, i int, maxVal int, errorDetails []ErrorDetail) []ErrorDetail {
+func ValidateIntMax(fieldName string, i int32, maxVal int32, errorDetails []ErrorDetail) []ErrorDetail {
 	if i > maxVal {
 		return append(errorDetails, ErrorDetail{
 			Field:   fieldName,
-			Message: "Must be less than or equal to " + strconv.Itoa(maxVal),
+			Message: "Must be less than or equal to " + strconv.Itoa(int(maxVal)),
 		})
 	}
 	return errorDetails

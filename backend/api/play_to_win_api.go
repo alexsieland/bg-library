@@ -191,12 +191,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 
 	//Validate request body fields
 	var errorDetails []ErrorDetail
-	var playtimeMinutes pgtype.Int4
 	if jsonObject.PlaytimeMinutes != nil {
-		playtimeMinutes = pgtype.Int4{
-			Int32: int32(*jsonObject.PlaytimeMinutes),
-			Valid: true,
-		}
 		errorDetails = ValidateIntMin("playtimeMinutes", *jsonObject.PlaytimeMinutes, 0, errorDetails)
 	}
 
@@ -218,7 +213,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	// Create the play to win session params
 	ptwSessionParams := db.CreatePlayToWinSessionParams{
 		PlayToWinID:     uuidToPgTypeUUID(jsonObject.PlayToWinId),
-		PlaytimeMinutes: playtimeMinutes,
+		PlaytimeMinutes: int32ToPgInt4(jsonObject.PlaytimeMinutes),
 	}
 
 	// Create the play to win session

@@ -83,7 +83,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 
 	// Process each row
 	var errorDetails []ErrorDetail
-	recordCount := 0
+	recordCount := int32(0)
 	for {
 		record, err := csvReader.Read()
 		if err == io.EOF {

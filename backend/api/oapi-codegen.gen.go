@@ -45,7 +45,7 @@ const (
 // BulkAddResponse Response for bulk add operations
 type BulkAddResponse struct {
 	// Imported Number of records imported successfully
-	Imported int `json:"imported"`
+	Imported int32 `json:"imported"`
 }
 
 // CheckOutRequest Request payload for making a check in/out transaction
@@ -93,7 +93,7 @@ type CreatePlayToWinSessionRequest struct {
 	PlayToWinId openapi_types.UUID `json:"playToWinId"`
 
 	// PlaytimeMinutes The estimated playtime for this session in minutes
-	PlaytimeMinutes *int `json:"playtimeMinutes,omitempty"`
+	PlaytimeMinutes *int32 `json:"playtimeMinutes,omitempty"`
 }
 
 // ErrorDetail Details about specific errors
@@ -302,10 +302,10 @@ type ListTransactionEventsParams struct {
 	PatronName *string `form:"patron_name,omitempty" json:"patron_name,omitempty"`
 
 	// Limit Limit the number of transactions returned (optional)
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Offset Offset for pagination (optional)
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.

@@ -13,18 +13,11 @@ func stringToPgText(str *string) pgtype.Text {
 	return pgtype.Text{String: *str, Valid: true}
 }
 
-func stringToPgTypeUUID(fieldName string, str string, errorDetails []ErrorDetail) (pgtype.UUID, []ErrorDetail) {
-	dbUuid, err := uuid.Parse(str)
-	if err != nil {
-		return pgtype.UUID{}, append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Invalid UUID format",
-		})
+func int32ToPgInt4(i *int32) pgtype.Int4 {
+	if i == nil {
+		return pgtype.Int4{}
 	}
-	return pgtype.UUID{
-		Bytes: dbUuid,
-		Valid: true,
-	}, errorDetails
+	return pgtype.Int4{Int32: *i, Valid: true}
 }
 
 func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {

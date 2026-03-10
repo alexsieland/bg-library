@@ -127,23 +127,6 @@ func TestConversionUtils(t *testing.T) {
 }
 
 func TestValidationUtils(t *testing.T) {
-	t.Run("Should convert valid string to pgtype.UUID", func(t *testing.T) {
-		u := uuid.New()
-		pgUUID, errors := stringToPgTypeUUID("test", u.String(), nil)
-
-		assert.Nil(t, errors)
-		assert.True(t, pgUUID.Valid)
-		assert.Equal(t, u, uuid.UUID(pgUUID.Bytes))
-	})
-
-	t.Run("Should return error for invalid UUID string", func(t *testing.T) {
-		_, errors := stringToPgTypeUUID("test", "invalid", nil)
-
-		assert.Len(t, errors, 1)
-		assert.Equal(t, "test", errors[0].Field)
-		assert.Equal(t, "Invalid UUID format", errors[0].Message)
-	})
-
 	t.Run("Should validate string length correctly", func(t *testing.T) {
 		// Valid
 		errors := ValidateStringLength("test", "hello", 1, 10, nil)
