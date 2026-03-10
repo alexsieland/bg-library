@@ -11,12 +11,7 @@ import (
 )
 
 func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
-	transactionUUID, errorDetails := stringToPgTypeUUID("TransactionId", params.TransactionId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	err := s.queries.CheckInGame(c.Request.Context(), transactionUUID)
+	err := s.queries.CheckInGame(c.Request.Context(), uuidToPgTypeUUID(params.TransactionId))
 	if err != nil {
 		log.Printf("Error checking in game: %v", err)
 		internalError(c, err)
@@ -33,16 +28,14 @@ func (s Server) CheckOutGame(c *gin.Context) {
 		return
 	}
 
-	gameUUID, errorDetails := stringToPgTypeUUID("GameId", jsonObject.GameId.String(), []ErrorDetail{})
-	patronUUID, errorDetails := stringToPgTypeUUID("PatronId", jsonObject.PatronId.String(), errorDetails)
-	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), gameUUID)
+	gameStatus, err := s.queries.GetGameStatus(c.Request.Context(), uuidToPgTypeUUID(jsonObject.GameId))
 	if err != nil {
 		log.Printf("Error getting game status: %v", err)
 		internalError(c, err)
 		return
 	}
 	if !gameStatus.CheckinTimestamp.Valid && gameStatus.PatronID.Valid {
-		if patronUUID == gameStatus.PatronID {
+		if uuidToPgTypeUUID(jsonObject.PatronId) == gameStatus.PatronID {
 			//Game is already checked out by this patron, so we return the current status of the game
 			c.JSON(http.StatusCreated, LibraryTransaction{
 				GameId:    uuid.MustParse(gameStatus.GameID.String()),
@@ -57,8 +50,8 @@ func (s Server) CheckOutGame(c *gin.Context) {
 	}
 
 	transaction, err := s.queries.CheckOutGame(c.Request.Context(), db.CheckOutGameParams{
-		GameID:   gameUUID,
-		PatronID: patronUUID,
+		GameID:   uuidToPgTypeUUID(jsonObject.GameId),
+		PatronID: uuidToPgTypeUUID(jsonObject.PatronId),
 	})
 	if err != nil {
 		log.Printf("Error checking out game: %v", err)

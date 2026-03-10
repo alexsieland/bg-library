@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 )
 
 func (s Server) AddGame(c *gin.Context) {
@@ -149,13 +150,8 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
 }
 
-func (s Server) DeleteGame(c *gin.Context, gameId string) {
-	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	err := s.queries.DeleteGame(c.Request.Context(), gameUUID)
+func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
+	err := s.queries.DeleteGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		log.Printf("Error deleting game: %v", err)
 		internalError(c, err)
@@ -165,13 +161,8 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (s Server) GetGame(c *gin.Context, gameId string) {
-	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
+func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
+	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)
@@ -204,7 +195,7 @@ func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
 	c.JSON(http.StatusOK, FromVwLibraryGames(dbGames))
 }
 
-func (s Server) UpdateGame(c *gin.Context, gameId string) {
+func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 	var jsonObject UpdateGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
@@ -212,7 +203,6 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 		return
 	}
 	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
-	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId, errorDetails)
 	if jsonObject.Barcode != nil {
 		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
 	}
@@ -227,7 +217,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	}
 
 	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
-		ID:             gameUUID,
+		ID:             uuidToPgTypeUUID(gameId),
 		Title:          jsonObject.Title,
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
 		Barcode:        dbBarcode,

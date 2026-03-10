@@ -269,7 +269,7 @@ type TransactionEventList struct {
 // CheckInGameParams defines parameters for CheckInGame.
 type CheckInGameParams struct {
 	// TransactionId Transaction ID
-	TransactionId string `form:"transactionId" json:"transactionId"`
+	TransactionId openapi_types.UUID `form:"transactionId" json:"transactionId"`
 }
 
 // ListGamesParams defines parameters for ListGames.
@@ -425,15 +425,15 @@ type ClientInterface interface {
 	GetGameByBarcode(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteGame request
-	DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGame request
-	GetGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGameWithBody request with any body
-	UpdateGameWithBody(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateGame(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGame(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGames request
 	ListGames(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -452,15 +452,15 @@ type ClientInterface interface {
 	GetPatronByBarcode(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeletePatron request
-	DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeletePatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPatron request
-	GetPatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdatePatronWithBody request with any body
-	UpdatePatronWithBody(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdatePatronWithBody(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdatePatron(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdatePatron(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPatrons request
 	ListPatrons(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -565,7 +565,7 @@ func (c *Client) GetGameByBarcode(ctx context.Context, gameBarcode string, reqEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteGameRequest(c.Server, gameId)
 	if err != nil {
 		return nil, err
@@ -577,7 +577,7 @@ func (c *Client) DeleteGame(ctx context.Context, gameId string, reqEditors ...Re
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGameRequest(c.Server, gameId)
 	if err != nil {
 		return nil, err
@@ -589,7 +589,7 @@ func (c *Client) GetGame(ctx context.Context, gameId string, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateGameWithBody(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGameRequestWithBody(c.Server, gameId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -601,7 +601,7 @@ func (c *Client) UpdateGameWithBody(ctx context.Context, gameId string, contentT
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateGame(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGame(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGameRequest(c.Server, gameId, body)
 	if err != nil {
 		return nil, err
@@ -685,7 +685,7 @@ func (c *Client) GetPatronByBarcode(ctx context.Context, patronBarcode string, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeletePatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeletePatronRequest(c.Server, patronId)
 	if err != nil {
 		return nil, err
@@ -697,7 +697,7 @@ func (c *Client) DeletePatron(ctx context.Context, patronId string, reqEditors .
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetPatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetPatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPatronRequest(c.Server, patronId)
 	if err != nil {
 		return nil, err
@@ -709,7 +709,7 @@ func (c *Client) GetPatron(ctx context.Context, patronId string, reqEditors ...R
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdatePatronRequestWithBody(c.Server, patronId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -721,7 +721,7 @@ func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId string, cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdatePatron(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdatePatron(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdatePatronRequest(c.Server, patronId, body)
 	if err != nil {
 		return nil, err
@@ -1025,7 +1025,7 @@ func NewGetGameByBarcodeRequest(server string, gameBarcode string) (*http.Reques
 }
 
 // NewDeleteGameRequest generates requests for DeleteGame
-func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
+func NewDeleteGameRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1059,7 +1059,7 @@ func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
 }
 
 // NewGetGameRequest generates requests for GetGame
-func NewGetGameRequest(server string, gameId string) (*http.Request, error) {
+func NewGetGameRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1093,7 +1093,7 @@ func NewGetGameRequest(server string, gameId string) (*http.Request, error) {
 }
 
 // NewUpdateGameRequest calls the generic UpdateGame builder with application/json body
-func NewUpdateGameRequest(server string, gameId string, body UpdateGameJSONRequestBody) (*http.Request, error) {
+func NewUpdateGameRequest(server string, gameId openapi_types.UUID, body UpdateGameJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1104,7 +1104,7 @@ func NewUpdateGameRequest(server string, gameId string, body UpdateGameJSONReque
 }
 
 // NewUpdateGameRequestWithBody generates requests for UpdateGame with any type of body
-func NewUpdateGameRequestWithBody(server string, gameId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateGameRequestWithBody(server string, gameId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1315,7 +1315,7 @@ func NewGetPatronByBarcodeRequest(server string, patronBarcode string) (*http.Re
 }
 
 // NewDeletePatronRequest generates requests for DeletePatron
-func NewDeletePatronRequest(server string, patronId string) (*http.Request, error) {
+func NewDeletePatronRequest(server string, patronId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1349,7 +1349,7 @@ func NewDeletePatronRequest(server string, patronId string) (*http.Request, erro
 }
 
 // NewGetPatronRequest generates requests for GetPatron
-func NewGetPatronRequest(server string, patronId string) (*http.Request, error) {
+func NewGetPatronRequest(server string, patronId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1383,7 +1383,7 @@ func NewGetPatronRequest(server string, patronId string) (*http.Request, error) 
 }
 
 // NewUpdatePatronRequest calls the generic UpdatePatron builder with application/json body
-func NewUpdatePatronRequest(server string, patronId string, body UpdatePatronJSONRequestBody) (*http.Request, error) {
+func NewUpdatePatronRequest(server string, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1394,7 +1394,7 @@ func NewUpdatePatronRequest(server string, patronId string, body UpdatePatronJSO
 }
 
 // NewUpdatePatronRequestWithBody generates requests for UpdatePatron with any type of body
-func NewUpdatePatronRequestWithBody(server string, patronId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdatePatronRequestWithBody(server string, patronId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1853,15 +1853,15 @@ type ClientWithResponsesInterface interface {
 	GetGameByBarcodeWithResponse(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*GetGameByBarcodeResponse, error)
 
 	// DeleteGameWithResponse request
-	DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error)
+	DeleteGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error)
 
 	// GetGameWithResponse request
-	GetGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*GetGameResponse, error)
+	GetGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGameResponse, error)
 
 	// UpdateGameWithBodyWithResponse request with any body
-	UpdateGameWithBodyWithResponse(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
+	UpdateGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
 
-	UpdateGameWithResponse(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
+	UpdateGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
 
 	// ListGamesWithResponse request
 	ListGamesWithResponse(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*ListGamesResponse, error)
@@ -1880,15 +1880,15 @@ type ClientWithResponsesInterface interface {
 	GetPatronByBarcodeWithResponse(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*GetPatronByBarcodeResponse, error)
 
 	// DeletePatronWithResponse request
-	DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error)
+	DeletePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error)
 
 	// GetPatronWithResponse request
-	GetPatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*GetPatronResponse, error)
+	GetPatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPatronResponse, error)
 
 	// UpdatePatronWithBodyWithResponse request with any body
-	UpdatePatronWithBodyWithResponse(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
+	UpdatePatronWithBodyWithResponse(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
 
-	UpdatePatronWithResponse(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
+	UpdatePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
 
 	// ListPatronsWithResponse request
 	ListPatronsWithResponse(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*ListPatronsResponse, error)
@@ -2473,7 +2473,7 @@ func (c *ClientWithResponses) GetGameByBarcodeWithResponse(ctx context.Context, 
 }
 
 // DeleteGameWithResponse request returning *DeleteGameResponse
-func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error) {
+func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error) {
 	rsp, err := c.DeleteGame(ctx, gameId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2482,7 +2482,7 @@ func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId
 }
 
 // GetGameWithResponse request returning *GetGameResponse
-func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*GetGameResponse, error) {
+func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGameResponse, error) {
 	rsp, err := c.GetGame(ctx, gameId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2491,7 +2491,7 @@ func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId st
 }
 
 // UpdateGameWithBodyWithResponse request with arbitrary body returning *UpdateGameResponse
-func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
+func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
 	rsp, err := c.UpdateGameWithBody(ctx, gameId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2499,7 +2499,7 @@ func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context
 	return ParseUpdateGameResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateGameWithResponse(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
+func (c *ClientWithResponses) UpdateGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
 	rsp, err := c.UpdateGame(ctx, gameId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2560,7 +2560,7 @@ func (c *ClientWithResponses) GetPatronByBarcodeWithResponse(ctx context.Context
 }
 
 // DeletePatronWithResponse request returning *DeletePatronResponse
-func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error) {
+func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error) {
 	rsp, err := c.DeletePatron(ctx, patronId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2569,7 +2569,7 @@ func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patr
 }
 
 // GetPatronWithResponse request returning *GetPatronResponse
-func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*GetPatronResponse, error) {
+func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPatronResponse, error) {
 	rsp, err := c.GetPatron(ctx, patronId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2578,7 +2578,7 @@ func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronI
 }
 
 // UpdatePatronWithBodyWithResponse request with arbitrary body returning *UpdatePatronResponse
-func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
+func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
 	rsp, err := c.UpdatePatronWithBody(ctx, patronId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2586,7 +2586,7 @@ func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Conte
 	return ParseUpdatePatronResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdatePatronWithResponse(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
+func (c *ClientWithResponses) UpdatePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
 	rsp, err := c.UpdatePatron(ctx, patronId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -3383,13 +3383,13 @@ type ServerInterface interface {
 	GetGameByBarcode(c *gin.Context, gameBarcode string)
 	// Soft delete a game
 	// (DELETE /api/v1/library/game/id/{gameId})
-	DeleteGame(c *gin.Context, gameId string)
+	DeleteGame(c *gin.Context, gameId openapi_types.UUID)
 	// Get a game
 	// (GET /api/v1/library/game/id/{gameId})
-	GetGame(c *gin.Context, gameId string)
+	GetGame(c *gin.Context, gameId openapi_types.UUID)
 	// Update an existing game
 	// (PUT /api/v1/library/game/id/{gameId})
-	UpdateGame(c *gin.Context, gameId string)
+	UpdateGame(c *gin.Context, gameId openapi_types.UUID)
 	// Get list of all games with check out status
 	// (GET /api/v1/library/games)
 	ListGames(c *gin.Context, params ListGamesParams)
@@ -3404,13 +3404,13 @@ type ServerInterface interface {
 	GetPatronByBarcode(c *gin.Context, patronBarcode string)
 	// Soft delete a patron
 	// (DELETE /api/v1/library/patron/id/{patronId})
-	DeletePatron(c *gin.Context, patronId string)
+	DeletePatron(c *gin.Context, patronId openapi_types.UUID)
 	// Get a patron
 	// (GET /api/v1/library/patron/id/{patronId})
-	GetPatron(c *gin.Context, patronId string)
+	GetPatron(c *gin.Context, patronId openapi_types.UUID)
 	// Update an existing patron
 	// (PUT /api/v1/library/patron/id/{patronId})
-	UpdatePatron(c *gin.Context, patronId string)
+	UpdatePatron(c *gin.Context, patronId openapi_types.UUID)
 	// Get list of all patrons
 	// (GET /api/v1/library/patrons)
 	ListPatrons(c *gin.Context, params ListPatronsParams)
@@ -3535,7 +3535,7 @@ func (siw *ServerInterfaceWrapper) DeleteGame(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "gameId" -------------
-	var gameId string
+	var gameId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3559,7 +3559,7 @@ func (siw *ServerInterfaceWrapper) GetGame(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "gameId" -------------
-	var gameId string
+	var gameId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3583,7 +3583,7 @@ func (siw *ServerInterfaceWrapper) UpdateGame(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "gameId" -------------
-	var gameId string
+	var gameId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3691,7 +3691,7 @@ func (siw *ServerInterfaceWrapper) DeletePatron(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "patronId" -------------
-	var patronId string
+	var patronId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "patronId", c.Param("patronId"), &patronId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3715,7 +3715,7 @@ func (siw *ServerInterfaceWrapper) GetPatron(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "patronId" -------------
-	var patronId string
+	var patronId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "patronId", c.Param("patronId"), &patronId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3739,7 +3739,7 @@ func (siw *ServerInterfaceWrapper) UpdatePatron(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "patronId" -------------
-	var patronId string
+	var patronId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "patronId", c.Param("patronId"), &patronId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {

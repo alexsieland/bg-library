@@ -113,6 +113,7 @@ paths:
           name: gameId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       responses:
@@ -138,6 +139,7 @@ paths:
           name: gameId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       requestBody:
@@ -171,6 +173,7 @@ paths:
           name: gameId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       responses:
@@ -304,6 +307,7 @@ paths:
           name: patronId
           schema:
             type: string
+            format: uuid
           required: true
           description: Patron ID
       responses:
@@ -329,6 +333,7 @@ paths:
           name: patronId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       requestBody:
@@ -363,6 +368,7 @@ paths:
           name: patronId
           schema:
             type: string
+            format: uuid
           required: true
           description: Patron ID
       responses:
@@ -417,6 +423,7 @@ paths:
           name: transactionId
           schema:
             type: string
+            format: uuid
           required: true
           description: Transaction ID
       responses:

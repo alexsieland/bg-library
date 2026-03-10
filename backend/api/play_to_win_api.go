@@ -14,11 +14,6 @@ import (
 )
 
 func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []ErrorDetail, optTx *pgx.Tx) error {
-	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		return errValidation
-	}
-
 	var err error
 	var tx pgx.Tx
 	if tx == nil {
@@ -31,12 +26,12 @@ func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []E
 		tx = *optTx
 	}
 
-	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), gameUUID)
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 
 	if err != nil {
 		// if unique constraint violation, then this means the game id is a duplicate, so attempt to restore it instead
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.RestorePlayToWinGame(c.Request.Context(), gameUUID)
+			err = s.queries.RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 			if err != nil {
 				return err
 			}
@@ -98,13 +93,7 @@ func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReaso
 }
 
 func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
-	gameUUID, errorDetails := stringToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-
-	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
+	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)
@@ -128,7 +117,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 
 	var comment pgtype.Text
 	if request.RemovalComment != nil {
-		errorDetails = ValidateStringLength("removalComment", *request.RemovalComment, 0, 500, []ErrorDetail{})
+		errorDetails := ValidateStringLength("removalComment", *request.RemovalComment, 0, 500, []ErrorDetail{})
 		if len(errorDetails) > 0 {
 			validationError(c, errorDetails)
 			return
@@ -140,7 +129,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	}
 
 	params := db.DeletePlayToWinGameParams{
-		ID:                    dbGame.PlayToWinGameID,
+		GameID:                dbGame.PlayToWinGameID,
 		DeletionReason:        deletionType,
 		DeletionReasonComment: comment,
 	}
@@ -156,14 +145,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 }
 
 func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
-	var errorDetails []ErrorDetail
-	ptwId, errorDetails := stringToPgTypeUUID("PlayToWinId", playToWinId.String(), errorDetails)
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-
-	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, ptwId)
+	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, uuidToPgTypeUUID(playToWinId))
 	if err != nil {
 		log.Printf("Error getting play to win entries: %v", err)
 		internalError(c, err)
@@ -209,7 +191,6 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 
 	//Validate request body fields
 	var errorDetails []ErrorDetail
-	ptwId, errorDetails := stringToPgTypeUUID("PlayToWinId", jsonObject.PlayToWinId.String(), errorDetails)
 	var playtimeMinutes pgtype.Int4
 	if jsonObject.PlaytimeMinutes != nil {
 		playtimeMinutes = pgtype.Int4{
@@ -236,7 +217,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 
 	// Create the play to win session params
 	ptwSessionParams := db.CreatePlayToWinSessionParams{
-		PlayToWinID:     ptwId,
+		PlayToWinID:     uuidToPgTypeUUID(jsonObject.PlayToWinId),
 		PlaytimeMinutes: playtimeMinutes,
 	}
 
