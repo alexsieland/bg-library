@@ -51,8 +51,8 @@ func malformedJson(c *gin.Context) {
 	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponse(MALFORMEDREQUEST, "JSON body is malformed"))
 }
 
-func validationError(c *gin.Context, errorDetails []ErrorDetail) {
-	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponseWithDetails(VALIDATIONERROR, "Validation error", errorDetails))
+func validationError(c *gin.Context, errorDetails ErrorDetails) {
+	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponseWithDetails(VALIDATIONERROR, "Validation error", errorDetails.Details))
 }
 
 func conflict(c *gin.Context, message string) {

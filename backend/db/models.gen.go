@@ -324,6 +324,19 @@ type VwPlayToWinEntry struct {
 	CreatedAt       pgtype.Timestamp
 }
 
+type VwPlayToWinEntryEvent struct {
+	EntryID            pgtype.UUID
+	SessionID          pgtype.UUID
+	PlayToWinID        pgtype.UUID
+	EntrantName        string
+	EntrantUniqueID    string
+	DeletionReason     NullPlayToWinEntryDeletionType
+	PlaytimeMinutes    pgtype.Int4
+	GameDeletionReason NullPlayToWinGameDeletionType
+	GameTitle          pgtype.Text
+	CreatedAt          pgtype.Timestamp
+}
+
 type VwPlayToWinGame struct {
 	ID        pgtype.UUID
 	GameID    pgtype.UUID

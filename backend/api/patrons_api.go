@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 )
 
 func (s Server) AddPatron(c *gin.Context) {
@@ -22,10 +23,11 @@ func (s Server) AddPatron(c *gin.Context) {
 		return
 	}
 
-	var errorDetails []ErrorDetail
-	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, errorDetails, nil)
+	var errorDetails ErrorDetails
+	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, &errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
+		return
 	}
 	if err != nil {
 		log.Printf("Error creating patron: %v", err)
@@ -36,13 +38,13 @@ func (s Server) AddPatron(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromPatron(dbPatron))
 }
 
-func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Patron, error) {
-	errorDetails = ValidateStringLength("name", name, 1, 100, errorDetails)
+func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails *ErrorDetails, tx *pgx.Tx) (db.Patron, error) {
+	errorDetails.ValidateStringLength("name", name, 1, 100)
 	if barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
+		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 	}
 
-	if len(errorDetails) > 0 {
+	if !errorDetails.Empty() {
 		return db.Patron{}, errValidation
 	}
 
@@ -81,8 +83,8 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	}()
 
 	// Process each row
-	var errorDetails []ErrorDetail
-	recordCount := 0
+	var errorDetails ErrorDetails
+	recordCount := int32(0)
 	for {
 		record, err := csvReader.Read()
 		if err == io.EOF {
@@ -104,7 +106,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 		//	barcode = &record[1]
 		//}
 
-		_, err = s.insertPatron(c, name, barcode, errorDetails, &tx)
+		_, err = s.insertPatron(c, name, barcode, &errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -117,7 +119,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	}
 
 	//If there are any validation errors, rollback the transaction
-	if len(errorDetails) > 0 {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -133,13 +135,8 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
 }
 
-func (s Server) DeletePatron(c *gin.Context, patronId string) {
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	err := s.queries.DeletePatron(c.Request.Context(), patronUUID)
+func (s Server) DeletePatron(c *gin.Context, patronId types.UUID) {
+	err := s.queries.DeletePatron(c.Request.Context(), uuidToPgTypeUUID(patronId))
 	if err != nil {
 		log.Printf("Error deleting patron: %v", err)
 		internalError(c, err)
@@ -149,13 +146,8 @@ func (s Server) DeletePatron(c *gin.Context, patronId string) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (s Server) GetPatron(c *gin.Context, patronId string) {
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	dbPatron, err := s.queries.GetPatron(c.Request.Context(), patronUUID)
+func (s Server) GetPatron(c *gin.Context, patronId types.UUID) {
+	dbPatron, err := s.queries.GetPatron(c.Request.Context(), uuidToPgTypeUUID(patronId))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)
@@ -170,8 +162,9 @@ func (s Server) GetPatron(c *gin.Context, patronId string) {
 }
 
 func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
-	errorDetails := ValidateStringLength("patronBarcode", patronBarcode, 1, 48, []ErrorDetail{})
-	if len(errorDetails) > 0 {
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("patronBarcode", patronBarcode, 1, 48)
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -189,19 +182,17 @@ func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
 	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
 }
 
-func (s Server) UpdatePatron(c *gin.Context, patronId string) {
+func (s Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
 	var jsonObject UpdatePatronJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
 		malformedJson(c)
 		return
 	}
-	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
-	patronUUID, errorDetails := ConvertToPgTypeUUID("PatronId", patronId, errorDetails)
-	if jsonObject.Barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
-	}
-	if len(errorDetails) > 0 {
+
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("name", jsonObject.Name, 1, 100)
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -212,7 +203,7 @@ func (s Server) UpdatePatron(c *gin.Context, patronId string) {
 	}
 
 	err = s.queries.EditPatron(c.Request.Context(), db.EditPatronParams{
-		ID:       patronUUID,
+		ID:       uuidToPgTypeUUID(patronId),
 		FullName: jsonObject.Name,
 		Barcode:  dbBarcode,
 	})

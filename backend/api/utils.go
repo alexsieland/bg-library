@@ -1,7 +1,6 @@
 package api
 
 import (
-	"strconv"
 	"strings"
 	"time"
 
@@ -127,58 +126,6 @@ func FromGame(dbGame db.Game, isPlayToWin bool) Game {
 		game.Barcode = &dbGame.Barcode.String
 	}
 	return game
-}
-
-// Validation Utils
-
-func ConvertToPgTypeUUID(fieldName string, str string, errorDetails []ErrorDetail) (pgtype.UUID, []ErrorDetail) {
-	dbUuid, err := uuid.Parse(str)
-	if err != nil {
-		return pgtype.UUID{}, append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Invalid UUID format",
-		})
-	}
-	return pgtype.UUID{
-		Bytes: dbUuid,
-		Valid: true,
-	}, errorDetails
-}
-
-func ValidateStringLength(fieldName string, str string, minLength int, maxLength int, errorDetails []ErrorDetail) []ErrorDetail {
-	if minLength > 0 && str == "" {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Cannot be empty",
-		})
-	}
-	if len(str) < minLength || len(str) > maxLength {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Length must be between " + strconv.Itoa(minLength) + " and " + strconv.Itoa(maxLength),
-		})
-	}
-	return nil
-}
-
-func ValidateIntMin(fieldName string, i int, minVal int, errorDetails []ErrorDetail) []ErrorDetail {
-	if i < minVal {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Must be greater than or equal to " + strconv.Itoa(minVal),
-		})
-	}
-	return errorDetails
-}
-
-func ValidateIntMax(fieldName string, i int, maxVal int, errorDetails []ErrorDetail) []ErrorDetail {
-	if i > maxVal {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Must be less than or equal to " + strconv.Itoa(maxVal),
-		})
-	}
-	return errorDetails
 }
 
 func SanitizeTitle(title string) string {

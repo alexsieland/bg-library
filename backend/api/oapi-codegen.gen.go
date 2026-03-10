@@ -45,7 +45,7 @@ const (
 // BulkAddResponse Response for bulk add operations
 type BulkAddResponse struct {
 	// Imported Number of records imported successfully
-	Imported int `json:"imported"`
+	Imported int32 `json:"imported"`
 }
 
 // CheckOutRequest Request payload for making a check in/out transaction
@@ -76,6 +76,24 @@ type CreatePatronRequest struct {
 
 	// Name The name of the patron
 	Name string `json:"name"`
+}
+
+// CreatePlayToWinSessionRequest Request payload for creating a play to win session
+type CreatePlayToWinSessionRequest struct {
+	// Entries Array of entries in the play to win session
+	Entries []struct {
+		// EntrantName The name of the entrant
+		EntrantName string `json:"entrantName"`
+
+		// EntrantUniqueId The unique ID of the entrant
+		EntrantUniqueId string `json:"entrantUniqueId"`
+	} `json:"entries"`
+
+	// PlayToWinId The play to win ID this session is tied to
+	PlayToWinId openapi_types.UUID `json:"playToWinId"`
+
+	// PlaytimeMinutes The estimated playtime for this session in minutes
+	PlaytimeMinutes *int32 `json:"playtimeMinutes,omitempty"`
 }
 
 // ErrorDetail Details about specific errors
@@ -179,16 +197,46 @@ type PatronList struct {
 	Patrons []Patron `json:"patrons"`
 }
 
-// RemovePlayToWinGameRequest Request payload for removing a game from Play to Win
+// PlayToWinEntry A single play to win entry
+type PlayToWinEntry struct {
+	// EntrantName The name of the entrant
+	EntrantName string `json:"entrantName"`
+
+	// EntrantUniqueId The unique ID of the entrant
+	EntrantUniqueId string `json:"entrantUniqueId"`
+
+	// EntryId The ID of the entry
+	EntryId openapi_types.UUID `json:"entryId"`
+}
+
+// PlayToWinEntryList List of play to win entries
+type PlayToWinEntryList struct {
+	// Entries Array of play to win entries
+	Entries []PlayToWinEntry `json:"entries"`
+}
+
+// PlayToWinSession A play to win game session
+type PlayToWinSession struct {
+	// PlayToWinEntries Array of entries in the play to win session
+	PlayToWinEntries []PlayToWinEntry `json:"playToWinEntries"`
+
+	// PlaytimeMinutes The estimated playtime for this session in minutes
+	PlaytimeMinutes *int32 `json:"playtimeMinutes,omitempty"`
+
+	// SessionId The ID of the session
+	SessionId openapi_types.UUID `json:"sessionId"`
+}
+
+// RemovePlayToWinGameRequest Request payload for removing a game from play to win
 type RemovePlayToWinGameRequest struct {
-	// RemovalComment Optional comment explaining the reason for removing the game from Play to Win
+	// RemovalComment Optional comment explaining the reason for removing the game from play to win
 	RemovalComment *string `json:"RemovalComment,omitempty"`
 
-	// RemovalReason The reason for removing the game from Play to Win
+	// RemovalReason The reason for removing the game from play to win
 	RemovalReason RemovePlayToWinGameRequestRemovalReason `json:"RemovalReason"`
 }
 
-// RemovePlayToWinGameRequestRemovalReason The reason for removing the game from Play to Win
+// RemovePlayToWinGameRequestRemovalReason The reason for removing the game from play to win
 type RemovePlayToWinGameRequestRemovalReason string
 
 // TransactionEvent Record of a library transaction event
@@ -221,7 +269,7 @@ type TransactionEventList struct {
 // CheckInGameParams defines parameters for CheckInGame.
 type CheckInGameParams struct {
 	// TransactionId Transaction ID
-	TransactionId string `form:"transactionId" json:"transactionId"`
+	TransactionId openapi_types.UUID `form:"transactionId" json:"transactionId"`
 }
 
 // ListGamesParams defines parameters for ListGames.
@@ -254,10 +302,10 @@ type ListTransactionEventsParams struct {
 	PatronName *string `form:"patron_name,omitempty" json:"patron_name,omitempty"`
 
 	// Limit Limit the number of transactions returned (optional)
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Offset Offset for pagination (optional)
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.
@@ -283,6 +331,9 @@ type BulkAddPatronsTextRequestBody = BulkAddPatronsTextBody
 
 // RemovePlayToWinGameJSONRequestBody defines body for RemovePlayToWinGame for application/json ContentType.
 type RemovePlayToWinGameJSONRequestBody = RemovePlayToWinGameRequest
+
+// AddPlayToWinSessionJSONRequestBody defines body for AddPlayToWinSession for application/json ContentType.
+type AddPlayToWinSessionJSONRequestBody = CreatePlayToWinSessionRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -374,15 +425,15 @@ type ClientInterface interface {
 	GetGameByBarcode(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteGame request
-	DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGame request
-	GetGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGameWithBody request with any body
-	UpdateGameWithBody(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateGame(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGame(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGames request
 	ListGames(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -401,15 +452,15 @@ type ClientInterface interface {
 	GetPatronByBarcode(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeletePatron request
-	DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeletePatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPatron request
-	GetPatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdatePatronWithBody request with any body
-	UpdatePatronWithBody(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdatePatronWithBody(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdatePatron(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdatePatron(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPatrons request
 	ListPatrons(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -422,6 +473,9 @@ type ClientInterface interface {
 	// ListTransactionEvents request
 	ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetPlayToWinSessionEntries request
+	GetPlayToWinSessionEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RemovePlayToWinGameWithBody request with any body
 	RemovePlayToWinGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -429,6 +483,11 @@ type ClientInterface interface {
 
 	// AddPlayToWinGame request
 	AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddPlayToWinSessionWithBody request with any body
+	AddPlayToWinSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AddPlayToWinSession(ctx context.Context, body AddPlayToWinSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -506,7 +565,7 @@ func (c *Client) GetGameByBarcode(ctx context.Context, gameBarcode string, reqEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteGameRequest(c.Server, gameId)
 	if err != nil {
 		return nil, err
@@ -518,7 +577,7 @@ func (c *Client) DeleteGame(ctx context.Context, gameId string, reqEditors ...Re
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetGame(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGameRequest(c.Server, gameId)
 	if err != nil {
 		return nil, err
@@ -530,7 +589,7 @@ func (c *Client) GetGame(ctx context.Context, gameId string, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateGameWithBody(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGameRequestWithBody(c.Server, gameId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -542,7 +601,7 @@ func (c *Client) UpdateGameWithBody(ctx context.Context, gameId string, contentT
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateGame(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGame(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGameRequest(c.Server, gameId, body)
 	if err != nil {
 		return nil, err
@@ -626,7 +685,7 @@ func (c *Client) GetPatronByBarcode(ctx context.Context, patronBarcode string, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeletePatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeletePatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeletePatronRequest(c.Server, patronId)
 	if err != nil {
 		return nil, err
@@ -638,7 +697,7 @@ func (c *Client) DeletePatron(ctx context.Context, patronId string, reqEditors .
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetPatron(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetPatron(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPatronRequest(c.Server, patronId)
 	if err != nil {
 		return nil, err
@@ -650,7 +709,7 @@ func (c *Client) GetPatron(ctx context.Context, patronId string, reqEditors ...R
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdatePatronRequestWithBody(c.Server, patronId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -662,7 +721,7 @@ func (c *Client) UpdatePatronWithBody(ctx context.Context, patronId string, cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdatePatron(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdatePatron(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdatePatronRequest(c.Server, patronId, body)
 	if err != nil {
 		return nil, err
@@ -722,6 +781,18 @@ func (c *Client) ListTransactionEvents(ctx context.Context, params *ListTransact
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetPlayToWinSessionEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPlayToWinSessionEntriesRequest(c.Server, playToWinId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) RemovePlayToWinGameWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemovePlayToWinGameRequestWithBody(c.Server, gameId, contentType, body)
 	if err != nil {
@@ -748,6 +819,30 @@ func (c *Client) RemovePlayToWinGame(ctx context.Context, gameId openapi_types.U
 
 func (c *Client) AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddPlayToWinGameRequest(c.Server, gameId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddPlayToWinSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPlayToWinSessionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddPlayToWinSession(ctx context.Context, body AddPlayToWinSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPlayToWinSessionRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -930,7 +1025,7 @@ func NewGetGameByBarcodeRequest(server string, gameBarcode string) (*http.Reques
 }
 
 // NewDeleteGameRequest generates requests for DeleteGame
-func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
+func NewDeleteGameRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -964,7 +1059,7 @@ func NewDeleteGameRequest(server string, gameId string) (*http.Request, error) {
 }
 
 // NewGetGameRequest generates requests for GetGame
-func NewGetGameRequest(server string, gameId string) (*http.Request, error) {
+func NewGetGameRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -998,7 +1093,7 @@ func NewGetGameRequest(server string, gameId string) (*http.Request, error) {
 }
 
 // NewUpdateGameRequest calls the generic UpdateGame builder with application/json body
-func NewUpdateGameRequest(server string, gameId string, body UpdateGameJSONRequestBody) (*http.Request, error) {
+func NewUpdateGameRequest(server string, gameId openapi_types.UUID, body UpdateGameJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1009,7 +1104,7 @@ func NewUpdateGameRequest(server string, gameId string, body UpdateGameJSONReque
 }
 
 // NewUpdateGameRequestWithBody generates requests for UpdateGame with any type of body
-func NewUpdateGameRequestWithBody(server string, gameId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateGameRequestWithBody(server string, gameId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1220,7 +1315,7 @@ func NewGetPatronByBarcodeRequest(server string, patronBarcode string) (*http.Re
 }
 
 // NewDeletePatronRequest generates requests for DeletePatron
-func NewDeletePatronRequest(server string, patronId string) (*http.Request, error) {
+func NewDeletePatronRequest(server string, patronId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1254,7 +1349,7 @@ func NewDeletePatronRequest(server string, patronId string) (*http.Request, erro
 }
 
 // NewGetPatronRequest generates requests for GetPatron
-func NewGetPatronRequest(server string, patronId string) (*http.Request, error) {
+func NewGetPatronRequest(server string, patronId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1288,7 +1383,7 @@ func NewGetPatronRequest(server string, patronId string) (*http.Request, error) 
 }
 
 // NewUpdatePatronRequest calls the generic UpdatePatron builder with application/json body
-func NewUpdatePatronRequest(server string, patronId string, body UpdatePatronJSONRequestBody) (*http.Request, error) {
+func NewUpdatePatronRequest(server string, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1299,7 +1394,7 @@ func NewUpdatePatronRequest(server string, patronId string, body UpdatePatronJSO
 }
 
 // NewUpdatePatronRequestWithBody generates requests for UpdatePatron with any type of body
-func NewUpdatePatronRequestWithBody(server string, patronId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdatePatronRequestWithBody(server string, patronId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1516,6 +1611,40 @@ func NewListTransactionEventsRequest(server string, params *ListTransactionEvent
 	return req, nil
 }
 
+// NewGetPlayToWinSessionEntriesRequest generates requests for GetPlayToWinSessionEntries
+func NewGetPlayToWinSessionEntriesRequest(server string, playToWinId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "playToWinId", runtime.ParamLocationPath, playToWinId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ptw/entries/playToWinId/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRemovePlayToWinGameRequest calls the generic RemovePlayToWinGame builder with application/json body
 func NewRemovePlayToWinGameRequest(server string, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1593,6 +1722,46 @@ func NewAddPlayToWinGameRequest(server string, gameId openapi_types.UUID) (*http
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewAddPlayToWinSessionRequest calls the generic AddPlayToWinSession builder with application/json body
+func NewAddPlayToWinSessionRequest(server string, body AddPlayToWinSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddPlayToWinSessionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAddPlayToWinSessionRequestWithBody generates requests for AddPlayToWinSession with any type of body
+func NewAddPlayToWinSessionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ptw/session")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1684,15 +1853,15 @@ type ClientWithResponsesInterface interface {
 	GetGameByBarcodeWithResponse(ctx context.Context, gameBarcode string, reqEditors ...RequestEditorFn) (*GetGameByBarcodeResponse, error)
 
 	// DeleteGameWithResponse request
-	DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error)
+	DeleteGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error)
 
 	// GetGameWithResponse request
-	GetGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*GetGameResponse, error)
+	GetGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGameResponse, error)
 
 	// UpdateGameWithBodyWithResponse request with any body
-	UpdateGameWithBodyWithResponse(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
+	UpdateGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
 
-	UpdateGameWithResponse(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
+	UpdateGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error)
 
 	// ListGamesWithResponse request
 	ListGamesWithResponse(ctx context.Context, params *ListGamesParams, reqEditors ...RequestEditorFn) (*ListGamesResponse, error)
@@ -1711,15 +1880,15 @@ type ClientWithResponsesInterface interface {
 	GetPatronByBarcodeWithResponse(ctx context.Context, patronBarcode string, reqEditors ...RequestEditorFn) (*GetPatronByBarcodeResponse, error)
 
 	// DeletePatronWithResponse request
-	DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error)
+	DeletePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error)
 
 	// GetPatronWithResponse request
-	GetPatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*GetPatronResponse, error)
+	GetPatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPatronResponse, error)
 
 	// UpdatePatronWithBodyWithResponse request with any body
-	UpdatePatronWithBodyWithResponse(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
+	UpdatePatronWithBodyWithResponse(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
 
-	UpdatePatronWithResponse(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
+	UpdatePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error)
 
 	// ListPatronsWithResponse request
 	ListPatronsWithResponse(ctx context.Context, params *ListPatronsParams, reqEditors ...RequestEditorFn) (*ListPatronsResponse, error)
@@ -1732,6 +1901,9 @@ type ClientWithResponsesInterface interface {
 	// ListTransactionEventsWithResponse request
 	ListTransactionEventsWithResponse(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*ListTransactionEventsResponse, error)
 
+	// GetPlayToWinSessionEntriesWithResponse request
+	GetPlayToWinSessionEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinSessionEntriesResponse, error)
+
 	// RemovePlayToWinGameWithBodyWithResponse request with any body
 	RemovePlayToWinGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error)
 
@@ -1739,6 +1911,11 @@ type ClientWithResponsesInterface interface {
 
 	// AddPlayToWinGameWithResponse request
 	AddPlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameResponse, error)
+
+	// AddPlayToWinSessionWithBodyWithResponse request with any body
+	AddPlayToWinSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPlayToWinSessionResponse, error)
+
+	AddPlayToWinSessionWithResponse(ctx context.Context, body AddPlayToWinSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPlayToWinSessionResponse, error)
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
@@ -2131,6 +2308,28 @@ func (r ListTransactionEventsResponse) StatusCode() int {
 	return 0
 }
 
+type GetPlayToWinSessionEntriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PlayToWinEntryList
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPlayToWinSessionEntriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPlayToWinSessionEntriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type RemovePlayToWinGameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2169,6 +2368,30 @@ func (r AddPlayToWinGameResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r AddPlayToWinGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type AddPlayToWinSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *PlayToWinSession
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r AddPlayToWinSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddPlayToWinSessionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2250,7 +2473,7 @@ func (c *ClientWithResponses) GetGameByBarcodeWithResponse(ctx context.Context, 
 }
 
 // DeleteGameWithResponse request returning *DeleteGameResponse
-func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error) {
+func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGameResponse, error) {
 	rsp, err := c.DeleteGame(ctx, gameId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2259,7 +2482,7 @@ func (c *ClientWithResponses) DeleteGameWithResponse(ctx context.Context, gameId
 }
 
 // GetGameWithResponse request returning *GetGameResponse
-func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId string, reqEditors ...RequestEditorFn) (*GetGameResponse, error) {
+func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGameResponse, error) {
 	rsp, err := c.GetGame(ctx, gameId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2268,7 +2491,7 @@ func (c *ClientWithResponses) GetGameWithResponse(ctx context.Context, gameId st
 }
 
 // UpdateGameWithBodyWithResponse request with arbitrary body returning *UpdateGameResponse
-func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context, gameId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
+func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
 	rsp, err := c.UpdateGameWithBody(ctx, gameId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2276,7 +2499,7 @@ func (c *ClientWithResponses) UpdateGameWithBodyWithResponse(ctx context.Context
 	return ParseUpdateGameResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateGameWithResponse(ctx context.Context, gameId string, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
+func (c *ClientWithResponses) UpdateGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body UpdateGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGameResponse, error) {
 	rsp, err := c.UpdateGame(ctx, gameId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2337,7 +2560,7 @@ func (c *ClientWithResponses) GetPatronByBarcodeWithResponse(ctx context.Context
 }
 
 // DeletePatronWithResponse request returning *DeletePatronResponse
-func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error) {
+func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeletePatronResponse, error) {
 	rsp, err := c.DeletePatron(ctx, patronId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2346,7 +2569,7 @@ func (c *ClientWithResponses) DeletePatronWithResponse(ctx context.Context, patr
 }
 
 // GetPatronWithResponse request returning *GetPatronResponse
-func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronId string, reqEditors ...RequestEditorFn) (*GetPatronResponse, error) {
+func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPatronResponse, error) {
 	rsp, err := c.GetPatron(ctx, patronId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2355,7 +2578,7 @@ func (c *ClientWithResponses) GetPatronWithResponse(ctx context.Context, patronI
 }
 
 // UpdatePatronWithBodyWithResponse request with arbitrary body returning *UpdatePatronResponse
-func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Context, patronId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
+func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Context, patronId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
 	rsp, err := c.UpdatePatronWithBody(ctx, patronId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2363,7 +2586,7 @@ func (c *ClientWithResponses) UpdatePatronWithBodyWithResponse(ctx context.Conte
 	return ParseUpdatePatronResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdatePatronWithResponse(ctx context.Context, patronId string, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
+func (c *ClientWithResponses) UpdatePatronWithResponse(ctx context.Context, patronId openapi_types.UUID, body UpdatePatronJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePatronResponse, error) {
 	rsp, err := c.UpdatePatron(ctx, patronId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2406,6 +2629,15 @@ func (c *ClientWithResponses) ListTransactionEventsWithResponse(ctx context.Cont
 	return ParseListTransactionEventsResponse(rsp)
 }
 
+// GetPlayToWinSessionEntriesWithResponse request returning *GetPlayToWinSessionEntriesResponse
+func (c *ClientWithResponses) GetPlayToWinSessionEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinSessionEntriesResponse, error) {
+	rsp, err := c.GetPlayToWinSessionEntries(ctx, playToWinId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPlayToWinSessionEntriesResponse(rsp)
+}
+
 // RemovePlayToWinGameWithBodyWithResponse request with arbitrary body returning *RemovePlayToWinGameResponse
 func (c *ClientWithResponses) RemovePlayToWinGameWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error) {
 	rsp, err := c.RemovePlayToWinGameWithBody(ctx, gameId, contentType, body, reqEditors...)
@@ -2430,6 +2662,23 @@ func (c *ClientWithResponses) AddPlayToWinGameWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseAddPlayToWinGameResponse(rsp)
+}
+
+// AddPlayToWinSessionWithBodyWithResponse request with arbitrary body returning *AddPlayToWinSessionResponse
+func (c *ClientWithResponses) AddPlayToWinSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPlayToWinSessionResponse, error) {
+	rsp, err := c.AddPlayToWinSessionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddPlayToWinSessionResponse(rsp)
+}
+
+func (c *ClientWithResponses) AddPlayToWinSessionWithResponse(ctx context.Context, body AddPlayToWinSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPlayToWinSessionResponse, error) {
+	rsp, err := c.AddPlayToWinSession(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddPlayToWinSessionResponse(rsp)
 }
 
 // GetHealthWithResponse request returning *GetHealthResponse
@@ -2974,6 +3223,32 @@ func ParseListTransactionEventsResponse(rsp *http.Response) (*ListTransactionEve
 	return response, nil
 }
 
+// ParseGetPlayToWinSessionEntriesResponse parses an HTTP response from a GetPlayToWinSessionEntriesWithResponse call
+func ParseGetPlayToWinSessionEntriesResponse(rsp *http.Response) (*GetPlayToWinSessionEntriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPlayToWinSessionEntriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlayToWinEntryList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseRemovePlayToWinGameResponse parses an HTTP response from a RemovePlayToWinGameWithResponse call
 func ParseRemovePlayToWinGameResponse(rsp *http.Response) (*RemovePlayToWinGameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -3014,6 +3289,46 @@ func ParseAddPlayToWinGameResponse(rsp *http.Response) (*AddPlayToWinGameRespons
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddPlayToWinSessionResponse parses an HTTP response from a AddPlayToWinSessionWithResponse call
+func ParseAddPlayToWinSessionResponse(rsp *http.Response) (*AddPlayToWinSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddPlayToWinSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PlayToWinSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3068,13 +3383,13 @@ type ServerInterface interface {
 	GetGameByBarcode(c *gin.Context, gameBarcode string)
 	// Soft delete a game
 	// (DELETE /api/v1/library/game/id/{gameId})
-	DeleteGame(c *gin.Context, gameId string)
+	DeleteGame(c *gin.Context, gameId openapi_types.UUID)
 	// Get a game
 	// (GET /api/v1/library/game/id/{gameId})
-	GetGame(c *gin.Context, gameId string)
+	GetGame(c *gin.Context, gameId openapi_types.UUID)
 	// Update an existing game
 	// (PUT /api/v1/library/game/id/{gameId})
-	UpdateGame(c *gin.Context, gameId string)
+	UpdateGame(c *gin.Context, gameId openapi_types.UUID)
 	// Get list of all games with check out status
 	// (GET /api/v1/library/games)
 	ListGames(c *gin.Context, params ListGamesParams)
@@ -3089,13 +3404,13 @@ type ServerInterface interface {
 	GetPatronByBarcode(c *gin.Context, patronBarcode string)
 	// Soft delete a patron
 	// (DELETE /api/v1/library/patron/id/{patronId})
-	DeletePatron(c *gin.Context, patronId string)
+	DeletePatron(c *gin.Context, patronId openapi_types.UUID)
 	// Get a patron
 	// (GET /api/v1/library/patron/id/{patronId})
-	GetPatron(c *gin.Context, patronId string)
+	GetPatron(c *gin.Context, patronId openapi_types.UUID)
 	// Update an existing patron
 	// (PUT /api/v1/library/patron/id/{patronId})
-	UpdatePatron(c *gin.Context, patronId string)
+	UpdatePatron(c *gin.Context, patronId openapi_types.UUID)
 	// Get list of all patrons
 	// (GET /api/v1/library/patrons)
 	ListPatrons(c *gin.Context, params ListPatronsParams)
@@ -3105,12 +3420,18 @@ type ServerInterface interface {
 	// List transaction events
 	// (GET /api/v1/library/transactions)
 	ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams)
-	// Mark a library game as not Play to Win
+	// Get all play to win entries for a play to win game
+	// (GET /api/v1/ptw/entries/playToWinId/{playToWinId})
+	GetPlayToWinSessionEntries(c *gin.Context, playToWinId openapi_types.UUID)
+	// Mark a library game as not play to win
 	// (DELETE /api/v1/ptw/game/gameId/{gameId})
 	RemovePlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
-	// Mark a library game as Play to Win
+	// Mark a library game as play to win
 	// (POST /api/v1/ptw/game/gameId/{gameId})
 	AddPlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
+	// Add a play to win session
+	// (POST /api/v1/ptw/session)
+	AddPlayToWinSession(c *gin.Context)
 
 	// (GET /health)
 	GetHealth(c *gin.Context)
@@ -3214,7 +3535,7 @@ func (siw *ServerInterfaceWrapper) DeleteGame(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "gameId" -------------
-	var gameId string
+	var gameId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3238,7 +3559,7 @@ func (siw *ServerInterfaceWrapper) GetGame(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "gameId" -------------
-	var gameId string
+	var gameId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3262,7 +3583,7 @@ func (siw *ServerInterfaceWrapper) UpdateGame(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "gameId" -------------
-	var gameId string
+	var gameId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "gameId", c.Param("gameId"), &gameId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3370,7 +3691,7 @@ func (siw *ServerInterfaceWrapper) DeletePatron(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "patronId" -------------
-	var patronId string
+	var patronId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "patronId", c.Param("patronId"), &patronId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3394,7 +3715,7 @@ func (siw *ServerInterfaceWrapper) GetPatron(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "patronId" -------------
-	var patronId string
+	var patronId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "patronId", c.Param("patronId"), &patronId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3418,7 +3739,7 @@ func (siw *ServerInterfaceWrapper) UpdatePatron(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "patronId" -------------
-	var patronId string
+	var patronId openapi_types.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "patronId", c.Param("patronId"), &patronId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -3525,6 +3846,30 @@ func (siw *ServerInterfaceWrapper) ListTransactionEvents(c *gin.Context) {
 	siw.Handler.ListTransactionEvents(c, params)
 }
 
+// GetPlayToWinSessionEntries operation middleware
+func (siw *ServerInterfaceWrapper) GetPlayToWinSessionEntries(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "playToWinId" -------------
+	var playToWinId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playToWinId", c.Param("playToWinId"), &playToWinId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter playToWinId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetPlayToWinSessionEntries(c, playToWinId)
+}
+
 // RemovePlayToWinGame operation middleware
 func (siw *ServerInterfaceWrapper) RemovePlayToWinGame(c *gin.Context) {
 
@@ -3571,6 +3916,19 @@ func (siw *ServerInterfaceWrapper) AddPlayToWinGame(c *gin.Context) {
 	}
 
 	siw.Handler.AddPlayToWinGame(c, gameId)
+}
+
+// AddPlayToWinSession operation middleware
+func (siw *ServerInterfaceWrapper) AddPlayToWinSession(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.AddPlayToWinSession(c)
 }
 
 // GetHealth operation middleware
@@ -3630,7 +3988,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
 	router.POST(options.BaseURL+"/api/v1/library/patrons", wrapper.BulkAddPatrons)
 	router.GET(options.BaseURL+"/api/v1/library/transactions", wrapper.ListTransactionEvents)
+	router.GET(options.BaseURL+"/api/v1/ptw/entries/playToWinId/:playToWinId", wrapper.GetPlayToWinSessionEntries)
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.RemovePlayToWinGame)
 	router.POST(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.AddPlayToWinGame)
+	router.POST(options.BaseURL+"/api/v1/ptw/session", wrapper.AddPlayToWinSession)
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth)
 }

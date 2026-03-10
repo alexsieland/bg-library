@@ -35,7 +35,7 @@ WHERE id = $1;
 -- name: DeleteGame :exec
 UPDATE games
     SET deleted_at = now()
-WHERE id = $1;
+WHERE deleted_at IS NULL AND id = $1;
 
 -- name: ListPatrons :many
 SELECT *
@@ -73,7 +73,7 @@ WHERE id = $1;
 -- name: DeletePatron :exec
 UPDATE patrons
 set deleted_at = now()
-WHERE id = $1;
+WHERE deleted_at IS NULL AND id = $1;
 
 -- name: CheckOutGame :one
 INSERT INTO transactions (game_id, patron_id) VALUES ($1, $2)
@@ -175,35 +175,35 @@ UPDATE play_to_win_games
 SET deleted_at = now(),
     deletion_reason = $2,
     deletion_reason_comment = $3
-WHERE id = $1;
+WHERE deleted_at IS NULL AND game_id = $1;
 
 -- name: RestorePlayToWinGame :exec
 UPDATE play_to_win_games
 SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
-WHERE id = $1;
+WHERE deleted_at IS NOT NULL AND id = $1;
 
 -- name: DeletePlayToWinSession :exec
 UPDATE play_to_win_sessions
 SET deleted_at = now(),
     deletion_reason = $2,
     deletion_reason_comment = $3
-WHERE id = $1;
+WHERE deleted_at IS NULL AND id = $1;
 
 -- name: RestorePlayToWinSession :exec
 UPDATE play_to_win_sessions
 SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
-WHERE id = $1;
+WHERE deleted_at IS NOT NULL AND id = $1;
 
 -- name: DeletePlayToWinEntry :exec
 UPDATE play_to_win_entries
 SET deleted_at = now(),
     deletion_reason = $2,
     deletion_reason_comment = $3
-WHERE id = $1;
+WHERE deleted_at IS NULL AND id = $1;
 
 -- name: RestorePlayToWinEntry :exec
 UPDATE play_to_win_entries

@@ -113,6 +113,7 @@ paths:
           name: gameId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       responses:
@@ -138,6 +139,7 @@ paths:
           name: gameId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       requestBody:
@@ -171,6 +173,7 @@ paths:
           name: gameId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       responses:
@@ -304,6 +307,7 @@ paths:
           name: patronId
           schema:
             type: string
+            format: uuid
           required: true
           description: Patron ID
       responses:
@@ -329,6 +333,7 @@ paths:
           name: patronId
           schema:
             type: string
+            format: uuid
           required: true
           description: Game ID
       requestBody:
@@ -363,6 +368,7 @@ paths:
           name: patronId
           schema:
             type: string
+            format: uuid
           required: true
           description: Patron ID
       responses:
@@ -417,6 +423,7 @@ paths:
           name: transactionId
           schema:
             type: string
+            format: uuid
           required: true
           description: Transaction ID
       responses:
@@ -489,6 +496,7 @@ paths:
           name: limit
           schema:
             type: integer
+            format: int32
             minimum: 1
             maximum: 100
             default: 100
@@ -497,6 +505,7 @@ paths:
           name: offset
           schema:
             type: integer
+            format: int32
             minimum: 0
             default: 0
           description: Offset for pagination (optional)
@@ -517,9 +526,10 @@ paths:
   /api/v1/ptw/game/gameId/{gameId}:
     post:
       tags:
-        - ptw, games
+        - ptw
+        - games
       operationId: addPlayToWinGame
-      summary: Mark a library game as Play to Win
+      summary: Mark a library game as play to win
       parameters:
         - in: path
           name: gameId
@@ -530,7 +540,7 @@ paths:
           description: Game ID
       responses:
         '204':
-          description: Game marked as Play to Win successfully
+          description: Game marked as play to win successfully
         '404':
           description: Game not found
           content:
@@ -539,9 +549,10 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
-        - ptw, games
+        - ptw
+        - games
       operationId: removePlayToWinGame
-      summary: Mark a library game as not Play to Win
+      summary: Mark a library game as not play to win
       parameters:
         - in: path
           name: gameId
@@ -558,7 +569,7 @@ paths:
               $ref: '#/components/schemas/RemovePlayToWinGameRequest'
       responses:
         '204':
-          description: Game marked as not Play to Win successfully
+          description: Game marked as not play to win successfully
         '404':
           description: Game not found
           content:
@@ -566,13 +577,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/ptw/session:
+    post:
+      tags:
+        - ptw
+      operationId: addPlayToWinSession
+      summary: Add a play to win session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlayToWinSessionRequest'
+      responses:
+        '201':
+          description: Play to win session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayToWinSession'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Play to win game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ptw/entries/playToWinId/{playToWinId}:
+    get:
+      tags:
+        - ptw
+      operationId: getPlayToWinSessionEntries
+      parameters:
+        - in: path
+          name: playToWinId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Play to win game ID
+      description: Get play to win entries by game
+      summary: Get all play to win entries for a play to win game
+      responses:
+        '200':
+          description: Play to win entries retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayToWinEntryList'
+
 components:
   schemas:
     GameStatus:
       type: object
       required:
         - game
-      description: Game with check out info
       properties:
         game:
           $ref: "#/components/schemas/Game"
@@ -588,6 +653,7 @@ components:
           format: date-time
           description: ISO 8601 timestamp when the game was checked out
           example: "2026-01-31T12:00:00Z"
+      description: Game with check out info
 
     Game:
       type: object
@@ -595,7 +661,6 @@ components:
         - gameId
         - title
         - isPlayToWin
-      description: A game in the library
       properties:
         gameId:
           type: string
@@ -619,18 +684,19 @@ components:
           description: Indicates if the game is a play-to-win game
           example: true
           default: false
+      description: A game in the library
 
     GameList:
       type: object
       required:
         - games
-      description: List of games
       properties:
         games:
           type: array
           items:
             $ref: '#/components/schemas/Game'
           description: Array of games
+      description: List of games
 
     CreateGameRequest:
       type: object
@@ -661,7 +727,6 @@ components:
       required:
         - patronId
         - name
-      description: A library patron
       properties:
         patronId:
           type: string
@@ -680,6 +745,7 @@ components:
           maxLength: 48
           description: The barcode of the patron
           example: "9780307455925"
+      description: A library patron
 
     CreatePatronRequest:
       type: object
@@ -704,25 +770,25 @@ components:
       type: object
       required:
         - games
-      description: List of games with check out info
       properties:
         games:
           type: array
           items:
             $ref: '#/components/schemas/GameStatus'
           description: Array of the game statuses
+      description: List of games with check out info
 
     PatronList:
       type: object
       required:
         - patrons
-      description: List of patrons with check out info
       properties:
         patrons:
           type: array
           items:
             $ref: '#/components/schemas/Patron'
           description: Array of patrons
+      description: List of patrons with check out info
 
     CheckOutRequest:
       type: object
@@ -808,13 +874,13 @@ components:
       type: object
       required:
         - transactions
-      description: List of transaction events
       properties:
         transactions:
           type: array
           items:
             $ref: '#/components/schemas/TransactionEvent'
           description: Array of transaction events
+      description: List of transaction events
 
     ErrorResponse:
       type: object
@@ -873,6 +939,7 @@ components:
       properties:
         imported:
           type: integer
+          format: int32
           description: Number of records imported successfully
           example: 10
       description: Response for bulk add operations
@@ -888,11 +955,114 @@ components:
             - claimed
             - mistake
             - other
-          description: The reason for removing the game from Play to Win
+          description: The reason for removing the game from play to win
           example: "mistake"
         RemovalComment:
           type: string
-          description: Optional comment explaining the reason for removing the game from Play to Win
-          example: "The game was a library copy, not a Play to Win game"
+          description: Optional comment explaining the reason for removing the game from play to win
+          example: "The game was a library copy, not a play to win game"
           maxLength: 500
-      description: Request payload for removing a game from Play to Win
+      description: Request payload for removing a game from play to win
+
+    CreatePlayToWinSessionRequest:
+      type: object
+      required:
+        - playToWinId
+        - entries
+      properties:
+        playToWinId:
+          type: string
+          format: uuid
+          description: The play to win ID this session is tied to
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        playtimeMinutes:
+          type: integer
+          format: int32
+          description: The estimated playtime for this session in minutes
+          example: 60
+          minimum: 0
+        entries:
+          type: array
+          items:
+            type: object
+            required:
+              - entrantName
+              - entrantUniqueId
+            properties:
+              entrantName:
+                type: string
+                maxLength: 100
+                minLength: 1
+                example: "John Smith"
+                description: The name of the entrant
+              entrantUniqueId:
+                type: string
+                maxLength: 100
+                minLength: 1
+                example: "1234567890"
+                description: The unique ID of the entrant
+            description: An entry in the play to win session
+          description: Array of entries in the play to win session
+      description: Request payload for creating a play to win session
+
+    PlayToWinEntry:
+      type: object
+      required:
+        - entryId
+        - entrantName
+        - entrantUniqueId
+      properties:
+        entryId:
+          type: string
+          format: uuid
+          description: The ID of the entry
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        entrantName:
+          type: string
+          maxLength: 100
+          minLength: 1
+          example: "John Smith"
+          description: The name of the entrant
+        entrantUniqueId:
+          type: string
+          maxLength: 100
+          minLength: 1
+          example: "1234567890"
+          description: The unique ID of the entrant
+      description: A single play to win entry
+
+    PlayToWinSession:
+      type: object
+      required:
+        - sessionId
+        - playToWinEntries
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: The ID of the session
+          example: "e1e07b70-c9f3-442f-8225-fe468c3ae705"
+        playtimeMinutes:
+          type: integer
+          format: int32
+          minLength: 0
+          example: 60
+          description: The estimated playtime for this session in minutes
+        playToWinEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayToWinEntry'
+          description: Array of entries in the play to win session
+      description: A play to win game session
+
+    PlayToWinEntryList:
+      type: object
+      required:
+        - entries
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayToWinEntry'
+          description: Array of play to win entries
+      description: List of play to win entries

@@ -92,7 +92,7 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, bulkGamesResp.StatusCode())
 	assert.NotNil(t, bulkGamesResp.JSON201)
-	assert.Equal(t, 6, bulkGamesResp.JSON201.Imported, "Should import 6 games")
+	assert.Equal(t, int32(6), bulkGamesResp.JSON201.Imported, "Should import 6 games")
 
 	// 4. Upload patrons CSV
 	patronsBase64 := base64.StdEncoding.EncodeToString([]byte(patronsCSV))
@@ -100,7 +100,7 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, bulkPatronsResp.StatusCode())
 	assert.NotNil(t, bulkPatronsResp.JSON201)
-	assert.Equal(t, 5, bulkPatronsResp.JSON201.Imported, "Should import 5 patrons")
+	assert.Equal(t, int32(5), bulkPatronsResp.JSON201.Imported, "Should import 5 patrons")
 
 	// 5. Verify games are in the library by listing all games
 	listGamesResp, err := client.ListGamesWithResponse(ctx, &api.ListGamesParams{})
@@ -214,7 +214,7 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 	assert.NotNil(t, checkoutResp.JSON201)
 
 	// 11. Verify the game now shows as checked out
-	getGameResp, err := client.GetGameWithResponse(ctx, gameToCheckOut.String())
+	getGameResp, err := client.GetGameWithResponse(ctx, gameToCheckOut)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, getGameResp.StatusCode())
 

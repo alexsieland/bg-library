@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -28,22 +29,10 @@ func TestCheckInGame(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/transactions/checkin", nil)
-		server.CheckInGame(c, CheckInGameParams{TransactionId: transactionID.String()})
+		server.CheckInGame(c, CheckInGameParams{TransactionId: types.UUID(transactionID)})
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
-	})
-
-	t.Run("Should return 400 Bad Request when transactionId is invalid", func(t *testing.T) {
-		server, _ := setupTestServer()
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/transactions/checkin", nil)
-		server.CheckInGame(c, CheckInGameParams{TransactionId: "invalid-uuid"})
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
 	t.Run("Should return 500 Internal Server Error when DB error occurs", func(t *testing.T) {
@@ -55,7 +44,7 @@ func TestCheckInGame(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/transactions/checkin", nil)
-		server.CheckInGame(c, CheckInGameParams{TransactionId: transactionID.String()})
+		server.CheckInGame(c, CheckInGameParams{TransactionId: types.UUID(transactionID)})
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
@@ -354,8 +343,8 @@ func TestListTransactionEvents(t *testing.T) {
 
 	t.Run("Should return 200 OK with correct pagination when limit and offset are provided", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		limit := 10
-		offset := 5
+		var limit int32 = 10
+		var offset int32 = 5
 
 		mockRows := new(MockRows)
 		mockRows.On("Next").Return(false)
@@ -380,7 +369,7 @@ func TestListTransactionEvents(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when limit exceeds maximum of 100", func(t *testing.T) {
 		server, _ := setupTestServer()
-		limit := 101
+		var limit int32 = 101
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -393,7 +382,7 @@ func TestListTransactionEvents(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when limit is below minimum of 1", func(t *testing.T) {
 		server, _ := setupTestServer()
-		limit := 0
+		var limit int32 = 0
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

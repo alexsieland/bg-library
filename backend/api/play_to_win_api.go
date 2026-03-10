@@ -13,38 +13,39 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
-func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, errorDetails []ErrorDetail, tx *pgx.Tx) error {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		return errValidation
-	}
+func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
+	var (
+		err error
+		tx  pgx.Tx
+	)
 
-	var err error
-	if tx != nil {
-		_, err = s.queries.WithTx(*tx).CreatePlayToWinGame(c.Request.Context(), gameUUID)
+	if optTx != nil {
+		tx = *optTx
 	} else {
-		_, err = s.queries.CreatePlayToWinGame(c.Request.Context(), gameUUID)
+		tx, err = s.Database.BeginTx(c, pgx.TxOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c, uuidToPgTypeUUID(gameId))
 	if err != nil {
-		var pgErr *pgconn.PgError
-
-		// check for specific Postgres error codes:
-		if errors.As(err, &pgErr) {
-
-			// 23505 is the error code for a unique constraint violation, which would occur if the game is already marked as play to win
-			if pgErr.Code == "23505" {
-				return nil
+		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
+		if isUniqueConstraintViolation(err) {
+			err = s.queries.RestorePlayToWinGame(c, uuidToPgTypeUUID(gameId))
+			if err != nil {
+				return err
 			}
+			return nil
 		}
 		return err
 	}
+
 	return nil
 }
 
 func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
-	var errorDetails []ErrorDetail
-	err := s.addPlayToWin(c, gameId, errorDetails, nil)
+	err := s.addPlayToWin(c, gameId, nil)
 	// 23503 is the error code for a foreign key violation, which would occur if the game ID does not exist
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -60,14 +61,38 @@ func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId.String(), []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
+func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReason *string, deletionComment *string, tx *pgx.Tx) error {
+	var errorDetails ErrorDetails
+	if deletionComment != nil {
+		errorDetails.ValidateStringLength("deletionComment", *deletionComment, 0, 500)
+	}
+	reason := playToWinGameDeletionReason(deletionReason, &errorDetails)
+	if !errorDetails.Empty() {
+		return errValidation
 	}
 
-	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
+	deleteParams := db.DeletePlayToWinGameParams{
+		GameID:                uuidToPgTypeUUID(gameId),
+		DeletionReason:        reason,
+		DeletionReasonComment: stringToPgText(deletionComment),
+	}
+
+	var err error
+	if tx != nil {
+		err = s.queries.WithTx(*tx).DeletePlayToWinGame(c.Request.Context(), deleteParams)
+	} else {
+		err = s.queries.DeletePlayToWinGame(c.Request.Context(), deleteParams)
+	}
+	if err != nil {
+		log.Printf("Error deleting play to win game: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
+	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)
@@ -79,7 +104,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	}
 
 	var request RemovePlayToWinGameJSONRequestBody
-	if err = c.ShouldBindJSON(&request); err != nil {
+	if err = c.ShouldBindBodyWithJSON(&request); err != nil {
 		malformedJson(c)
 		return
 	}
@@ -91,8 +116,9 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 
 	var comment pgtype.Text
 	if request.RemovalComment != nil {
-		errorDetails = ValidateStringLength("removalComment", *request.RemovalComment, 0, 500, []ErrorDetail{})
-		if len(errorDetails) > 0 {
+		var errorDetails ErrorDetails
+		errorDetails.ValidateStringLength("removalComment", *request.RemovalComment, 0, 500)
+		if !errorDetails.Empty() {
 			validationError(c, errorDetails)
 			return
 		}
@@ -103,7 +129,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	}
 
 	params := db.DeletePlayToWinGameParams{
-		ID:                    dbGame.PlayToWinGameID,
+		GameID:                dbGame.PlayToWinGameID,
 		DeletionReason:        deletionType,
 		DeletionReasonComment: comment,
 	}
@@ -116,4 +142,138 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
+	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, uuidToPgTypeUUID(playToWinId))
+	if err != nil {
+		log.Printf("Error getting play to win entries: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	ptwEntryList := PlayToWinEntryList{
+		Entries: make([]PlayToWinEntry, len(dbPtwEntries)),
+	}
+	for i, dbPtwEntry := range dbPtwEntries {
+		ptwEntryList.Entries[i] = PlayToWinEntry{
+			EntryId:         pgUUIDToUUID(dbPtwEntry.EntryID),
+			EntrantName:     dbPtwEntry.EntrantName,
+			EntrantUniqueId: dbPtwEntry.EntrantUniqueID,
+		}
+	}
+
+	c.JSON(http.StatusOK, ptwEntryList)
+}
+
+type ptwEntry struct {
+	EntrantName     string `json:"entrantName"`
+	EntrantUniqueId string `json:"entrantUniqueId"`
+}
+
+func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
+	playToWinEntryParams := db.CreatePlayToWinEntryParams{
+		SessionID:       ptwSessionId,
+		EntrantName:     entry.EntrantName,
+		EntrantUniqueID: entry.EntrantUniqueId,
+	}
+	return s.queries.WithTx(tx).CreatePlayToWinEntry(c.Request.Context(), playToWinEntryParams)
+}
+
+func (s Server) AddPlayToWinSession(c *gin.Context) {
+	//Check that request body is valid json
+	var jsonObject CreatePlayToWinSessionRequest
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		malformedJson(c)
+		return
+	}
+
+	//Validate request body fields
+	var errorDetails ErrorDetails
+	if jsonObject.PlaytimeMinutes != nil {
+		errorDetails.ValidateIntMin("playtimeMinutes", *jsonObject.PlaytimeMinutes, 0)
+	}
+
+	//Create all ptw entries and validate before creating the session
+	ptwEntries := make([]ptwEntry, len(jsonObject.Entries))
+	for i, entry := range jsonObject.Entries {
+		errorDetails.ValidateStringLength("entrantName", entry.EntrantName, 1, 100)
+		errorDetails.ValidateStringLength("entrantUniqueId", entry.EntrantUniqueId, 1, 100)
+		ptwEntries[i] = ptwEntry{
+			EntrantName:     entry.EntrantName,
+			EntrantUniqueId: entry.EntrantUniqueId,
+		}
+	}
+	if !errorDetails.Empty() {
+		validationError(c, errorDetails)
+		return
+	}
+
+	// Create the play to win session params
+	ptwSessionParams := db.CreatePlayToWinSessionParams{
+		PlayToWinID:     uuidToPgTypeUUID(jsonObject.PlayToWinId),
+		PlaytimeMinutes: int32ToPgInt4(jsonObject.PlaytimeMinutes),
+	}
+
+	// Create the play to win session
+	tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
+	if err != nil {
+		log.Printf("Error creating play to win session: %v", err)
+		internalError(c, err)
+		return
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback(c.Request.Context())
+		}
+	}()
+
+	dbPtwSession, err := s.queries.WithTx(tx).CreatePlayToWinSession(c.Request.Context(), ptwSessionParams)
+	if err != nil {
+		// if FK violation, then this means the play to win game id is invalid, so return 404
+		if isForeignKeyConstraintViolation(err) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error creating play to win session: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	// Create the play to win session response
+	var dbPtwSessionPlayTime *int32
+	if dbPtwSession.PlaytimeMinutes.Valid {
+		dbPtwSessionPlayTime = &dbPtwSession.PlaytimeMinutes.Int32
+	}
+	ptwSession := PlayToWinSession{
+		PlayToWinEntries: make([]PlayToWinEntry, len(ptwEntries)),
+		PlaytimeMinutes:  dbPtwSessionPlayTime,
+		SessionId:        pgUUIDToUUID(dbPtwSession.ID),
+	}
+
+	// Create all play to win entries for session
+	for i, entry := range ptwEntries {
+		entry, err := s.addPlayToWinEntry(c, dbPtwSession.ID, entry, tx)
+		if err != nil {
+			log.Printf("Error creating play to win entry: %v", err)
+			internalError(c, err)
+			return
+		}
+
+		// Add entries to the session response
+		ptwSession.PlayToWinEntries[i] = PlayToWinEntry{
+			EntrantName:     entry.EntrantName,
+			EntrantUniqueId: entry.EntrantUniqueID,
+			EntryId:         pgUUIDToUUID(entry.ID),
+		}
+	}
+
+	if err = tx.Commit(c.Request.Context()); err != nil {
+		log.Printf("Error committing play to win session transaction: %v", err)
+		internalError(c, err)
+		return
+	}
+	tx = nil
+	c.JSON(http.StatusCreated, ptwSession)
 }

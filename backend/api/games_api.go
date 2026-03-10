@@ -11,8 +11,8 @@ import (
 	"github.com/alexsieland/bg-library/db"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 )
 
 func (s Server) AddGame(c *gin.Context) {
@@ -23,14 +23,15 @@ func (s Server) AddGame(c *gin.Context) {
 		return
 	}
 
-	var errorDetails []ErrorDetail
+	var errorDetails ErrorDetails
 	isPlayToWin := false
 	if jsonObject.IsPlayToWin != nil {
 		isPlayToWin = *jsonObject.IsPlayToWin
 	}
-	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, isPlayToWin, errorDetails, nil)
+	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, isPlayToWin, &errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
+		return
 	}
 	if err != nil {
 		log.Printf("Error creating game: %v", err)
@@ -41,12 +42,12 @@ func (s Server) AddGame(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromGame(dbGame, isPlayToWin))
 }
 
-func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {
-	errorDetails = ValidateStringLength("title", title, 1, 100, errorDetails)
+func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails *ErrorDetails, tx *pgx.Tx) (db.Game, error) {
+	errorDetails.ValidateStringLength("title", title, 1, 100)
 	if barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
+		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 	}
-	if len(errorDetails) > 0 {
+	if !errorDetails.Empty() {
 		return db.Game{}, errValidation
 	}
 
@@ -73,7 +74,7 @@ func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlay
 	}
 
 	if isPlayToWin {
-		err = s.addPlayToWin(c, pgUUIDToUUID(game.ID), errorDetails, tx)
+		err = s.addPlayToWin(c, pgUUIDToUUID(game.ID), tx)
 	}
 	return game, err
 }
@@ -98,8 +99,8 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	}()
 
 	// Process each row
-	var errorDetails []ErrorDetail
-	recordCount := 0
+	var errorDetails ErrorDetails
+	recordCount := int32(0)
 	for {
 		record, err := csvReader.Read()
 		if err == io.EOF {
@@ -121,7 +122,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 		//	barcode = &record[1]
 		//}
 
-		_, err = s.insertGame(c, title, barcode, false, errorDetails, &tx)
+		_, err = s.insertGame(c, title, barcode, false, &errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -134,7 +135,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	}
 
 	//If there are any validation errors, rollback the transaction
-	if len(errorDetails) > 0 {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -150,13 +151,8 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
 }
 
-func (s Server) DeleteGame(c *gin.Context, gameId string) {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	err := s.queries.DeleteGame(c.Request.Context(), gameUUID)
+func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
+	err := s.queries.DeleteGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		log.Printf("Error deleting game: %v", err)
 		internalError(c, err)
@@ -166,13 +162,8 @@ func (s Server) DeleteGame(c *gin.Context, gameId string) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (s Server) GetGame(c *gin.Context, gameId string) {
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, []ErrorDetail{})
-	if len(errorDetails) > 0 {
-		validationError(c, errorDetails)
-		return
-	}
-	dbGame, err := s.queries.GetGame(c.Request.Context(), gameUUID)
+func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
+	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			notFound(c)
@@ -186,8 +177,9 @@ func (s Server) GetGame(c *gin.Context, gameId string) {
 }
 
 func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
-	errorDetails := ValidateStringLength("gameBarcode", gameBarcode, 1, 48, []ErrorDetail{})
-	if len(errorDetails) > 0 {
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("gameBarcode", gameBarcode, 1, 48)
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -205,19 +197,19 @@ func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
 	c.JSON(http.StatusOK, FromVwLibraryGames(dbGames))
 }
 
-func (s Server) UpdateGame(c *gin.Context, gameId string) {
+func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 	var jsonObject UpdateGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
 		malformedJson(c)
 		return
 	}
-	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
-	gameUUID, errorDetails := ConvertToPgTypeUUID("GameId", gameId, errorDetails)
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("title", jsonObject.Title, 1, 100)
 	if jsonObject.Barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
+		errorDetails.ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48)
 	}
-	if len(errorDetails) > 0 {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -228,15 +220,14 @@ func (s Server) UpdateGame(c *gin.Context, gameId string) {
 	}
 
 	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
-		ID:             gameUUID,
+		ID:             uuidToPgTypeUUID(gameId),
 		Title:          jsonObject.Title,
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
 		Barcode:        dbBarcode,
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		// Postgres 23503 is the error code for a unique constraint violation
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		// if FK violation, then this means the game id is invalid, so return 404
+		if isForeignKeyConstraintViolation(err) {
 			notFound(c)
 			return
 		}

@@ -127,44 +127,6 @@ func TestConversionUtils(t *testing.T) {
 }
 
 func TestValidationUtils(t *testing.T) {
-	t.Run("Should convert valid string to pgtype.UUID", func(t *testing.T) {
-		u := uuid.New()
-		pgUUID, errors := ConvertToPgTypeUUID("test", u.String(), nil)
-
-		assert.Nil(t, errors)
-		assert.True(t, pgUUID.Valid)
-		assert.Equal(t, u, uuid.UUID(pgUUID.Bytes))
-	})
-
-	t.Run("Should return error for invalid UUID string", func(t *testing.T) {
-		_, errors := ConvertToPgTypeUUID("test", "invalid", nil)
-
-		assert.Len(t, errors, 1)
-		assert.Equal(t, "test", errors[0].Field)
-		assert.Equal(t, "Invalid UUID format", errors[0].Message)
-	})
-
-	t.Run("Should validate string length correctly", func(t *testing.T) {
-		// Valid
-		errors := ValidateStringLength("test", "hello", 1, 10, nil)
-		assert.Nil(t, errors)
-
-		// Empty
-		errors = ValidateStringLength("test", "", 1, 10, nil)
-		assert.Len(t, errors, 1)
-		assert.Equal(t, "Cannot be empty", errors[0].Message)
-
-		// Too short
-		errors = ValidateStringLength("test", "a", 2, 10, nil)
-		assert.Len(t, errors, 1)
-		assert.Contains(t, errors[0].Message, "Length must be between 2 and 10")
-
-		// Too long
-		errors = ValidateStringLength("test", "too long string", 1, 5, nil)
-		assert.Len(t, errors, 1)
-		assert.Contains(t, errors[0].Message, "Length must be between 1 and 5")
-	})
-
 	t.Run("Should sanitize title correctly", func(t *testing.T) {
 		assert.Equal(t, "catan", SanitizeTitle("Catan"))
 		assert.Equal(t, "catan", SanitizeTitle("CATAN"))
