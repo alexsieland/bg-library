@@ -66,8 +66,8 @@ func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReaso
 	if deletionComment != nil {
 		errorDetails.ValidateStringLength("deletionComment", *deletionComment, 0, 500)
 	}
-	reason, errorDetails := playToWinGameDeletionReason(deletionReason, errorDetails)
-	if len(errorDetails) > 0 {
+	reason := playToWinGameDeletionReason(deletionReason, errorDetails)
+	if errorDetails.Empty() {
 		return errValidation
 	}
 
@@ -116,8 +116,9 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 
 	var comment pgtype.Text
 	if request.RemovalComment != nil {
-		errorDetails := ValidateStringLength("removalComment", *request.RemovalComment, 0, 500, []ErrorDetail{})
-		if len(errorDetails) > 0 {
+		var errorDetails ErrorDetails
+		errorDetails.ValidateStringLength("removalComment", *request.RemovalComment, 0, 500)
+		if errorDetails.Empty() {
 			validationError(c, errorDetails)
 			return
 		}
@@ -189,22 +190,22 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	}
 
 	//Validate request body fields
-	var errorDetails []ErrorDetail
+	var errorDetails ErrorDetails
 	if jsonObject.PlaytimeMinutes != nil {
-		errorDetails = ValidateIntMin("playtimeMinutes", *jsonObject.PlaytimeMinutes, 0, errorDetails)
+		errorDetails.ValidateIntMin("playtimeMinutes", *jsonObject.PlaytimeMinutes, 0)
 	}
 
 	//Create all ptw entries and validate before creating the session
 	ptwEntries := make([]ptwEntry, len(jsonObject.Entries))
 	for i, entry := range jsonObject.Entries {
-		errorDetails = ValidateStringLength("entrantName", entry.EntrantName, 1, 100, errorDetails)
-		errorDetails = ValidateStringLength("entrantUniqueId", entry.EntrantUniqueId, 1, 100, errorDetails)
+		errorDetails.ValidateStringLength("entrantName", entry.EntrantName, 1, 100)
+		errorDetails.ValidateStringLength("entrantUniqueId", entry.EntrantUniqueId, 1, 100)
 		ptwEntries[i] = ptwEntry{
 			EntrantName:     entry.EntrantName,
 			EntrantUniqueId: entry.EntrantUniqueId,
 		}
 	}
-	if len(errorDetails) > 0 {
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}

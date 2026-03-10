@@ -17,7 +17,7 @@ func TestErrorDetails(t *testing.T) {
 		errorDetails = ErrorDetails{}
 		errorDetails.ValidateStringLength("test", "", 1, 10)
 		assert.Len(t, errorDetails.Details, 1)
-		assert.Equal(t, "Cannot be empty", errorDetails.Details[0].Message)
+		assert.Equal(t, "Length must be between 1 and 10", errorDetails.Details[0].Message)
 
 		// Too short
 		errorDetails = ErrorDetails{}

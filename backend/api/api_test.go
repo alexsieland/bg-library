@@ -75,7 +75,7 @@ func TestErrorHelpers(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		details := []ErrorDetail{{Field: "test", Message: "invalid"}}
-		validationError(c, details)
+		validationError(c, ErrorDetails{details})
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Validation error")
 		assert.Contains(t, w.Body.String(), "invalid")
