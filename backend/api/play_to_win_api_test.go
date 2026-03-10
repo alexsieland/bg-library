@@ -26,6 +26,9 @@ func TestAddPlayToWinGame(t *testing.T) {
 		gameID := uuid.New()
 		ptwID := uuid.New()
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
@@ -36,11 +39,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 				*args.Get(4).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
 				*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
-
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-		mockTx.On("Commit", mock.Anything).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -50,17 +49,21 @@ func TestAddPlayToWinGame(t *testing.T) {
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 404 Not Found when game does not exist (foreign key violation)", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
 		pgErr := &pgconn.PgError{Code: "23503"}
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(pgErr)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -70,17 +73,22 @@ func TestAddPlayToWinGame(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 204 No Content when game is already marked as Play to Win (idempotent)", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
 		pgErr := &pgconn.PgError{Code: "23505"}
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(pgErr)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -90,16 +98,20 @@ func TestAddPlayToWinGame(t *testing.T) {
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 500 Internal Server Error when DB returns an unexpected error", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(errors.New("unexpected db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -109,6 +121,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }
 
@@ -117,6 +130,9 @@ func TestAddPlayToWin(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 		ptwID := uuid.New()
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -128,7 +144,7 @@ func TestAddPlayToWin(t *testing.T) {
 				*args.Get(4).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
 				*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -138,16 +154,21 @@ func TestAddPlayToWin(t *testing.T) {
 
 		assert.NoError(t, err)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return nil when game is already marked as Play to Win (idempotent)", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(&pgconn.PgError{Code: "23505"})
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -157,6 +178,7 @@ func TestAddPlayToWin(t *testing.T) {
 
 		assert.NoError(t, err)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return error when DB returns an unexpected error", func(t *testing.T) {
@@ -164,10 +186,13 @@ func TestAddPlayToWin(t *testing.T) {
 		gameID := uuid.New()
 		expectedErr := errors.New("unexpected db error")
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(expectedErr)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -177,6 +202,7 @@ func TestAddPlayToWin(t *testing.T) {
 
 		assert.ErrorIs(t, err, expectedErr)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }
 
