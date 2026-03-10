@@ -38,6 +38,10 @@ func TestAddPlayToWinGame(t *testing.T) {
 			}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
