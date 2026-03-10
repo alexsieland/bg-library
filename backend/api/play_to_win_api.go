@@ -285,14 +285,14 @@ func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPara
 		offset         int32 = 0
 		errorDetails   ErrorDetails
 	)
-	if params.Limit == nil {
+	if params.Limit != nil {
 		limit = *params.Limit
 		errorDetails.ValidateIntMin("limit", limit, 1)
 		errorDetails.ValidateIntMax("limit", limit, 100)
 	}
-	if params.Offset == nil {
+	if params.Offset != nil {
 		offset = *params.Offset
-		errorDetails.ValidateIntMin("offset", 0, 0)
+		errorDetails.ValidateIntMin("offset", offset, 0)
 	}
 	if params.Title != nil {
 		sanitizedTitle = SanitizeTitle(*params.Title)
@@ -317,14 +317,16 @@ func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPara
 		return
 	}
 
-	ptwGames := make([]PlayToWinGame, len(dbPTWGames))
+	ptwGameList := PlayToWinGameList{
+		Games: make([]PlayToWinGame, len(dbPTWGames)),
+	}
 	for i, dbPTWGame := range dbPTWGames {
-		ptwGames[i] = PlayToWinGame{
+		ptwGameList.Games[i] = PlayToWinGame{
 			GameId:      pgUUIDToUUID(dbPTWGame.GameID),
 			PlayToWinId: pgUUIDToUUID(dbPTWGame.PlayToWinID),
 			Title:       dbPTWGame.GameTitle,
 		}
 	}
 
-	c.JSON(http.StatusOK, ptwGames)
+	c.JSON(http.StatusOK, ptwGameList)
 }
