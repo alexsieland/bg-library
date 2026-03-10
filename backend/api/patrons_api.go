@@ -23,7 +23,7 @@ func (s Server) AddPatron(c *gin.Context) {
 		return
 	}
 
-	var errorDetails []ErrorDetail
+	var errorDetails ErrorDetails
 	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
@@ -37,13 +37,13 @@ func (s Server) AddPatron(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromPatron(dbPatron))
 }
 
-func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Patron, error) {
-	errorDetails = ValidateStringLength("name", name, 1, 100, errorDetails)
+func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails ErrorDetails, tx *pgx.Tx) (db.Patron, error) {
+	errorDetails.ValidateStringLength("name", name, 1, 100)
 	if barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
+		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 	}
 
-	if len(errorDetails) > 0 {
+	if errorDetails.Empty() {
 		return db.Patron{}, errValidation
 	}
 
@@ -82,7 +82,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	}()
 
 	// Process each row
-	var errorDetails []ErrorDetail
+	var errorDetails ErrorDetails
 	recordCount := int32(0)
 	for {
 		record, err := csvReader.Read()
@@ -118,7 +118,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	}
 
 	//If there are any validation errors, rollback the transaction
-	if len(errorDetails) > 0 {
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -161,8 +161,9 @@ func (s Server) GetPatron(c *gin.Context, patronId types.UUID) {
 }
 
 func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
-	errorDetails := ValidateStringLength("patronBarcode", patronBarcode, 1, 48, []ErrorDetail{})
-	if len(errorDetails) > 0 {
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("patronBarcode", patronBarcode, 1, 48)
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -187,8 +188,10 @@ func (s Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
 		malformedJson(c)
 		return
 	}
-	errorDetails := ValidateStringLength("name", jsonObject.Name, 1, 100, []ErrorDetail{})
-	if len(errorDetails) > 0 {
+
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("name", jsonObject.Name, 1, 100)
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}

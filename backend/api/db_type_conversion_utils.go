@@ -27,7 +27,7 @@ func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
 	}
 }
 
-func playToWinGameDeletionReason(deletionReason *string, errorDetails []ErrorDetail) (db.NullPlayToWinGameDeletionType, []ErrorDetail) {
+func playToWinGameDeletionReason(deletionReason *string, errorDetails ErrorDetails) db.NullPlayToWinGameDeletionType {
 	nullableReason := db.NullPlayToWinGameDeletionType{Valid: false}
 	if deletionReason != nil {
 		reason := db.PlayToWinGameDeletionType(*deletionReason)
@@ -38,12 +38,9 @@ func playToWinGameDeletionReason(deletionReason *string, errorDetails []ErrorDet
 				Valid:                     true,
 			}
 		default:
-			errorDetails = append(errorDetails, ErrorDetail{
-				Field:   "deletionReason",
-				Message: "Must be one of: claimed, mistake, other",
-			})
+			errorDetails.AddErrorDetail("deletionReason", "Must be one of: claimed, mistake, other")
 		}
 	}
 
-	return nullableReason, errorDetails
+	return nullableReason
 }

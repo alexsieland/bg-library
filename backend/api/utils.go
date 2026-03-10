@@ -1,7 +1,6 @@
 package api
 
 import (
-	"strconv"
 	"strings"
 	"time"
 
@@ -127,44 +126,6 @@ func FromGame(dbGame db.Game, isPlayToWin bool) Game {
 		game.Barcode = &dbGame.Barcode.String
 	}
 	return game
-}
-
-// Validation Utils
-
-func ValidateStringLength(fieldName string, str string, minLength int, maxLength int, errorDetails []ErrorDetail) []ErrorDetail {
-	if minLength > 0 && str == "" {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Cannot be empty",
-		})
-	}
-	if len(str) < minLength || len(str) > maxLength {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Length must be between " + strconv.Itoa(minLength) + " and " + strconv.Itoa(maxLength),
-		})
-	}
-	return nil
-}
-
-func ValidateIntMin(fieldName string, i int32, minVal int32, errorDetails []ErrorDetail) []ErrorDetail {
-	if i < minVal {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Must be greater than or equal to " + strconv.Itoa(int(minVal)),
-		})
-	}
-	return errorDetails
-}
-
-func ValidateIntMax(fieldName string, i int32, maxVal int32, errorDetails []ErrorDetail) []ErrorDetail {
-	if i > maxVal {
-		return append(errorDetails, ErrorDetail{
-			Field:   fieldName,
-			Message: "Must be less than or equal to " + strconv.Itoa(int(maxVal)),
-		})
-	}
-	return errorDetails
 }
 
 func SanitizeTitle(title string) string {

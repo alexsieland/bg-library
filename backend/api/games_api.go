@@ -23,7 +23,7 @@ func (s Server) AddGame(c *gin.Context) {
 		return
 	}
 
-	var errorDetails []ErrorDetail
+	var errorDetails ErrorDetails
 	isPlayToWin := false
 	if jsonObject.IsPlayToWin != nil {
 		isPlayToWin = *jsonObject.IsPlayToWin
@@ -41,12 +41,12 @@ func (s Server) AddGame(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromGame(dbGame, isPlayToWin))
 }
 
-func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails []ErrorDetail, tx *pgx.Tx) (db.Game, error) {
-	errorDetails = ValidateStringLength("title", title, 1, 100, errorDetails)
+func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails ErrorDetails, tx *pgx.Tx) (db.Game, error) {
+	errorDetails.ValidateStringLength("title", title, 1, 100)
 	if barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *barcode, 1, 48, errorDetails)
+		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 	}
-	if len(errorDetails) > 0 {
+	if errorDetails.Empty() {
 		return db.Game{}, errValidation
 	}
 
@@ -73,7 +73,7 @@ func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlay
 	}
 
 	if isPlayToWin {
-		err = s.addPlayToWin(c, pgUUIDToUUID(game.ID), errorDetails, tx)
+		err = s.addPlayToWin(c, pgUUIDToUUID(game.ID), tx)
 	}
 	return game, err
 }
@@ -98,7 +98,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	}()
 
 	// Process each row
-	var errorDetails []ErrorDetail
+	var errorDetails ErrorDetails
 	recordCount := int32(0)
 	for {
 		record, err := csvReader.Read()
@@ -134,7 +134,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	}
 
 	//If there are any validation errors, rollback the transaction
-	if len(errorDetails) > 0 {
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -176,8 +176,9 @@ func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
 }
 
 func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
-	errorDetails := ValidateStringLength("gameBarcode", gameBarcode, 1, 48, []ErrorDetail{})
-	if len(errorDetails) > 0 {
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("gameBarcode", gameBarcode, 1, 48)
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -202,11 +203,12 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 		malformedJson(c)
 		return
 	}
-	errorDetails := ValidateStringLength("title", jsonObject.Title, 1, 100, []ErrorDetail{})
+	var errorDetails ErrorDetails
+	errorDetails.ValidateStringLength("title", jsonObject.Title, 1, 100)
 	if jsonObject.Barcode != nil {
-		errorDetails = ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48, errorDetails)
+		errorDetails.ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48)
 	}
-	if len(errorDetails) > 0 {
+	if errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
