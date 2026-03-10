@@ -14,33 +14,34 @@ import (
 )
 
 func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
-	var err error
-	var tx pgx.Tx
-	if tx == nil {
-		tx, err = s.Database.BeginTx(c, pgx.TxOptions{})
+	var (
+		err       error
+		tx        pgx.Tx
+		requestCx = c.Request.Context()
+	)
+
+	if optTx != nil {
+		tx = *optTx
+	} else {
+		tx, err = s.Database.BeginTx(requestCx, pgx.TxOptions{})
 		if err != nil {
-			defer tx.Rollback(c)
 			return err
 		}
-	} else {
-		tx = *optTx
 	}
 
-	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
-
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(requestCx, uuidToPgTypeUUID(gameId))
 	if err != nil {
-		// if unique constraint violation, then this means the game id is a duplicate, so attempt to restore it instead
+		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+			err = s.queries.RestorePlayToWinGame(requestCx, uuidToPgTypeUUID(gameId))
 			if err != nil {
 				return err
 			}
-			tx = nil
 			return nil
 		}
 		return err
 	}
-	tx = nil
+
 	return nil
 }
 
@@ -66,8 +67,8 @@ func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReaso
 	if deletionComment != nil {
 		errorDetails.ValidateStringLength("deletionComment", *deletionComment, 0, 500)
 	}
-	reason := playToWinGameDeletionReason(deletionReason, errorDetails)
-	if errorDetails.Empty() {
+	reason := playToWinGameDeletionReason(deletionReason, &errorDetails)
+	if !errorDetails.Empty() {
 		return errValidation
 	}
 
@@ -118,7 +119,7 @@ func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	if request.RemovalComment != nil {
 		var errorDetails ErrorDetails
 		errorDetails.ValidateStringLength("removalComment", *request.RemovalComment, 0, 500)
-		if errorDetails.Empty() {
+		if !errorDetails.Empty() {
 			validationError(c, errorDetails)
 			return
 		}
@@ -205,7 +206,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 			EntrantUniqueId: entry.EntrantUniqueId,
 		}
 	}
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -217,15 +218,19 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	}
 
 	// Create the play to win session
-	tx, err := s.Database.BeginTx(c, pgx.TxOptions{})
+	tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
 	if err != nil {
 		log.Printf("Error creating play to win session: %v", err)
 		internalError(c, err)
 		return
 	}
-	defer tx.Rollback(c)
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback(c.Request.Context())
+		}
+	}()
 
-	dbPtwSession, err := s.queries.WithTx(tx).CreatePlayToWinSession(c, ptwSessionParams)
+	dbPtwSession, err := s.queries.WithTx(tx).CreatePlayToWinSession(c.Request.Context(), ptwSessionParams)
 	if err != nil {
 		// if FK violation, then this means the play to win game id is invalid, so return 404
 		if isForeignKeyConstraintViolation(err) {
@@ -265,7 +270,11 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 		}
 	}
 
-	// Set tx to nil so that it is not closed by the defer
+	if err = tx.Commit(c.Request.Context()); err != nil {
+		log.Printf("Error committing play to win session transaction: %v", err)
+		internalError(c, err)
+		return
+	}
 	tx = nil
 	c.JSON(http.StatusCreated, ptwSession)
 }

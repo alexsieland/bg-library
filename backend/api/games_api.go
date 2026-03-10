@@ -28,9 +28,10 @@ func (s Server) AddGame(c *gin.Context) {
 	if jsonObject.IsPlayToWin != nil {
 		isPlayToWin = *jsonObject.IsPlayToWin
 	}
-	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, isPlayToWin, errorDetails, nil)
+	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, isPlayToWin, &errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
+		return
 	}
 	if err != nil {
 		log.Printf("Error creating game: %v", err)
@@ -41,12 +42,12 @@ func (s Server) AddGame(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromGame(dbGame, isPlayToWin))
 }
 
-func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails ErrorDetails, tx *pgx.Tx) (db.Game, error) {
+func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails *ErrorDetails, tx *pgx.Tx) (db.Game, error) {
 	errorDetails.ValidateStringLength("title", title, 1, 100)
 	if barcode != nil {
 		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 	}
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		return db.Game{}, errValidation
 	}
 
@@ -121,7 +122,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 		//	barcode = &record[1]
 		//}
 
-		_, err = s.insertGame(c, title, barcode, false, errorDetails, &tx)
+		_, err = s.insertGame(c, title, barcode, false, &errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -134,7 +135,7 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	}
 
 	//If there are any validation errors, rollback the transaction
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -178,7 +179,7 @@ func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
 func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("gameBarcode", gameBarcode, 1, 48)
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -208,7 +209,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 	if jsonObject.Barcode != nil {
 		errorDetails.ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48)
 	}
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}

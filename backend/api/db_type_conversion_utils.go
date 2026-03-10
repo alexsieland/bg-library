@@ -27,7 +27,7 @@ func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
 	}
 }
 
-func playToWinGameDeletionReason(deletionReason *string, errorDetails ErrorDetails) db.NullPlayToWinGameDeletionType {
+func playToWinGameDeletionReason(deletionReason *string, errorDetails *ErrorDetails) db.NullPlayToWinGameDeletionType {
 	nullableReason := db.NullPlayToWinGameDeletionType{Valid: false}
 	if deletionReason != nil {
 		reason := db.PlayToWinGameDeletionType(*deletionReason)

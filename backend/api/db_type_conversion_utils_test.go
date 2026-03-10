@@ -58,7 +58,7 @@ func TestUUIDToPgTypeUUID(t *testing.T) {
 func TestPlayToWinGameDeletionReason(t *testing.T) {
 	t.Run("Should return invalid nullable reason and no errors when reason is nil", func(t *testing.T) {
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(nil, errors)
+		result := playToWinGameDeletionReason(nil, &errors)
 
 		assert.False(t, result.Valid)
 		assert.True(t, errors.Empty())
@@ -68,7 +68,7 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "claimed"
 
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(&reason, errors)
+		result := playToWinGameDeletionReason(&reason, &errors)
 
 		assert.True(t, result.Valid)
 		assert.Equal(t, db.PlayToWinGameDeletionTypeClaimed, result.PlayToWinGameDeletionType)
@@ -79,7 +79,7 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "mistake"
 
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(&reason, errors)
+		result := playToWinGameDeletionReason(&reason, &errors)
 
 		assert.True(t, result.Valid)
 		assert.Equal(t, db.PlayToWinGameDeletionTypeMistake, result.PlayToWinGameDeletionType)
@@ -90,7 +90,7 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "other"
 
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(&reason, errors)
+		result := playToWinGameDeletionReason(&reason, &errors)
 
 		assert.True(t, result.Valid)
 		assert.Equal(t, db.PlayToWinGameDeletionTypeOther, result.PlayToWinGameDeletionType)
@@ -101,10 +101,10 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "invalid_reason"
 
 		errors := ErrorDetails{[]ErrorDetail{{Field: "existingField", Message: "existing message"}}}
-		result := playToWinGameDeletionReason(&reason, errors)
+		result := playToWinGameDeletionReason(&reason, &errors)
 
 		assert.False(t, result.Valid)
-		assert.Len(t, errors, 2)
+		assert.Len(t, errors.Details, 2)
 		assert.Equal(t, "existingField", errors.Details[0].Field)
 		assert.Equal(t, "existing message", errors.Details[0].Message)
 		assert.Equal(t, "deletionReason", errors.Details[1].Field)

@@ -911,8 +911,8 @@ func TestAddPlayToWinSession(t *testing.T) {
 			entries[0].uniqueId,
 		}).Return(mockEntryRow).Once()
 
-		mockTx.On("Commit", mock.Anything).Return(nil)
-		mockTx.On("Rollback", mock.Anything).Maybe()
+		mockTx.On("Commit", mock.Anything).Return(nil).Maybe()
+		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

@@ -64,7 +64,7 @@ func (s Server) CheckOutGame(c *gin.Context) {
 
 func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
 	dbArgs, errorDetails := getSearchTransactionEventsParams(params)
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -118,7 +118,7 @@ func getSearchTransactionEventsParams(params ListTransactionEventsParams) (db.Se
 		errorDetails.ValidateIntMin("offset", *params.Offset, 0)
 		offset = int32(*params.Offset)
 	}
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		return db.SearchTransactionEventsParams{}, errorDetails
 	}
 	return db.SearchTransactionEventsParams{

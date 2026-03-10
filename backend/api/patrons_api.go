@@ -24,9 +24,10 @@ func (s Server) AddPatron(c *gin.Context) {
 	}
 
 	var errorDetails ErrorDetails
-	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, errorDetails, nil)
+	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, &errorDetails, nil)
 	if errors.Is(err, errValidation) {
 		validationError(c, errorDetails)
+		return
 	}
 	if err != nil {
 		log.Printf("Error creating patron: %v", err)
@@ -37,13 +38,13 @@ func (s Server) AddPatron(c *gin.Context) {
 	c.JSON(http.StatusCreated, FromPatron(dbPatron))
 }
 
-func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails ErrorDetails, tx *pgx.Tx) (db.Patron, error) {
+func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails *ErrorDetails, tx *pgx.Tx) (db.Patron, error) {
 	errorDetails.ValidateStringLength("name", name, 1, 100)
 	if barcode != nil {
 		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 	}
 
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		return db.Patron{}, errValidation
 	}
 
@@ -105,7 +106,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 		//	barcode = &record[1]
 		//}
 
-		_, err = s.insertPatron(c, name, barcode, errorDetails, &tx)
+		_, err = s.insertPatron(c, name, barcode, &errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
@@ -118,7 +119,7 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	}
 
 	//If there are any validation errors, rollback the transaction
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -163,7 +164,7 @@ func (s Server) GetPatron(c *gin.Context, patronId types.UUID) {
 func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("patronBarcode", patronBarcode, 1, 48)
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
@@ -191,7 +192,7 @@ func (s Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
 
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("name", jsonObject.Name, 1, 100)
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		validationError(c, errorDetails)
 		return
 	}
