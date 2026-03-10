@@ -594,4 +594,18 @@ describe('ApiClient', () => {
       expect(request.method).toBe('POST');
     });
   });
+
+  describe('Play To Win API', () => {
+    describe('listPlayToWinGames', () => {
+      // TODO Add tests for listPlayToWinGames
+    });
+
+    describe('getPlayToWinEntries', () => {
+      // TODO Add tests for getPlayToWinEntries
+    });
+
+    describe('addPlayToWinSession', () => {
+      // TODO Add tests for addPlayToWinSession
+    });
+  });
 });

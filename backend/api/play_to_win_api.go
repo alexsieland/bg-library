@@ -277,3 +277,54 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	tx = nil
 	c.JSON(http.StatusCreated, ptwSession)
 }
+
+func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) {
+	var (
+		sanitizedTitle string
+		limit          int32 = 100
+		offset         int32 = 0
+		errorDetails   ErrorDetails
+	)
+	if params.Limit == nil {
+		limit = *params.Limit
+		errorDetails.ValidateIntMin("limit", limit, 1)
+		errorDetails.ValidateIntMax("limit", limit, 100)
+	}
+	if params.Offset == nil {
+		offset = *params.Offset
+		errorDetails.ValidateIntMin("offset", 0, 0)
+	}
+	if params.Title != nil {
+		sanitizedTitle = SanitizeTitle(*params.Title)
+		errorDetails.ValidateStringLength("title", sanitizedTitle, 1, 100)
+	} else {
+		sanitizedTitle = ""
+	}
+	if !errorDetails.Empty() {
+		validationError(c, errorDetails)
+		return
+	}
+	requestParams := db.ListPlayToWinGamesParams{
+		SanitizedTitle: "%" + sanitizedTitle + "%",
+		Limit:          limit,
+		Offset:         offset,
+	}
+
+	dbPTWGames, err := s.queries.ListPlayToWinGames(c, requestParams)
+	if err != nil {
+		log.Printf("Error listing play to win games: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	ptwGames := make([]PlayToWinGame, len(dbPTWGames))
+	for i, dbPTWGame := range dbPTWGames {
+		ptwGames[i] = PlayToWinGame{
+			GameId:      pgUUIDToUUID(dbPTWGame.GameID),
+			PlayToWinId: pgUUIDToUUID(dbPTWGame.PlayToWinID),
+			Title:       dbPTWGame.GameTitle,
+		}
+	}
+
+	c.JSON(http.StatusOK, ptwGames)
+}

@@ -22,6 +22,9 @@ const API_PATHS = {
   getPatronByBarcode: '/api/v1/library/patron/barcode/{patronBarcode}',
   checkInGame: '/api/v1/library/checkin',
   checkOutGame: '/api/v1/library/checkout',
+  listPlayToWinGames: '/api/v1/ptw/games',
+  getPlayToWinEntries: '/api/v1/ptw/entries/playToWinId/{playToWinId}',
+  addPlayToWinSession: '/api/v1/ptw/session',
 } as const satisfies Record<string, ApiPath>;
 
 export type Game = components['schemas']['Game'];
@@ -33,6 +36,14 @@ export type CreateGameRequest = components['schemas']['CreateGameRequest'];
 export type CreatePatronRequest = components['schemas']['CreatePatronRequest'];
 export type CheckOutRequest = components['schemas']['CheckOutRequest'];
 export type LibraryTransaction = components['schemas']['LibraryTransaction'];
+export type PlayToWinGameList = components['schemas']['PlayToWinGameList'];
+export type PlayToWinGame = components['schemas']['PlayToWinGame'];
+export type PlayToWinSession = components['schemas']['PlayToWinSession'];
+export type CreatePlayToWinSessionRequest = components['schemas']['CreatePlayToWinSessionRequest'];
+export type CreatePlayToWinSessionEntry =
+  components['schemas']['CreatePlayToWinSessionRequest']['entries'][number];
+export type PlayToWinEntryList = components['schemas']['PlayToWinEntryList'];
+export type PlayToWinEntry = components['schemas']['PlayToWinEntry'];
 export type ErrorResponse = components['schemas']['ErrorResponse'];
 export type BulkAddResponse = components['schemas']['BulkAddResponse'];
 
@@ -245,6 +256,37 @@ class ApiClient {
   async checkInGame(transactionId: string): Promise<void> {
     const res = await this.client.POST(API_PATHS.checkInGame, {
       params: { query: { transactionId } },
+    });
+    return this.handleResponse(res);
+  }
+
+  // Play To Win
+  async listPlayToWinGames(
+    title: string,
+    limit: number,
+    offset: number
+  ): Promise<PlayToWinGameList> {
+    const res = await this.client.GET(API_PATHS.listPlayToWinGames, {
+      params: { query: { title, limit, offset } },
+    });
+    return this.handleResponse(res);
+  }
+
+  async getPlayToWinEntries(playToWinId: string): Promise<PlayToWinEntryList> {
+    const res = await this.client.GET(API_PATHS.getPlayToWinEntries, {
+      params: { path: { playToWinId } },
+    });
+    return this.handleResponse(res);
+  }
+
+  async addPlayToWinSession(
+    playToWinId: string,
+    playtimeMinutes: number,
+    entries: CreatePlayToWinSessionEntry[]
+  ): Promise<PlayToWinSession> {
+    const reqBody: CreatePlayToWinSessionRequest = { playToWinId, playtimeMinutes, entries };
+    const res = await this.client.POST(API_PATHS.addPlayToWinSession, {
+      body: reqBody,
     });
     return this.handleResponse(res);
   }
