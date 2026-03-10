@@ -215,6 +215,24 @@ type PlayToWinEntryList struct {
 	Entries []PlayToWinEntry `json:"entries"`
 }
 
+// PlayToWinGame defines model for PlayToWinGame.
+type PlayToWinGame struct {
+	// GameId The ID of the game
+	GameId openapi_types.UUID `json:"gameId"`
+
+	// PlayToWinId The ID of the play to win game
+	PlayToWinId openapi_types.UUID `json:"playToWinId"`
+
+	// Title The title of the game
+	Title string `json:"title"`
+}
+
+// PlayToWinGameList List of play to win games
+type PlayToWinGameList struct {
+	// Games Array of play to win games
+	Games []PlayToWinGame `json:"games"`
+}
+
 // PlayToWinSession A play to win game session
 type PlayToWinSession struct {
 	// PlayToWinEntries Array of entries in the play to win session
@@ -302,6 +320,18 @@ type ListTransactionEventsParams struct {
 	PatronName *string `form:"patron_name,omitempty" json:"patron_name,omitempty"`
 
 	// Limit Limit the number of transactions returned (optional)
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Offset for pagination (optional)
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListPlayToWinGamesParams defines parameters for ListPlayToWinGames.
+type ListPlayToWinGamesParams struct {
+	// Title Filter by game title (optional)
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+
+	// Limit Limit the number of games returned (optional)
 	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Offset Offset for pagination (optional)
@@ -483,6 +513,9 @@ type ClientInterface interface {
 
 	// AddPlayToWinGame request
 	AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPlayToWinGames request
+	ListPlayToWinGames(ctx context.Context, params *ListPlayToWinGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddPlayToWinSessionWithBody request with any body
 	AddPlayToWinSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -819,6 +852,18 @@ func (c *Client) RemovePlayToWinGame(ctx context.Context, gameId openapi_types.U
 
 func (c *Client) AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddPlayToWinGameRequest(c.Server, gameId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListPlayToWinGames(ctx context.Context, params *ListPlayToWinGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPlayToWinGamesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1726,6 +1771,87 @@ func NewAddPlayToWinGameRequest(server string, gameId openapi_types.UUID) (*http
 	return req, nil
 }
 
+// NewListPlayToWinGamesRequest generates requests for ListPlayToWinGames
+func NewListPlayToWinGamesRequest(server string, params *ListPlayToWinGamesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ptw/games")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Title != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "title", runtime.ParamLocationQuery, *params.Title); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAddPlayToWinSessionRequest calls the generic AddPlayToWinSession builder with application/json body
 func NewAddPlayToWinSessionRequest(server string, body AddPlayToWinSessionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1911,6 +2037,9 @@ type ClientWithResponsesInterface interface {
 
 	// AddPlayToWinGameWithResponse request
 	AddPlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameResponse, error)
+
+	// ListPlayToWinGamesWithResponse request
+	ListPlayToWinGamesWithResponse(ctx context.Context, params *ListPlayToWinGamesParams, reqEditors ...RequestEditorFn) (*ListPlayToWinGamesResponse, error)
 
 	// AddPlayToWinSessionWithBodyWithResponse request with any body
 	AddPlayToWinSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPlayToWinSessionResponse, error)
@@ -2312,6 +2441,7 @@ type GetPlayToWinSessionEntriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PlayToWinEntryList
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2368,6 +2498,28 @@ func (r AddPlayToWinGameResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r AddPlayToWinGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListPlayToWinGamesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PlayToWinGameList
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPlayToWinGamesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPlayToWinGamesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2662,6 +2814,15 @@ func (c *ClientWithResponses) AddPlayToWinGameWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseAddPlayToWinGameResponse(rsp)
+}
+
+// ListPlayToWinGamesWithResponse request returning *ListPlayToWinGamesResponse
+func (c *ClientWithResponses) ListPlayToWinGamesWithResponse(ctx context.Context, params *ListPlayToWinGamesParams, reqEditors ...RequestEditorFn) (*ListPlayToWinGamesResponse, error) {
+	rsp, err := c.ListPlayToWinGames(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPlayToWinGamesResponse(rsp)
 }
 
 // AddPlayToWinSessionWithBodyWithResponse request with arbitrary body returning *AddPlayToWinSessionResponse
@@ -3244,6 +3405,13 @@ func ParseGetPlayToWinSessionEntriesResponse(rsp *http.Response) (*GetPlayToWinS
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	}
 
 	return response, nil
@@ -3295,6 +3463,32 @@ func ParseAddPlayToWinGameResponse(rsp *http.Response) (*AddPlayToWinGameRespons
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPlayToWinGamesResponse parses an HTTP response from a ListPlayToWinGamesWithResponse call
+func ParseListPlayToWinGamesResponse(rsp *http.Response) (*ListPlayToWinGamesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPlayToWinGamesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlayToWinGameList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
@@ -3429,6 +3623,9 @@ type ServerInterface interface {
 	// Mark a library game as play to win
 	// (POST /api/v1/ptw/game/gameId/{gameId})
 	AddPlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
+	// List play to win games
+	// (GET /api/v1/ptw/games)
+	ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams)
 	// Add a play to win session
 	// (POST /api/v1/ptw/session)
 	AddPlayToWinSession(c *gin.Context)
@@ -3918,6 +4115,48 @@ func (siw *ServerInterfaceWrapper) AddPlayToWinGame(c *gin.Context) {
 	siw.Handler.AddPlayToWinGame(c, gameId)
 }
 
+// ListPlayToWinGames operation middleware
+func (siw *ServerInterfaceWrapper) ListPlayToWinGames(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPlayToWinGamesParams
+
+	// ------------- Optional query parameter "title" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "title", c.Request.URL.Query(), &params.Title)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter title: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListPlayToWinGames(c, params)
+}
+
 // AddPlayToWinSession operation middleware
 func (siw *ServerInterfaceWrapper) AddPlayToWinSession(c *gin.Context) {
 
@@ -3991,6 +4230,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/ptw/entries/playToWinId/:playToWinId", wrapper.GetPlayToWinSessionEntries)
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.RemovePlayToWinGame)
 	router.POST(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.AddPlayToWinGame)
+	router.GET(options.BaseURL+"/api/v1/ptw/games", wrapper.ListPlayToWinGames)
 	router.POST(options.BaseURL+"/api/v1/ptw/session", wrapper.AddPlayToWinSession)
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth)
 }

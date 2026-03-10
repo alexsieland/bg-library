@@ -927,3 +927,119 @@ func TestAddPlayToWinSession(t *testing.T) {
 		mockTx.AssertExpectations(t)
 	})
 }
+
+func TestListPlayToWinGames(t *testing.T) {
+	t.Run("Should return 200 OK with play to win game list when called without filters", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		playToWinID1 := uuid.New()
+		playToWinID2 := uuid.New()
+		gameID1 := uuid.New()
+		gameID2 := uuid.New()
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID1, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID1, Valid: true}
+				*args.Get(2).(*string) = "Azul"
+				*args.Get(3).(*pgtype.Text) = pgtype.Text{String: SanitizeTitle("Azul"), Valid: true}
+				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			}).Return(nil).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID2, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID2, Valid: true}
+				*args.Get(2).(*string) = "Catan"
+				*args.Get(3).(*pgtype.Text) = pgtype.Text{String: SanitizeTitle("Catan"), Valid: true}
+				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			}).Return(nil).Once()
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{"%%", int32(100), int32(0)}).Return(mockRows, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/ptw/games", nil)
+
+		server.ListPlayToWinGames(c, ListPlayToWinGamesParams{})
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response PlayToWinGameList
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Games, 2)
+		assert.Equal(t, playToWinID1, response.Games[0].PlayToWinId)
+		assert.Equal(t, gameID1, response.Games[0].GameId)
+		assert.Equal(t, "Azul", response.Games[0].Title)
+		assert.Equal(t, playToWinID2, response.Games[1].PlayToWinId)
+		assert.Equal(t, gameID2, response.Games[1].GameId)
+		assert.Equal(t, "Catan", response.Games[1].Title)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 200 OK with empty list when title limit and offset filters return no matches", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		title := "Catan: Special Edition"
+		limit := int32(25)
+		offset := int32(10)
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{"%" + SanitizeTitle(title) + "%", limit, offset}).Return(mockRows, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/ptw/games?title=Catan:+Special+Edition&limit=25&offset=10", nil)
+
+		server.ListPlayToWinGames(c, ListPlayToWinGamesParams{Title: &title, Limit: &limit, Offset: &offset})
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response PlayToWinGameList
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Empty(t, response.Games)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 400 Bad Request when limit or offset are invalid", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		limit := int32(0)
+		offset := int32(-1)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/ptw/games?limit=0&offset=-1", nil)
+
+		server.ListPlayToWinGames(c, ListPlayToWinGamesParams{Limit: &limit, Offset: &offset})
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
+		mockDB.AssertNotCalled(t, "Query", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Should return 500 Internal Server Error when listing play to win games fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		title := "Azul"
+		limit := int32(5)
+		offset := int32(0)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{"%" + SanitizeTitle(title) + "%", limit, offset}).Return(nil, errors.New("db error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/ptw/games?title=Azul&limit=5&offset=0", nil)
+
+		server.ListPlayToWinGames(c, ListPlayToWinGamesParams{Title: &title, Limit: &limit, Offset: &offset})
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "db error")
+		mockDB.AssertExpectations(t)
+	})
+}

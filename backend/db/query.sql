@@ -126,7 +126,7 @@ LIMIT $3 OFFSET $4;
 SELECT
     ptw.id AS play_to_win_id,
     ptw.game_id AS game_id,
-    g.title AS game_title,
+    COALESCE(g.title, 'Missing Game') AS game_title,
     g.sanitized_title AS santized_title,
     ptw.created_at AS created_at
 FROM vw_play_to_win_games AS ptw

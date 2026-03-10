@@ -594,4 +594,170 @@ describe('ApiClient', () => {
       expect(request.method).toBe('POST');
     });
   });
+
+  describe('Play To Win API', () => {
+    describe('listPlayToWinGames', () => {
+      it('Should make a GET request with title, limit, and offset query params', async () => {
+        const mockGames = {
+          games: [{ playToWinId: 'ptw-1', gameId: 'g1', title: 'Azul' }],
+        };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGames));
+
+        const result = await apiClient.listPlayToWinGames('Azul', 25, 10);
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        const url = new URL(request.url);
+        expect(url.pathname).toBe('/api/v1/ptw/games');
+        expect(url.searchParams.get('title')).toBe('Azul');
+        expect(url.searchParams.get('limit')).toBe('25');
+        expect(url.searchParams.get('offset')).toBe('10');
+        expect(request.method).toBe('GET');
+        expect(result.games).toHaveLength(1);
+        expect(result.games[0]).toHaveProperty('playToWinId', 'ptw-1');
+      });
+
+      it('Should propagate API errors when backend returns an error response', async () => {
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 400,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Invalid pagination params',
+              details: [],
+            },
+          }),
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid pagination params',
+                details: [],
+              },
+            }),
+        } as Response);
+
+        await expect(apiClient.listPlayToWinGames('Azul', 0, -1)).rejects.toThrow(
+          'Invalid pagination params'
+        );
+      });
+    });
+
+    describe('getPlayToWinEntries', () => {
+      it('Should make a GET request to the entries URL with the provided playToWinId', async () => {
+        const mockEntries = {
+          entries: [{ entryId: 'e1', entrantName: 'John Smith', entrantUniqueId: 'ABC123' }],
+        };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockEntries));
+
+        const result = await apiClient.getPlayToWinEntries('ptw-1');
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/entries/playToWinId/ptw-1');
+        expect(request.method).toBe('GET');
+        expect(result.entries).toHaveLength(1);
+        expect(result.entries[0]).toHaveProperty('entrantName', 'John Smith');
+      });
+
+      it('Should return an empty entries list when there are no entries', async () => {
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, { entries: [] }));
+
+        const result = await apiClient.getPlayToWinEntries('ptw-empty');
+
+        expect(result.entries).toEqual([]);
+      });
+
+      it('Should propagate API errors when backend returns an error response', async () => {
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 404,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Play to win game not found',
+              details: [],
+            },
+          }),
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 'NOT_FOUND',
+                message: 'Play to win game not found',
+                details: [],
+              },
+            }),
+        } as Response);
+
+        await expect(apiClient.getPlayToWinEntries('missing-id')).rejects.toThrow(
+          'Play to win game not found'
+        );
+      });
+    });
+
+    describe('addPlayToWinSession', () => {
+      it('Should make a POST request with playToWin session payload', async () => {
+        const entries = [
+          { entrantName: 'Jane Doe', entrantUniqueId: 'P-001' },
+          { entrantName: 'John Smith', entrantUniqueId: 'P-002' },
+        ];
+        const mockSession = {
+          sessionId: 's1',
+          playtimeMinutes: 45,
+          playToWinEntries: [
+            { entryId: 'e1', entrantName: 'Jane Doe', entrantUniqueId: 'P-001' },
+            { entryId: 'e2', entrantName: 'John Smith', entrantUniqueId: 'P-002' },
+          ],
+        };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(201, mockSession));
+
+        const result = await apiClient.addPlayToWinSession('ptw-1', 45, entries);
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/session');
+        expect(request.method).toBe('POST');
+
+        const body = await request.json();
+        expect(body).toEqual({
+          playToWinId: 'ptw-1',
+          playtimeMinutes: 45,
+          entries,
+        });
+        expect(result).toHaveProperty('sessionId', 's1');
+        expect(result.playToWinEntries).toHaveLength(2);
+      });
+
+      it('Should propagate API errors when backend returns validation error', async () => {
+        const entries = [{ entrantName: 'Jane Doe', entrantUniqueId: 'P-001' }];
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 400,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Validation failed',
+              details: [{ field: 'playtimeMinutes', message: 'must be non-negative' }],
+            },
+          }),
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Validation failed',
+                details: [{ field: 'playtimeMinutes', message: 'must be non-negative' }],
+              },
+            }),
+        } as Response);
+
+        await expect(apiClient.addPlayToWinSession('ptw-1', -1, entries)).rejects.toThrow(
+          'Validation failed'
+        );
+      });
+    });
+  });
 });
