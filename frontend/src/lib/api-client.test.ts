@@ -714,7 +714,7 @@ describe('ApiClient', () => {
         };
         vi.mocked(fetch).mockResolvedValue(mockResponse(201, mockSession));
 
-        const result = await apiClient.addPlayToWinSession('ptw-1', 45, entries);
+        const result = await apiClient.addPlayToWinSession('ptw-1', entries, 45);
 
         expect(fetch).toHaveBeenCalled();
         const request = vi.mocked(fetch).mock.calls[0][0] as Request;
@@ -754,7 +754,7 @@ describe('ApiClient', () => {
             }),
         } as Response);
 
-        await expect(apiClient.addPlayToWinSession('ptw-1', -1, entries)).rejects.toThrow(
+        await expect(apiClient.addPlayToWinSession('ptw-1', entries, -1)).rejects.toThrow(
           'Validation failed'
         );
       });

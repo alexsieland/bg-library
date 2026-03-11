@@ -130,7 +130,7 @@ class ApiClient {
         response.error?.error?.message ??
         response.error?.message ??
         `Request failed with status ${response.response?.status}`;
-      console.error('Request failed: ', errorMessage);
+      console.error('Request failed: ', errorMessage, response.error?.response?.data);
       throw new Error(errorMessage);
     }
     if (response.response && response.response.status === 204) {
@@ -284,10 +284,14 @@ class ApiClient {
 
   async addPlayToWinSession(
     playToWinId: string,
-    playtimeMinutes: number,
-    entries: CreatePlayToWinSessionEntry[]
+    entries: CreatePlayToWinSessionEntry[],
+    playtimeMinutes?: number
   ): Promise<PlayToWinSession> {
-    const reqBody: CreatePlayToWinSessionRequest = { playToWinId, playtimeMinutes, entries };
+    const reqBody: CreatePlayToWinSessionRequest = {
+      playToWinId,
+      entries,
+      ...(playtimeMinutes !== undefined ? { playtimeMinutes } : {}),
+    };
     const res = await this.client.POST(API_PATHS.addPlayToWinSession, {
       body: reqBody,
     });

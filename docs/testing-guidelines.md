@@ -67,6 +67,21 @@ describe('GameCard', () => {
     - API fetch wrappers (mocking global `fetch`).
 - **Best Practice**: Use the generated TypeScript types from `api.d.ts` to mock API responses accurately.
 
+#### Test Element Selection Best Practices
+- **ALWAYS use `data-testid` attributes** for reliable element selection in tests instead of querying by text, role, or other fragile DOM selectors.
+- **If a `data-testid` does not exist** on the element you need to test, add it to the component first, then use it in your test.
+- **Naming Convention**: Use descriptive, kebab-case names prefixed with the component name or feature (e.g., `check-out-table`, `ptw-record-button-{id}`, `admin-view-tabs`).
+- **Why**: DOM text, roles, and structure are fragile and prone to breaking when UI changes. `data-testid` attributes are intentionally added for testing and remain stable across refactors.
+
+**Example:**
+```typescript
+// ❌ Fragile — breaks if text changes
+const heading = screen.getByText('Checkout Games');
+
+// ✅ Robust — stable, intentional test hook
+const table = screen.getByTestId('check-out-table');
+```
+
 ### End-to-End (E2E) Tests
 - **Tools**: [Playwright](https://playwright.dev/).
 - **Focus**: Testing the entire application from the user's perspective in a real browser.

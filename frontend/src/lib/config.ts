@@ -3,6 +3,7 @@ declare global {
     CONFIG: {
       API_URL: string;
       BARCODE_ENABLED: boolean;
+      PTW_ID_NAME: string;
     };
   }
 }
@@ -13,4 +14,8 @@ export const getBackendUrl = () => {
 
 export const isBarcodeEnabled = () => {
   return window.CONFIG?.BARCODE_ENABLED || false;
+};
+
+export const getPlayToWinIdLabel = () => {
+  return window.CONFIG?.PTW_ID_NAME || 'ID';
 };

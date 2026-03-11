@@ -20,6 +20,12 @@ describe('AppNavbar', () => {
     expect(checkInLink).toHaveClass('text-blue-300');
   });
 
+  it('Should highlight the "Play To Win" tab when activeTab is "ptw"', () => {
+    render(AppNavbar, { props: { activeTab: 'ptw' } });
+    const ptwLink = screen.getByText('Play To Win');
+    expect(ptwLink).toHaveClass('text-blue-300');
+  });
+
   it('Should highlight the "Admin" tab when activeTab is "admin"', () => {
     render(AppNavbar, { props: { activeTab: 'admin' } });
     const adminLink = screen.getByText('Admin');
