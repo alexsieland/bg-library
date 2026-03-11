@@ -433,7 +433,22 @@ func TestUpdateGame(t *testing.T) {
 		gameID := uuid.New()
 		title := "Updated Catan"
 
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.Text) = pgtype.Text{Valid: false}          // barcode
+			*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Valid: false}          // play_to_win_game_id
+			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true} // created_at
+		}).Return(nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, title, SanitizeTitle(title), pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, nil)
+		mockTx.On("Commit", mock.Anything).Return(nil)
+		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -444,6 +459,8 @@ func TestUpdateGame(t *testing.T) {
 		server.UpdateGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 404 Not Found when updating non-existent game", func(t *testing.T) {
@@ -451,7 +468,21 @@ func TestUpdateGame(t *testing.T) {
 		gameID := uuid.New()
 		title := "Updated Catan"
 
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.Text) = pgtype.Text{Valid: false}          // barcode
+			*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Valid: false}          // play_to_win_game_id
+			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true} // created_at
+		}).Return(nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, title, SanitizeTitle(title), pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, &pgconn.PgError{Code: "23503"})
+		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -462,6 +493,8 @@ func TestUpdateGame(t *testing.T) {
 		server.UpdateGame(c, types.UUID(gameID))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 204 No Content when game is updated with barcode", func(t *testing.T) {
@@ -470,7 +503,22 @@ func TestUpdateGame(t *testing.T) {
 		title := "Updated Catan"
 		barcode := "9780000000001"
 
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = title
+			*args.Get(2).(*string) = SanitizeTitle(title)
+			*args.Get(3).(*pgtype.Text) = pgtype.Text{Valid: false}          // barcode
+			*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Valid: false}          // play_to_win_game_id
+			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true} // created_at
+		}).Return(nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, title, SanitizeTitle(title), pgtype.Text{String: barcode, Valid: true}}).Return(pgconn.CommandTag{}, nil)
+		mockTx.On("Commit", mock.Anything).Return(nil)
+		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -482,6 +530,7 @@ func TestUpdateGame(t *testing.T) {
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }
 
