@@ -27,7 +27,7 @@
   let loadingMore = false;
   let offset = 0;
   let hasMore = true;
-  let tableBodyElement: HTMLTableSectionElement | undefined;
+  let scrollContainerElement: HTMLDivElement | undefined;
   let lastSearchQuery = '';
 
   async function fetchPlayToWinGames(newOffset: number = 0) {
@@ -81,11 +81,11 @@
   }
 
   function handleTableScroll() {
-    if (!tableBodyElement || loadingMore || !hasMore || error) {
+    if (!scrollContainerElement || loadingMore || !hasMore || error) {
       return;
     }
 
-    const { scrollTop, scrollHeight, clientHeight } = tableBodyElement;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerElement;
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
 
     if (isAtBottom) {
@@ -115,18 +115,18 @@
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
 {:else}
-  <div class="max-h-96 overflow-y-auto">
+  <div
+    class="max-h-96 overflow-y-auto"
+    bind:this={scrollContainerElement}
+    onscroll={handleTableScroll}
+    data-testid="ptw-scroll-container"
+  >
     <Table shadow hoverable={true} class="w-full" data-testid="ptw-table">
       <TableHead>
         <TableHeadCell>Title</TableHeadCell>
         <TableHeadCell>Action</TableHeadCell>
       </TableHead>
-      <TableBody
-        class="divide-y"
-        bind:this={tableBodyElement}
-        on:scroll={handleTableScroll}
-        data-testid="ptw-table-body"
-      >
+      <TableBody class="divide-y" data-testid="ptw-table-body">
         {#each games as game (game.playToWinId)}
           <TableBodyRow data-testid={`ptw-row-${game.playToWinId}`}>
             <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">

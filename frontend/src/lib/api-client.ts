@@ -130,7 +130,7 @@ class ApiClient {
         response.error?.error?.message ??
         response.error?.message ??
         `Request failed with status ${response.response?.status}`;
-      console.error('Request failed: ', errorMessage, response.error.response.data);
+      console.error('Request failed: ', errorMessage, response.error?.response?.data);
       throw new Error(errorMessage);
     }
     if (response.response && response.response.status === 204) {
