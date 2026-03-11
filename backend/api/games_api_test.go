@@ -191,6 +191,7 @@ func TestAddGame(t *testing.T) {
 			*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
+		mockTx.On("Commit", mock.Anything).Return(nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -232,6 +233,7 @@ func TestAddGame(t *testing.T) {
 		mockPtwRow := new(MockRow)
 		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("ptw db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
+		mockTx.On("Rollback", mock.Anything).Return(nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
