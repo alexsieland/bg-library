@@ -26,13 +26,18 @@ func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) e
 		if err != nil {
 			return err
 		}
+		defer func() {
+			if tx != nil {
+				_ = tx.Rollback(c.Request.Context())
+			}
+		}()
 	}
 
-	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c, uuidToPgTypeUUID(gameId))
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.RestorePlayToWinGame(c, uuidToPgTypeUUID(gameId))
+			err = s.queries.RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 			if err != nil {
 				return err
 			}
@@ -41,6 +46,14 @@ func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) e
 		return err
 	}
 
+	if optTx == nil {
+		err := tx.Commit(c.Request.Context())
+		if err != nil {
+			log.Printf("Error committing play to win game transaction: %v", err)
+			return err
+		}
+		tx = nil
+	}
 	return nil
 }
 
