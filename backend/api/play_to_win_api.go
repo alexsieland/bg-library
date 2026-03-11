@@ -37,7 +37,7 @@ func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) e
 	if err != nil {
 		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+			err = s.queries.WithTx(tx).RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 			if err != nil {
 				return err
 			}
