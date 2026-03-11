@@ -294,7 +294,7 @@ func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPara
 		offset = *params.Offset
 		errorDetails.ValidateIntMin("offset", offset, 0)
 	}
-	if params.Title != nil {
+	if params.Title != nil && *params.Title != "" {
 		sanitizedTitle = SanitizeTitle(*params.Title)
 		errorDetails.ValidateStringLength("title", sanitizedTitle, 1, 100)
 	} else {
