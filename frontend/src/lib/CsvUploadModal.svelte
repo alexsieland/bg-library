@@ -9,6 +9,7 @@
     onCancel?: () => void;
     onUpload: (file: File) => Promise<{ imported: number }>;
     onSuccess?: (count: number) => void;
+    exampleCsvHref?: string;
   }
 
   let {
@@ -18,6 +19,7 @@
     onCancel,
     onUpload,
     onSuccess,
+    exampleCsvHref,
   }: Props = $props();
 
   let bulkUploadFile: FileList | undefined = $state();
@@ -66,6 +68,20 @@
       <Helper class="mt-2">
         Upload a CSV file with one item per line. Maximum file size: 10MB.
       </Helper>
+      {#if exampleCsvHref}
+        <Helper class="mt-1">
+          Download example file
+          <a
+            class="text-blue-600 underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            href={exampleCsvHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="csv-example-download-link"
+          >
+            here
+          </a>
+        </Helper>
+      {/if}
     </div>
 
     {#if error}

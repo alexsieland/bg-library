@@ -125,6 +125,7 @@
   onCancel={() => {
     // Handle cancel if needed
   }}
+  exampleCsvHref="/example_games.csv"
 />
 
 <!-- Search bar with debounce -->

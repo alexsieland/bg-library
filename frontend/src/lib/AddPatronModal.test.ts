@@ -16,6 +16,7 @@ vi.mock('./api-client', async (importOriginal) => {
     ...actual,
     apiClient: {
       addPatron: vi.fn(),
+      getPatron: vi.fn(),
       getPatronByBarcode: vi.fn(),
     },
   };
@@ -38,12 +39,12 @@ describe('AddPatronModal', () => {
 
   it('Should render the patron name input when open', async () => {
     render(AddPatronModal, { open: true });
-    expect(screen.getByPlaceholderText('Enter patron name')).toBeInTheDocument();
+    expect(screen.getByTestId('add-patron-name-input')).toBeInTheDocument();
   });
 
   it('Should pre-populate the name field with initialName when opened', async () => {
     render(AddPatronModal, { open: true, initialName: 'Bob' });
-    const input = screen.getByPlaceholderText('Enter patron name') as HTMLInputElement;
+    const input = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
     expect(input.value).toBe('Bob');
   });
 
@@ -54,14 +55,14 @@ describe('AddPatronModal', () => {
 
   it('Should enable the Add Patron button when the name field has content', async () => {
     render(AddPatronModal, { open: true });
-    const input = screen.getByPlaceholderText('Enter patron name');
+    const input = screen.getByTestId('add-patron-name-input');
     await fireEvent.input(input, { target: { value: 'Alice' } });
     expect(screen.getByTestId('add-patron-submit')).not.toBeDisabled();
   });
 
   it('Should not submit when Enter is pressed in the name input', async () => {
     render(AddPatronModal, { open: true });
-    const input = screen.getByPlaceholderText('Enter patron name');
+    const input = screen.getByTestId('add-patron-name-input');
     await fireEvent.input(input, { target: { value: 'Alice' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     expect(apiClient.addPatron).not.toHaveBeenCalled();
@@ -73,7 +74,7 @@ describe('AddPatronModal', () => {
 
     render(AddPatronModal, { open: true, onPatronCreated });
 
-    const input = screen.getByPlaceholderText('Enter patron name');
+    const input = screen.getByTestId('add-patron-name-input');
     await fireEvent.input(input, { target: { value: 'Alice' } });
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
@@ -95,7 +96,7 @@ describe('AddPatronModal', () => {
 
     render(AddPatronModal, { open: true });
 
-    const input = screen.getByPlaceholderText('Enter patron name');
+    const input = screen.getByTestId('add-patron-name-input');
     await fireEvent.input(input, { target: { value: 'Alice' } });
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
@@ -110,22 +111,54 @@ describe('AddPatronModal', () => {
       initialName: 'Alice',
     });
 
-    expect((screen.getByPlaceholderText('Enter patron name') as HTMLInputElement).value).toBe(
-      'Alice'
-    );
+    expect((screen.getByTestId('add-patron-name-input') as HTMLInputElement).value).toBe('Alice');
 
     await fireEvent.click(screen.getByText('Cancel'));
 
     await rerender({ open: true, initialName: '' });
 
     await waitFor(() => {
-      expect((screen.getByPlaceholderText('Enter patron name') as HTMLInputElement).value).toBe('');
+      expect((screen.getByTestId('add-patron-name-input') as HTMLInputElement).value).toBe('');
     });
   });
 
   it('Should not show the barcode input when isBarcodeEnabled is false', async () => {
     render(AddPatronModal, { open: true });
-    expect(screen.queryByPlaceholderText('Scan patron barcode…')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-patron-barcode-input')).not.toBeInTheDocument();
+  });
+
+  it('Should load the latest patron data when opened in edit mode', async () => {
+    vi.mocked(apiClient.getPatron).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice (latest)',
+      barcode: '12345',
+    });
+
+    render(AddPatronModal, {
+      open: true,
+      patronId: 'p1',
+      initialName: 'Alice (stale)',
+    });
+
+    await waitFor(() => {
+      expect(apiClient.getPatron).toHaveBeenCalledWith('p1');
+      const input = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+      expect(input.value).toBe('Alice (latest)');
+    });
+  });
+
+  it('Should show an error toast when loading patron data fails in edit mode', async () => {
+    vi.mocked(apiClient.getPatron).mockRejectedValue(new Error('Load failed'));
+
+    render(AddPatronModal, {
+      open: true,
+      patronId: 'p1',
+      initialName: 'Alice',
+    });
+
+    await waitFor(() => {
+      expect(toasts.add).toHaveBeenCalledWith('Failed to load game: Load failed', 'error');
+    });
   });
 });
 
@@ -138,7 +171,7 @@ describe('AddPatronModal (barcode enabled)', () => {
 
   it('Should show the barcode input when isBarcodeEnabled is true', async () => {
     render(AddPatronModal, { open: true });
-    expect(screen.getByPlaceholderText('Scan patron barcode…')).toBeInTheDocument();
+    expect(screen.getByTestId('add-patron-barcode-input')).toBeInTheDocument();
   });
 
   it('Should not submit when Enter is pressed in the barcode input', async () => {
@@ -146,7 +179,7 @@ describe('AddPatronModal (barcode enabled)', () => {
 
     render(AddPatronModal, { open: true });
 
-    const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…');
+    const barcodeInput = screen.getByTestId('add-patron-barcode-input');
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
@@ -161,7 +194,7 @@ describe('AddPatronModal (barcode enabled)', () => {
 
     render(AddPatronModal, { open: true });
 
-    const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement;
+    const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
@@ -176,7 +209,7 @@ describe('AddPatronModal (barcode enabled)', () => {
 
     render(AddPatronModal, { open: true });
 
-    const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement;
+    const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
@@ -196,11 +229,11 @@ describe('AddPatronModal (barcode enabled)', () => {
 
     render(AddPatronModal, { open: true, onPatronCreated });
 
-    await fireEvent.input(screen.getByPlaceholderText('Enter patron name'), {
+    await fireEvent.input(screen.getByTestId('add-patron-name-input'), {
       target: { value: 'Alice' },
     });
 
-    const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement;
+    const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
     await waitFor(() => expect(barcodeInput.value).toBe('1234567890'));
@@ -225,7 +258,7 @@ describe('AddPatronModal (barcode enabled)', () => {
       initialName: 'Alice',
     });
 
-    const barcodeInput = screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement;
+    const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
     await waitFor(() => expect(barcodeInput.value).toBe('1234567890'));
@@ -236,10 +269,27 @@ describe('AddPatronModal (barcode enabled)', () => {
     await rerender({ open: true, initialName: '' });
 
     await waitFor(() => {
-      expect((screen.getByPlaceholderText('Enter patron name') as HTMLInputElement).value).toBe('');
-      expect((screen.getByPlaceholderText('Scan patron barcode…') as HTMLInputElement).value).toBe(
-        ''
-      );
+      expect((screen.getByTestId('add-patron-name-input') as HTMLInputElement).value).toBe('');
+      expect((screen.getByTestId('add-patron-barcode-input') as HTMLInputElement).value).toBe('');
+    });
+  });
+
+  it('Should pre-populate barcode from latest patron data in edit mode', async () => {
+    vi.mocked(apiClient.getPatron).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice (latest)',
+      barcode: '9780307455925',
+    });
+
+    render(AddPatronModal, {
+      open: true,
+      patronId: 'p1',
+      initialName: 'Alice (stale)',
+    });
+
+    await waitFor(() => {
+      const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
+      expect(barcodeInput.value).toBe('9780307455925');
     });
   });
 });

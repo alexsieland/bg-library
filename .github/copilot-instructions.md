@@ -235,6 +235,41 @@ it('Should display checkout heading', () => {
 });
 ```
 
+#### Test Element Selection Best Practices
+When writing frontend tests, **always prefer `data-testid` attributes** for element selection over text content, roles, or other fragile DOM selectors.
+
+**Important**: Before writing a test assertion that references text, roles, or other DOM structure:
+1. **Check if a `data-testid` already exists** on the element you want to test
+2. **If no `data-testid` exists**, add one to the component first
+3. **Then use the `data-testid`** in your test
+
+**Naming Convention**: Use descriptive, kebab-case names. Examples:
+- `check-out-table`, `check-in-table`, `ptw-table` (for table components)
+- `ptw-record-button-{id}` (for buttons with dynamic identifiers)
+- `admin-view-tabs` (for container elements)
+- `ptw-empty-state` (for conditional rendered states)
+
+**Why this matters**: Text content, role attributes, and DOM structure are fragile and break when UI changes. `data-testid` attributes are intentionally added for testing and remain stable across refactors. This keeps tests maintainable and reliable.
+
+**Example:**
+```typescript
+// ❌ Fragile — breaks if heading text changes
+it('Should display checkout heading', () => {
+  render(App);
+  expect(screen.getByText('Checkout Games')).toBeInTheDocument();
+});
+
+// ✅ Robust — stable, intentional test hook
+it('Should display checkout heading', () => {
+  render(App);
+  expect(screen.getByTestId('check-out-table')).toBeInTheDocument();
+});
+```
+
+#### Opportunistic Test Cleanup
+- When editing an existing test, also bring that touched test in line with current testing standards (for example: `data-testid` usage, component isolation, and naming convention), even if those fixes are not the primary reason for the change.
+
+
 #### Component Isolation Rule
 Each test file (`Foo.test.ts`) must **only test the behavior of its own component** (`Foo.svelte`). If `Foo.svelte` renders a child component `Bar.svelte`, mock `Bar.svelte` — do not write assertions that depend on `Bar`'s internal DOM structure or behavior. `Bar.svelte` has its own test file for that.
 

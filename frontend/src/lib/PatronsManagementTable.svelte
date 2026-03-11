@@ -100,6 +100,7 @@
 
 <AddPatronModal
   bind:open={addPatronModalOpen}
+  patronId={selectedPatron?.patronId ?? null}
   initialName={selectedPatron?.name ?? ''}
   onPatronCreated={handlePatronSaved}
   onCancel={() => {
@@ -124,6 +125,7 @@
   onCancel={() => {
     // Handle cancel if needed
   }}
+  exampleCsvHref="/example_patrons.csv"
 />
 
 <!-- Search bar with debounce -->

@@ -4,6 +4,7 @@
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
   export let open = false;
+  export let patronId: string | null = null;
   export let initialName: string = '';
   export let onPatronCreated: (patron: Patron) => void = () => {};
   export let onCancel: () => void = () => {};
@@ -12,13 +13,27 @@
   let barcodeLoading = false;
   let loading = false;
   // Re-apply initialName and reset fields every time the modal opens
-  $: if (open) {
+  $: if (open && patronId) {
+    loadPatronData();
+  } else if (open) {
     patronName = initialName;
-    patronBarcode = '';
   } else {
     patronName = '';
     patronBarcode = '';
   }
+
+  async function loadPatronData() {
+    if (!patronId) return;
+    try {
+      const patron = await apiClient.getPatron(patronId);
+      patronName = patron.name;
+      patronBarcode = patron.barcode || '';
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to load game';
+      toasts.add(`Failed to load game: ${message}`, 'error');
+    }
+  }
+
   async function handleSubmit() {
     if (!patronName.trim()) return;
     loading = true;
@@ -83,6 +98,7 @@
       <Label for="addPatronName" class="mb-2">Patron Name</Label>
       <Input
         id="addPatronName"
+        data-testid="add-patron-name-input"
         placeholder="Enter patron name"
         bind:value={patronName}
         onkeydown={handleNameKeydown}
@@ -103,6 +119,7 @@
         <div class="relative">
           <Input
             id="addPatronBarcode"
+            data-testid="add-patron-barcode-input"
             placeholder="Scan patron barcode…"
             bind:value={patronBarcode}
             onkeydown={handleBarcodeKeydown}

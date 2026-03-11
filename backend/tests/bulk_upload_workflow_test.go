@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,12 +45,12 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 	port, err := pgContainer.MappedPort(ctx, "5432")
 	assert.NoError(t, err)
 
-	os.Setenv("DB_HOST", host)
-	os.Setenv("DB_PORT", port.Port())
-	os.Setenv("DB_USER", "postgres")
-	os.Setenv("DB_PASSWORD", "postgres")
-	os.Setenv("DB_NAME", "librarydb")
-	os.Setenv("GIN_MODE", "release")
+	t.Setenv("DB_HOST", host)
+	t.Setenv("DB_PORT", port.Port())
+	t.Setenv("DB_USER", "postgres")
+	t.Setenv("DB_PASSWORD", "postgres")
+	t.Setenv("DB_NAME", "librarydb")
+	t.Setenv("GIN_MODE", "release")
 
 	server := api.NewServer()
 	err = server.Database.Connect()
@@ -69,21 +68,23 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 	// 2. Admin prepares CSV files for bulk upload
 	// CSV of board games for the library
 	gamesCSV := strings.Join([]string{
-		"Catan",
-		"Ticket to Ride",
-		"Wingspan",
-		"Azul",
-		"Pandemic",
-		"7 Wonders",
+		"title,barcode,isPlayToWin",
+		"Catan,GAME-001,false",
+		"Ticket to Ride,,false",
+		"Wingspan,GAME-003,false",
+		"Azul,,false",
+		"Pandemic,GAME-005,true",
+		"7 Wonders,,false",
 	}, "\n")
 
 	// CSV of convention attendees (patrons)
 	patronsCSV := strings.Join([]string{
-		"Alice Johnson",
-		"Bob Smith",
-		"Carol Williams",
-		"David Brown",
-		"Eve Davis",
+		"name,barcode",
+		"Alice Johnson,PATRON-001",
+		"Bob Smith,",
+		"Carol Williams,PATRON-003",
+		"David Brown,",
+		"Eve Davis,PATRON-005",
 	}, "\n")
 
 	// 3. Upload games CSV
@@ -118,15 +119,46 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 		"Pandemic":       false,
 		"7 Wonders":      false,
 	}
+	gameByTitle := map[string]api.GameStatus{}
 
 	for _, gameStatus := range listGamesResp.JSON200.Games {
 		if _, exists := expectedGameTitles[gameStatus.Game.Title]; exists {
 			expectedGameTitles[gameStatus.Game.Title] = true
+			gameByTitle[gameStatus.Game.Title] = gameStatus
 		}
+		assert.NotEqual(t, "title", gameStatus.Game.Title, "Header row should not be imported as a game")
 	}
 
 	for title, found := range expectedGameTitles {
 		assert.True(t, found, "Game '%s' should be in the library", title)
+	}
+
+	// Verify imported metadata is preserved
+	if assert.Contains(t, gameByTitle, "Catan") {
+		catanResp, err := client.GetGameWithResponse(ctx, gameByTitle["Catan"].Game.GameId)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, catanResp.StatusCode())
+		if assert.NotNil(t, catanResp.JSON200) && assert.NotNil(t, catanResp.JSON200.Barcode) {
+			assert.Equal(t, "GAME-001", *catanResp.JSON200.Barcode)
+		}
+		assert.False(t, gameByTitle["Catan"].Game.IsPlayToWin)
+	}
+	if assert.Contains(t, gameByTitle, "Pandemic") {
+		pandemicResp, err := client.GetGameWithResponse(ctx, gameByTitle["Pandemic"].Game.GameId)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, pandemicResp.StatusCode())
+		if assert.NotNil(t, pandemicResp.JSON200) && assert.NotNil(t, pandemicResp.JSON200.Barcode) {
+			assert.Equal(t, "GAME-005", *pandemicResp.JSON200.Barcode)
+		}
+		assert.True(t, gameByTitle["Pandemic"].Game.IsPlayToWin)
+	}
+	if assert.Contains(t, gameByTitle, "Ticket to Ride") {
+		ticketResp, err := client.GetGameWithResponse(ctx, gameByTitle["Ticket to Ride"].Game.GameId)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, ticketResp.StatusCode())
+		if assert.NotNil(t, ticketResp.JSON200) {
+			assert.Nil(t, ticketResp.JSON200.Barcode)
+		}
 	}
 
 	// 6. Verify all games are available (not checked out)
@@ -149,15 +181,27 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 		"David Brown":    false,
 		"Eve Davis":      false,
 	}
+	patronByName := map[string]api.Patron{}
 
 	for _, patron := range listPatronsResp.JSON200.Patrons {
 		if _, exists := expectedPatronNames[patron.Name]; exists {
 			expectedPatronNames[patron.Name] = true
+			patronByName[patron.Name] = patron
 		}
+		assert.NotEqual(t, "name", patron.Name, "Header row should not be imported as a patron")
 	}
 
 	for name, found := range expectedPatronNames {
 		assert.True(t, found, "Patron '%s' should be in the system", name)
+	}
+
+	if assert.Contains(t, patronByName, "Alice Johnson") {
+		if assert.NotNil(t, patronByName["Alice Johnson"].Barcode) {
+			assert.Equal(t, "PATRON-001", *patronByName["Alice Johnson"].Barcode)
+		}
+	}
+	if assert.Contains(t, patronByName, "Bob Smith") {
+		assert.Nil(t, patronByName["Bob Smith"].Barcode)
 	}
 
 	// 8. Search for a specific game to verify search functionality works with bulk uploaded data
@@ -201,7 +245,6 @@ func TestAdminBulkUploadWorkflow(t *testing.T) {
 	assert.True(t, foundBob, "Should find 'Bob Smith' in search results")
 
 	// 10. Verify that we can check out one of the bulk-uploaded games to one of the bulk-uploaded patrons
-	// Get the first game and first patron
 	gameToCheckOut := listGamesResp.JSON200.Games[0].Game.GameId
 	patronToCheckOut := listPatronsResp.JSON200.Patrons[0].PatronId
 

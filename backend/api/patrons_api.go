@@ -85,8 +85,13 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	// Process each row
 	var errorDetails ErrorDetails
 	recordCount := int32(0)
+	firstRow := true
 	for {
 		record, err := csvReader.Read()
+		if firstRow {
+			firstRow = false
+			continue
+		}
 		if err == io.EOF {
 			break
 		}
@@ -98,13 +103,14 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 		if len(record) == 0 {
 			continue
 		}
+
 		name := record[0]
+
 		var barcode *string
-		// Disable the ability to set the barcode on bulk add for now
-		// TODO Add this back in once barcode implementation is complete
-		//if len(record) > 1 && record[1] != "" {
-		//	barcode = &record[1]
-		//}
+		if len(record) > 1 && record[1] != "" {
+			barcode = &record[1]
+			errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
+		}
 
 		_, err = s.insertPatron(c, name, barcode, &errorDetails, &tx)
 		if errors.Is(err, errValidation) {

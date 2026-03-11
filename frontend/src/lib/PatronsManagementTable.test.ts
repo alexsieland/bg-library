@@ -16,6 +16,7 @@ vi.mock('./api-client', async (importOriginal) => {
       deletePatron: vi.fn(),
       addPatron: vi.fn(),
       updatePatron: vi.fn(),
+      getPatron: vi.fn(),
       bulkAddPatrons: vi.fn(),
     },
   };
@@ -36,6 +37,12 @@ describe('PatronsManagementTable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(apiClient.listPatrons).mockResolvedValue(mockPatrons);
+    vi.mocked(apiClient.getPatron).mockImplementation(async (patronId: string) => {
+      if (patronId === 'p1') {
+        return { patronId: 'p1', name: 'Alice (latest)' };
+      }
+      return { patronId, name: 'Unknown Patron' };
+    });
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
   // -------------------------------------------------------------------------
@@ -122,19 +129,22 @@ describe('PatronsManagementTable', () => {
     render(PatronsManagementTable);
     await fireEvent.click(screen.getByRole('button', { name: /Add Patron/i }));
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Enter patron name')).toBeInTheDocument();
+      expect(screen.getByTestId('add-patron-name-input')).toBeInTheDocument();
     });
   });
-  it('Should open the Edit modal pre-populated with the patron name when Edit is clicked', async () => {
+  it('Should open the Edit modal pre-populated with the latest patron name when Edit is clicked', async () => {
     render(PatronsManagementTable);
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
+
     const editButtons = screen.getAllByRole('button', { name: 'Edit' });
     await fireEvent.click(editButtons[0]);
+
     await waitFor(() => {
-      const input = screen.getByPlaceholderText('Enter patron name') as HTMLInputElement;
-      expect(input.value).toBe('Alice');
+      expect(apiClient.getPatron).toHaveBeenCalledWith('p1');
+      const input = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+      expect(input.value).toBe('Alice (latest)');
     });
   });
   it('Should open the delete confirmation when the Delete button is clicked', async () => {
@@ -192,7 +202,7 @@ describe('PatronsManagementTable', () => {
     vi.mocked(apiClient.addPatron).mockResolvedValue({ patronId: 'p4', name: 'Diana' });
     render(PatronsManagementTable);
     await fireEvent.click(screen.getByRole('button', { name: /Add Patron/i }));
-    const nameInput = screen.getByPlaceholderText('Enter patron name');
+    const nameInput = screen.getByTestId('add-patron-name-input');
     await fireEvent.input(nameInput, { target: { value: 'Diana' } });
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
     await waitFor(() => {
