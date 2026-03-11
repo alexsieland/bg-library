@@ -107,7 +107,7 @@ func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReaso
 func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
 	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNotFound(err) {
 			notFound(c)
 			return
 		}

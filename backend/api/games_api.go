@@ -175,10 +175,14 @@ func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
+func (s Server) getGame(c *gin.Context, gameId types.UUID) (db.VwLibraryGame, error) {
+	return s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+}
+
 func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
 	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNotFound(err) {
 			notFound(c)
 			return
 		}
@@ -211,12 +215,15 @@ func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
 }
 
 func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
+	// validate json body
 	var jsonObject UpdateGameJSONRequestBody
 	err := c.ShouldBindBodyWithJSON(&jsonObject)
 	if err != nil {
 		malformedJson(c)
 		return
 	}
+
+	// validate field values
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("title", jsonObject.Title, 1, 100)
 	if jsonObject.Barcode != nil {
@@ -227,16 +234,36 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 		return
 	}
 
-	dbBarcode := pgtype.Text{Valid: false}
-	if jsonObject.Barcode != nil {
-		dbBarcode = pgtype.Text{String: *jsonObject.Barcode, Valid: true}
+	// get the current game entry to determine if it is currently a play to win game
+	dbGame, err := s.getGame(c, gameId)
+	if err != nil {
+		// since edit will fail anyways if game is not found, we can safely return a client error here
+		if isNotFound(err) {
+			notFound(c)
+			return
+		}
+		internalError(c, err)
+		return
 	}
 
+	// start a db transaction
+	tx, err := s.Database.BeginTx(c, pgx.TxOptions{})
+	if err != nil {
+		internalError(c, err)
+		return
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback(c.Request.Context())
+		}
+	}()
+
+	// update the game entry
 	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
 		ID:             uuidToPgTypeUUID(gameId),
 		Title:          jsonObject.Title,
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
-		Barcode:        dbBarcode,
+		Barcode:        stringToPgText(jsonObject.Barcode),
 	})
 	if err != nil {
 		// if FK violation, then this means the game id is invalid, so return 404
@@ -248,6 +275,38 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 		internalError(c, err)
 		return
 	}
+
+	// if edit included play to win status, then see if we need to add or remove the play to win game entry
+	if jsonObject.IsPlayToWin != nil {
+		if *jsonObject.IsPlayToWin == true && !dbGame.PlayToWinGameID.Valid {
+			err = s.addPlayToWin(c, gameId, &tx)
+			if err != nil {
+				log.Printf("Error adding play to win game: %v", err)
+				internalError(c, err)
+				return
+			}
+		} else if *jsonObject.IsPlayToWin == false && dbGame.PlayToWinGameID.Valid {
+			// If game was play to win, but is now not, then remove it with the reason 'mistake'
+			reason := string(db.PlayToWinGameDeletionTypeMistake)
+			err = s.removePlayToWin(c, gameId, &reason, nil, &tx)
+			if err != nil {
+				log.Printf("Error removing play to win game: %v", err)
+				internalError(c, err)
+				return
+			}
+		}
+	}
+
+	// commit the transaction
+	err = tx.Commit(c.Request.Context())
+	if err != nil {
+		internalError(c, err)
+		return
+	}
+
+	// prevent deferred rollback after a successful commit
+	tx = nil
+
 	c.JSON(http.StatusNoContent, nil)
 }
 
