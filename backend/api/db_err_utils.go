@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -23,4 +24,8 @@ func isUniqueConstraintViolation(err error) bool {
 		return true
 	}
 	return false
+}
+
+func isNotFound(err error) bool {
+	return errors.Is(err, pgx.ErrNoRows)
 }

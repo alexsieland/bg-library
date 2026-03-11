@@ -155,7 +155,7 @@ func (s Server) DeletePatron(c *gin.Context, patronId types.UUID) {
 func (s Server) GetPatron(c *gin.Context, patronId types.UUID) {
 	dbPatron, err := s.queries.GetPatron(c.Request.Context(), uuidToPgTypeUUID(patronId))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNotFound(err) {
 			notFound(c)
 			return
 		}
@@ -177,7 +177,7 @@ func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
 	var barcode = pgtype.Text{String: patronBarcode, Valid: true}
 	dbPatron, err := s.queries.GetPatronByBarcode(c.Request.Context(), barcode)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNotFound(err) {
 			notFound(c)
 			return
 		}
@@ -214,7 +214,7 @@ func (s Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
 		Barcode:  dbBarcode,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNotFound(err) {
 			notFound(c)
 			return
 		}
