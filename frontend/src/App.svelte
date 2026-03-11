@@ -4,10 +4,11 @@
   import CheckInTable from './lib/CheckInTable.svelte';
   import AdminView from './lib/AdminView.svelte';
   import ToastContainer from './lib/ToastContainer.svelte';
+  import PlayToWinTable from './lib/PlayToWinTable.svelte';
 
-  let activeTab: 'checkout' | 'checkin' | 'admin' = 'checkout';
+  export let activeTab: 'checkout' | 'checkin' | 'ptw' | 'admin' = 'checkout';
 
-  function handleTabChange(tab: 'checkout' | 'checkin' | 'admin') {
+  function handleTabChange(tab: 'checkout' | 'checkin' | 'ptw' | 'admin') {
     activeTab = tab;
   }
 </script>
@@ -22,6 +23,8 @@
           Checkout Games
         {:else if activeTab === 'checkin'}
           Check In Games
+        {:else if activeTab === 'ptw'}
+          Play To Win
         {:else}
           Admin
         {/if}
@@ -35,6 +38,8 @@
         <CheckOutTable />
       {:else if activeTab === 'checkin'}
         <CheckInTable />
+      {:else if activeTab === 'ptw'}
+        <PlayToWinTable />
       {:else}
         <AdminView />
       {/if}

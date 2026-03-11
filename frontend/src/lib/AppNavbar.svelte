@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Navbar, NavBrand, NavHamburger, NavUl, NavLi } from 'flowbite-svelte';
-  export let activeTab: 'checkout' | 'checkin' | 'admin' = 'checkout';
-  export let onTabChange: (tab: 'checkout' | 'checkin' | 'admin') => void = () => {};
+  export let activeTab: 'checkout' | 'checkin' | 'ptw' | 'admin' = 'checkout';
+  export let onTabChange: (tab: 'checkout' | 'checkin' | 'ptw' | 'admin') => void = () => {};
 </script>
 
 <Navbar fluid={true} class="bg-slate-800 text-white shadow-md">
@@ -35,6 +35,18 @@
       class="cursor-pointer {activeTab === 'checkin' ? 'text-blue-300' : 'text-white'}"
     >
       Check In
+    </NavLi>
+    <NavLi
+      href="#"
+      activeClass="text-blue-300 bg-blue-700 md:bg-transparent md:text-blue-300"
+      nonActiveClass="text-white hover:text-blue-200"
+      onclick={(e) => {
+        e.preventDefault();
+        onTabChange('ptw');
+      }}
+      class="cursor-pointer {activeTab === 'ptw' ? 'text-blue-300' : 'text-white'}"
+    >
+      Play To Win
     </NavLi>
     <NavLi
       href="#"

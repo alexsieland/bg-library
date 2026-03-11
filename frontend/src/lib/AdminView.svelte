@@ -4,7 +4,7 @@
   import AdminPatronsTab from './AdminPatronsTab.svelte';
 </script>
 
-<Tabs style="underline" class="px-6 pt-4">
+<Tabs style="underline" class="px-6 pt-4" data-testid="admin-view-tabs">
   <TabItem open title="Games">
     <AdminGamesTab />
   </TabItem>

@@ -6,7 +6,8 @@
     TableBodyRow,
     TableHead,
     TableHeadCell,
-    Button, Badge,
+    Button,
+    Badge,
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
@@ -151,7 +152,7 @@
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
 {:else}
-  <Table shadow hoverable={true} class="w-full">
+  <Table shadow hoverable={true} class="w-full" data-testid="check-in-table">
     <TableHead>
       <TableHeadCell>Game Title</TableHeadCell>
       <TableHeadCell>Borrower</TableHeadCell>
