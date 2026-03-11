@@ -11,4 +11,9 @@
   <TabItem title="Patrons">
     <AdminPatronsTab />
   </TabItem>
+  <TabItem title="Play-to-Win">
+    <div class="flex h-full flex-col items-center justify-center">
+      <p class="text-gray-500">Coming soon...</p>
+    </div>
+  </TabItem>
 </Tabs>
