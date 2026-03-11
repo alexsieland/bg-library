@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import RecordPlayToWinModal from './RecordPlayToWinModal.svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { PlayToWinGame } from './api-client';
+import { apiClient, type PlayToWinGame } from './api-client';
 
 vi.mock('./config', () => ({
   getBackendUrl: () => 'http://localhost:8080',
@@ -34,9 +34,9 @@ describe('RecordPlayToWinModal', () => {
     vi.clearAllMocks();
   });
 
-  it('Should render the modal with playtime input when open', () => {
+  it('Should not render playtime input when open', () => {
     render(RecordPlayToWinModal, { props: { open: true, playToWinGame: mockGame } });
-    expect(screen.getByTestId('ptw-playtime-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('ptw-playtime-input')).not.toBeInTheDocument();
   });
 
   it('Should render one player entry field pair by default', () => {
@@ -91,6 +91,61 @@ describe('RecordPlayToWinModal', () => {
     // After removal, we should have only 1 entry left
     await waitFor(() => {
       expect(screen.queryByTestId('ptw-remove-entry-button-0')).not.toBeInTheDocument();
+    });
+  });
+
+  it('Should disable submit button by default when required fields are empty', () => {
+    render(RecordPlayToWinModal, { props: { open: true, playToWinGame: mockGame } });
+    expect(screen.getByTestId('ptw-record-submit-button')).toBeDisabled();
+  });
+
+  it('Should enable submit button when all required fields are filled', async () => {
+    render(RecordPlayToWinModal, { props: { open: true, playToWinGame: mockGame } });
+
+    await fireEvent.input(screen.getByTestId('ptw-entrant-name-0'), {
+      target: { value: 'Jane Doe' },
+    });
+    await fireEvent.input(screen.getByTestId('ptw-entrant-id-0'), {
+      target: { value: 'ID-001' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ptw-record-submit-button')).toBeEnabled();
+    });
+  });
+
+  it('Should keep submit button disabled when any added row has incomplete required fields', async () => {
+    render(RecordPlayToWinModal, { props: { open: true, playToWinGame: mockGame } });
+
+    await fireEvent.input(screen.getByTestId('ptw-entrant-name-0'), {
+      target: { value: 'Jane Doe' },
+    });
+    await fireEvent.input(screen.getByTestId('ptw-entrant-id-0'), {
+      target: { value: 'ID-001' },
+    });
+    await fireEvent.click(screen.getByTestId('ptw-add-entry-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ptw-record-submit-button')).toBeDisabled();
+    });
+  });
+
+  it('Should call addPlayToWinSession with entrant rows when submit is clicked', async () => {
+    render(RecordPlayToWinModal, { props: { open: true, playToWinGame: mockGame } });
+
+    await fireEvent.input(screen.getByTestId('ptw-entrant-name-0'), {
+      target: { value: 'Jane Doe' },
+    });
+    await fireEvent.input(screen.getByTestId('ptw-entrant-id-0'), {
+      target: { value: 'ID-001' },
+    });
+
+    await fireEvent.click(screen.getByTestId('ptw-record-submit-button'));
+
+    await waitFor(() => {
+      expect(apiClient.addPlayToWinSession).toHaveBeenCalledWith('ptw-1', [
+        { entrantName: 'Jane Doe', entrantUniqueId: 'ID-001' },
+      ]);
     });
   });
 

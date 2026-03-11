@@ -17,8 +17,8 @@
   }
 
   let entries: Entry[] = [{ id: crypto.randomUUID(), entrantName: '', entrantUniqueId: '' }];
-  let playtimeMinutes = 0;
   let submitting = false;
+  let canSubmit = false;
 
   function addEntry() {
     if (entries.length < MAX_ENTRIES) {
@@ -31,7 +31,7 @@
   }
 
   async function handleSubmit() {
-    if (!playToWinGame) return;
+    if (!playToWinGame || !canSubmit) return;
 
     // Validate at least one entry
     if (entries.length === 0) {
@@ -53,11 +53,7 @@
         entrantUniqueId: e.entrantUniqueId.trim(),
       }));
 
-      await apiClient.addPlayToWinSession(
-        playToWinGame.playToWinId,
-        playtimeMinutes,
-        sessionEntries
-      );
+      await apiClient.addPlayToWinSession(playToWinGame.playToWinId, sessionEntries);
 
       toasts.add(`Successfully recorded session for ${playToWinGame.title}`, 'success');
       open = false;
@@ -72,13 +68,16 @@
 
   function resetForm() {
     entries = [{ id: crypto.randomUUID(), entrantName: '', entrantUniqueId: '' }];
-    playtimeMinutes = 0;
   }
 
   // Reset form when modal is opened/closed
   $: if (open) {
     resetForm();
   }
+
+  $: canSubmit =
+    entries.length > 0 &&
+    entries.every((e) => e.entrantName.trim().length > 0 && e.entrantUniqueId.trim().length > 0);
 
   const idLabel = getPlayToWinIdLabel();
 </script>
@@ -89,25 +88,11 @@
   size="lg"
   autoclose={false}
   dismissable={false}
-  backdrop="static"
+  outsideclose={false}
   class="w-full"
 >
   <div class="space-y-6" data-testid="ptw-record-modal">
     {#if playToWinGame}
-      <!-- Playtime Input -->
-      <div class="space-y-2">
-        <Label for="playtime">Estimated Playtime (minutes)</Label>
-        <Input
-          id="playtime"
-          type="number"
-          placeholder="0"
-          bind:value={playtimeMinutes}
-          min="0"
-          disabled={submitting}
-          data-testid="ptw-playtime-input"
-        />
-      </div>
-
       <!-- Entries Section -->
       <div class="max-h-96 space-y-3 overflow-y-auto">
         <div class="text-sm font-semibold text-slate-700 dark:text-slate-300">Players</div>
@@ -186,7 +171,7 @@
         </Button>
         <Button
           color="emerald"
-          disabled={submitting}
+          disabled={submitting || !canSubmit}
           onclick={handleSubmit}
           data-testid="ptw-record-submit-button"
         >

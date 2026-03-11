@@ -284,10 +284,14 @@ class ApiClient {
 
   async addPlayToWinSession(
     playToWinId: string,
-    playtimeMinutes: number,
-    entries: CreatePlayToWinSessionEntry[]
+    entries: CreatePlayToWinSessionEntry[],
+    playtimeMinutes?: number
   ): Promise<PlayToWinSession> {
-    const reqBody: CreatePlayToWinSessionRequest = { playToWinId, playtimeMinutes, entries };
+    const reqBody: CreatePlayToWinSessionRequest = {
+      playToWinId,
+      entries,
+      ...(playtimeMinutes !== undefined ? { playtimeMinutes } : {}),
+    };
     const res = await this.client.POST(API_PATHS.addPlayToWinSession, {
       body: reqBody,
     });
