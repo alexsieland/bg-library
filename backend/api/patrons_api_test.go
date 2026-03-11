@@ -493,7 +493,7 @@ func TestBulkAddPatrons(t *testing.T) {
 		name2 := "Jane Smith"
 
 		// CSV content: "John Doe"\n"Jane Smith"
-		csvContent := name1 + "\n" + name2
+		csvContent := "name\n" + name1 + "\n" + name2
 		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
 
 		mockTx := new(MockTx)
@@ -539,30 +539,28 @@ func TestBulkAddPatrons(t *testing.T) {
 		mockTx.AssertExpectations(t)
 	})
 
-	t.Run("Should skip invalid records and continue processing when validation fails", func(t *testing.T) {
+	t.Run("Should return 400 Bad Request when any CSV record fails validation", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		patronID := uuid.New()
 		validName := "John Doe"
-		invalidName := "" // Empty name should fail validation
+		invalidName := string(make([]byte, 101)) // Too long name should fail validation
 
-		csvContent := validName + "\n" + invalidName
+		csvContent := "name\n" + validName + "\n" + invalidName
 		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
 
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
-		// Only the valid patron
 		mockRow := new(MockRow)
 		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
 			*args.Get(1).(*string) = validName
 			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false} // deleted_at
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}           // barcode
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validName, pgtype.Text{Valid: false}}).Return(mockRow)
-
-		mockTx.On("Commit", mock.Anything).Return(nil)
+		mockTx.On("Rollback", mock.Anything).Return(nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -571,11 +569,8 @@ func TestBulkAddPatrons(t *testing.T) {
 
 		server.BulkAddPatrons(c)
 
-		assert.Equal(t, http.StatusCreated, w.Code)
-		var response BulkAddResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, int32(1), response.Imported)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
@@ -602,7 +597,7 @@ func TestBulkAddPatrons(t *testing.T) {
 	t.Run("Should return 500 Internal Server Error when DB error occurs during insert", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		name := "John Doe"
-		csvContent := name
+		csvContent := "name\n" + name
 		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
 
 		mockTx := new(MockTx)
@@ -630,7 +625,7 @@ func TestBulkAddPatrons(t *testing.T) {
 		server, mockDB := setupTestServer()
 		patronID := uuid.New()
 		name := "John Doe"
-		csvContent := name
+		csvContent := "name\n" + name
 		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
 
 		mockTx := new(MockTx)
@@ -658,6 +653,45 @@ func TestBulkAddPatrons(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "commit error")
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should import patrons with barcode when barcode column is present", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		patronID := uuid.New()
+		name := "John Doe"
+		barcode := "P12345"
+
+		csvContent := "name,barcode\n" + name + "," + barcode
+		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+
+		mockTx := new(MockTx)
+		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
+			*args.Get(1).(*string) = name
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{String: barcode, Valid: true}
+		}).Return(nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
+		mockTx.On("Commit", mock.Anything).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
+		c.Request.Header.Set("Content-Type", "text/plain")
+
+		server.BulkAddPatrons(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var response BulkAddResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), response.Imported)
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})

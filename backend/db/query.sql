@@ -27,14 +27,15 @@ RETURNING *;
 
 -- name: EditGame :exec
 UPDATE games
-    SET title = $2,
-        sanitized_title = $3,
-        barcode = $4
+SET title = $2,
+    sanitized_title = $3,
+    barcode = $4
 WHERE id = $1;
 
 -- name: DeleteGame :exec
 UPDATE games
-    SET deleted_at = now()
+SET deleted_at = now(),
+    barcode = NULL
 WHERE deleted_at IS NULL AND id = $1;
 
 -- name: ListPatrons :many
@@ -66,13 +67,15 @@ RETURNING *;
 
 -- name: EditPatron :exec
 UPDATE patrons
-set full_name = $2,
+SET full_name = $2,
     barcode = $3
 WHERE id = $1;
 
 -- name: DeletePatron :exec
 UPDATE patrons
-set deleted_at = now()
+SET deleted_at = now(),
+    barcode = NULL,
+    full_name = 'Deleted Patron'
 WHERE deleted_at IS NULL AND id = $1;
 
 -- name: CheckOutGame :one

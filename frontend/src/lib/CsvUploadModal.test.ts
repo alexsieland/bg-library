@@ -193,4 +193,33 @@ describe('CsvUploadModal', () => {
       expect(toasts.add).toHaveBeenCalledWith('Successfully imported 1 item', 'success');
     });
   });
+
+  it('Should not render example download link when no exampleCsvHref is provided', () => {
+    const onUpload = vi.fn();
+    render(CsvUploadModal, {
+      open: true,
+      onUpload,
+    });
+
+    expect(screen.queryByTestId('csv-example-download-link')).not.toBeInTheDocument();
+  });
+
+  it('Should render example download link when exampleCsvHref is provided', () => {
+    const onUpload = vi.fn();
+    const exampleCsvHref = '/example-files/games.csv';
+
+    render(CsvUploadModal, {
+      open: true,
+      onUpload,
+      exampleCsvHref,
+    });
+
+    expect(screen.getByText('Download example file')).toBeInTheDocument();
+
+    const link = screen.getByTestId('csv-example-download-link');
+    expect(link).toHaveAttribute('href', exampleCsvHref);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).toHaveTextContent('here');
+  });
 });

@@ -101,8 +101,13 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	// Process each row
 	var errorDetails ErrorDetails
 	recordCount := int32(0)
+	firstRow := true
 	for {
 		record, err := csvReader.Read()
+		if firstRow {
+			firstRow = false
+			continue
+		}
 		if err == io.EOF {
 			break
 		}
@@ -111,18 +116,26 @@ func (s Server) BulkAddGames(c *gin.Context) {
 			internalError(c, err)
 			return
 		}
+
 		if len(record) == 0 {
 			continue
 		}
-		title := record[0]
-		var barcode *string
-		// Disable the ability to set the barcode on bulk add for now
-		// TODO Add this back in once barcode implementation is complete
-		//if len(record) > 1 && record[1] != "" {
-		//	barcode = &record[1]
-		//}
 
-		_, err = s.insertGame(c, title, barcode, false, &errorDetails, &tx)
+		title := record[0]
+		errorDetails.ValidateStringLength("title", title, 1, 100)
+
+		var barcode *string
+		if len(record) > 1 && record[1] != "" {
+			barcode = &record[1]
+			errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
+		}
+
+		isPlayToWin := false
+		if len(record) > 2 && record[2] == "true" {
+			isPlayToWin = true
+		}
+
+		_, err = s.insertGame(c, title, barcode, isPlayToWin, &errorDetails, &tx)
 		if errors.Is(err, errValidation) {
 			continue
 		}
