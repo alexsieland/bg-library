@@ -122,7 +122,7 @@ func (q *Queries) CreatePlayToWinEntry(ctx context.Context, arg CreatePlayToWinE
 
 const createPlayToWinGame = `-- name: CreatePlayToWinGame :one
 INSERT INTO play_to_win_games (game_id) VALUES ($1)
-RETURNING id, game_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
+RETURNING id, game_id, winner_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
 `
 
 func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (PlayToWinGame, error) {
@@ -131,6 +131,7 @@ func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (
 	err := row.Scan(
 		&i.ID,
 		&i.GameID,
+		&i.WinnerID,
 		&i.CreatedAt,
 		&i.DeletedAt,
 		&i.DeletionReason,
@@ -450,14 +451,24 @@ func (q *Queries) GetPlayToWinEntries(ctx context.Context, playToWinID pgtype.UU
 }
 
 const getPlayToWinGame = `-- name: GetPlayToWinGame :one
-SELECT id, game_id, created_at FROM vw_play_to_win_games
-WHERE id = $1
+SELECT play_to_win_id, game_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
+FROM vw_play_to_win_game_overview
+WHERE play_to_win_id = $1
 `
 
-func (q *Queries) GetPlayToWinGame(ctx context.Context, id pgtype.UUID) (VwPlayToWinGame, error) {
-	row := q.db.QueryRow(ctx, getPlayToWinGame, id)
-	var i VwPlayToWinGame
-	err := row.Scan(&i.ID, &i.GameID, &i.CreatedAt)
+func (q *Queries) GetPlayToWinGame(ctx context.Context, playToWinID pgtype.UUID) (VwPlayToWinGameOverview, error) {
+	row := q.db.QueryRow(ctx, getPlayToWinGame, playToWinID)
+	var i VwPlayToWinGameOverview
+	err := row.Scan(
+		&i.PlayToWinID,
+		&i.GameID,
+		&i.GameTitle,
+		&i.SanitizedTitle,
+		&i.CreatedAt,
+		&i.WinnerID,
+		&i.WinnerName,
+		&i.WinnerUniqueID,
+	)
 	return i, err
 }
 
@@ -665,14 +676,8 @@ func (q *Queries) ListPatrons(ctx context.Context, arg ListPatronsParams) ([]VwL
 }
 
 const listPlayToWinGames = `-- name: ListPlayToWinGames :many
-SELECT
-    ptw.id AS play_to_win_id,
-    ptw.game_id AS game_id,
-    COALESCE(g.title, 'Missing Game') AS game_title,
-    g.sanitized_title AS santized_title,
-    ptw.created_at AS created_at
-FROM vw_play_to_win_games AS ptw
-LEFT JOIN games AS g ON g.id = ptw.game_id
+SELECT play_to_win_id, game_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
+FROM vw_play_to_win_game_overview
 WHERE sanitized_title ILIKE $1
 LIMIT $2 OFFSET $3
 `
@@ -683,29 +688,24 @@ type ListPlayToWinGamesParams struct {
 	Offset         int32
 }
 
-type ListPlayToWinGamesRow struct {
-	PlayToWinID   pgtype.UUID
-	GameID        pgtype.UUID
-	GameTitle     string
-	SantizedTitle pgtype.Text
-	CreatedAt     pgtype.Timestamp
-}
-
-func (q *Queries) ListPlayToWinGames(ctx context.Context, arg ListPlayToWinGamesParams) ([]ListPlayToWinGamesRow, error) {
+func (q *Queries) ListPlayToWinGames(ctx context.Context, arg ListPlayToWinGamesParams) ([]VwPlayToWinGameOverview, error) {
 	rows, err := q.db.Query(ctx, listPlayToWinGames, arg.SanitizedTitle, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPlayToWinGamesRow
+	var items []VwPlayToWinGameOverview
 	for rows.Next() {
-		var i ListPlayToWinGamesRow
+		var i VwPlayToWinGameOverview
 		if err := rows.Scan(
 			&i.PlayToWinID,
 			&i.GameID,
 			&i.GameTitle,
-			&i.SantizedTitle,
+			&i.SanitizedTitle,
 			&i.CreatedAt,
+			&i.WinnerID,
+			&i.WinnerName,
+			&i.WinnerUniqueID,
 		); err != nil {
 			return nil, err
 		}

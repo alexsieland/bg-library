@@ -1,5 +1,5 @@
 CREATE TABLE games (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     title VARCHAR(100) NOT NULL,
     sanitized_title VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -9,7 +9,7 @@ CREATE TABLE games (
 );
 
 CREATE TABLE patrons (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     full_name VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
@@ -18,7 +18,7 @@ CREATE TABLE patrons (
 );
 
 CREATE TABLE transactions (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     game_id UUID REFERENCES games(id),
     patron_id UUID REFERENCES patrons(id),
     checkout_timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -29,7 +29,7 @@ CREATE TABLE transactions (
 
 CREATE TYPE transaction_event_type AS ENUM ('check_out', 'check_in');
 CREATE TABLE transaction_events (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     transaction_id UUID NOT NULL REFERENCES transactions(id),
     game_id UUID NOT NULL REFERENCES games(id),
     patron_id UUID NOT NULL REFERENCES patrons(id),
@@ -41,8 +41,9 @@ CREATE TABLE transaction_events (
 
 CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'mistake', 'other');
 CREATE TABLE play_to_win_games (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL UNIQUE REFERENCES games(id),
+    winner_id UUID REFERENCES patrons(id),
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
     deletion_reason play_to_win_game_deletion_type,
@@ -52,7 +53,7 @@ CREATE TABLE play_to_win_games (
 
 CREATE TYPE play_to_win_session_deletion_type AS ENUM ('foul_play', 'too_many_players', 'too_few_players', 'abnormal_playtime', 'other');
 CREATE TABLE play_to_win_sessions (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     play_to_win_id UUID NOT NULL REFERENCES play_to_win_games(id),
     playtime_minutes INTEGER,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -62,9 +63,9 @@ CREATE TABLE play_to_win_sessions (
     PRIMARY KEY (id)
 );
 
-CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('winner', 'failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
+CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
 CREATE TABLE play_to_win_entries (
-    id UUID DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),
     entrant_name VARCHAR(100) NOT NULL,
     entrant_unique_id VARCHAR(100) NOT NULL,
@@ -111,7 +112,7 @@ CREATE INDEX idx_play_to_win_session_play_to_win_id ON play_to_win_sessions(play
 CREATE INDEX idx_play_to_win_entries_session_id ON play_to_win_entries(session_id);
 
 CREATE VIEW vw_play_to_win_games AS
-SELECT  id, game_id, created_at
+SELECT  id, game_id, created_at, winner_id
 FROM play_to_win_games
 WHERE deleted_at IS NULL;
 
@@ -157,6 +158,20 @@ SELECT ptw_entries.id,
 FROM play_to_win_entries ptw_entries
 LEFT JOIN vw_play_to_win_sessions ptw_sessions ON ptw_sessions.id = ptw_entries.session_id
 WHERE ptw_entries.deleted_at IS NULL;
+
+CREATE VIEW vw_play_to_win_game_overview AS
+SELECT
+    ptw_game.id AS play_to_win_id,
+    ptw_game.game_id AS game_id,
+    COALESCE(g.title, 'Missing Game') AS game_title,
+    COALESCE(g.sanitized_title, 'missing game') AS sanitized_title,
+    ptw_game.created_at AS created_at,
+    ptw_entry.id AS winner_id,
+    ptw_entry.entrant_name AS winner_name,
+    ptw_entry.entrant_unique_id AS winner_unique_id
+FROM vw_play_to_win_games AS ptw_game
+LEFT JOIN vw_play_to_win_entries AS ptw_entry ON ptw_game.winner_id = ptw_entry.id
+LEFT JOIN games AS g ON g.id = ptw_game.game_id;
 
 CREATE VIEW vw_play_to_win_entry_events AS
 SELECT ptw.id as entry_id,

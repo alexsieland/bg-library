@@ -14,7 +14,6 @@ import (
 type PlayToWinEntryDeletionType string
 
 const (
-	PlayToWinEntryDeletionTypeWinner           PlayToWinEntryDeletionType = "winner"
 	PlayToWinEntryDeletionTypeFailedToClaim    PlayToWinEntryDeletionType = "failed_to_claim"
 	PlayToWinEntryDeletionTypeFoulPlay         PlayToWinEntryDeletionType = "foul_play"
 	PlayToWinEntryDeletionTypeDuplicateEntrant PlayToWinEntryDeletionType = "duplicate_entrant"
@@ -217,6 +216,7 @@ type PlayToWinEntry struct {
 type PlayToWinGame struct {
 	ID                    pgtype.UUID
 	GameID                pgtype.UUID
+	WinnerID              pgtype.UUID
 	CreatedAt             pgtype.Timestamp
 	DeletedAt             pgtype.Timestamp
 	DeletionReason        NullPlayToWinGameDeletionType
@@ -341,6 +341,18 @@ type VwPlayToWinGame struct {
 	ID        pgtype.UUID
 	GameID    pgtype.UUID
 	CreatedAt pgtype.Timestamp
+	WinnerID  pgtype.UUID
+}
+
+type VwPlayToWinGameOverview struct {
+	PlayToWinID    pgtype.UUID
+	GameID         pgtype.UUID
+	GameTitle      string
+	SanitizedTitle string
+	CreatedAt      pgtype.Timestamp
+	WinnerID       pgtype.UUID
+	WinnerName     pgtype.Text
+	WinnerUniqueID pgtype.Text
 }
 
 type VwPlayToWinSession struct {
