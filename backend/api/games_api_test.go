@@ -159,7 +159,7 @@ func TestAddGame(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "Validation error")
 	})
 
-	t.Run("Should return 201 Created and call addPlayToWin when isPlayToWin flag is set", func(t *testing.T) {
+	t.Run("Should return 201 Created and call addPlayToWinByGameId when isPlayToWin flag is set", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 		ptwID := uuid.New()
@@ -178,7 +178,7 @@ func TestAddGame(t *testing.T) {
 		}).Return(nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title), pgtype.Text{Valid: false}}).Return(mockCreateRow).Once()
 
-		// addPlayToWin now uses tx-scoped query
+		// addPlayToWinByGameId now uses tx-scoped query
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
 		mockPtwRow := new(MockRow)
@@ -211,7 +211,7 @@ func TestAddGame(t *testing.T) {
 		mockTx.AssertExpectations(t)
 	})
 
-	t.Run("Should return 500 Internal Server Error when addPlayToWin fails after game creation", func(t *testing.T) {
+	t.Run("Should return 500 Internal Server Error when addPlayToWinByGameId fails after game creation", func(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 		title := "Catan"

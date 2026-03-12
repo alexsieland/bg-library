@@ -14,7 +14,7 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
-func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
+func (s Server) addPlayToWinByGameId(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
 	var (
 		err error
 		tx  pgx.Tx
@@ -58,8 +58,8 @@ func (s Server) addPlayToWin(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) e
 	return nil
 }
 
-func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
-	err := s.addPlayToWin(c, gameId, nil)
+func (s Server) AddPlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	err := s.addPlayToWinByGameId(c, gameId, nil)
 	// 23503 is the error code for a foreign key violation, which would occur if the game ID does not exist
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -75,7 +75,7 @@ func (s Server) AddPlayToWinGame(c *gin.Context, gameId types.UUID) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReason *string, deletionComment *string, tx *pgx.Tx) error {
+func (s Server) removePlayToWinByGameId(c *gin.Context, gameId types.UUID, deletionReason *string, deletionComment *string, tx *pgx.Tx) error {
 	var errorDetails ErrorDetails
 	if deletionComment != nil {
 		errorDetails.ValidateStringLength("deletionComment", *deletionComment, 0, 500)
@@ -105,7 +105,7 @@ func (s Server) removePlayToWin(c *gin.Context, gameId types.UUID, deletionReaso
 	return nil
 }
 
-func (s Server) RemovePlayToWinGame(c *gin.Context, gameId types.UUID) {
+func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
 	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
 	if err != nil {
 		if isNotFound(err) {

@@ -526,8 +526,8 @@ type ClientInterface interface {
 
 	RemovePlayToWinGame(ctx context.Context, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AddPlayToWinGame request
-	AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// AddPlayToWinGameByGameId request
+	AddPlayToWinGameByGameId(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeletePlayToWinGameWithBody request with any body
 	DeletePlayToWinGameWithBody(ctx context.Context, ptwId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -884,8 +884,8 @@ func (c *Client) RemovePlayToWinGame(ctx context.Context, gameId openapi_types.U
 	return c.Client.Do(req)
 }
 
-func (c *Client) AddPlayToWinGame(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddPlayToWinGameRequest(c.Server, gameId)
+func (c *Client) AddPlayToWinGameByGameId(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPlayToWinGameByGameIdRequest(c.Server, gameId)
 	if err != nil {
 		return nil, err
 	}
@@ -1855,8 +1855,8 @@ func NewRemovePlayToWinGameRequestWithBody(server string, gameId openapi_types.U
 	return req, nil
 }
 
-// NewAddPlayToWinGameRequest generates requests for AddPlayToWinGame
-func NewAddPlayToWinGameRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
+// NewAddPlayToWinGameByGameIdRequest generates requests for AddPlayToWinGameByGameId
+func NewAddPlayToWinGameByGameIdRequest(server string, gameId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2342,8 +2342,8 @@ type ClientWithResponsesInterface interface {
 
 	RemovePlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, body RemovePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameResponse, error)
 
-	// AddPlayToWinGameWithResponse request
-	AddPlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameResponse, error)
+	// AddPlayToWinGameByGameIdWithResponse request
+	AddPlayToWinGameByGameIdWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameByGameIdResponse, error)
 
 	// DeletePlayToWinGameWithBodyWithResponse request with any body
 	DeletePlayToWinGameWithBodyWithResponse(ctx context.Context, ptwId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeletePlayToWinGameResponse, error)
@@ -2808,14 +2808,14 @@ func (r RemovePlayToWinGameResponse) StatusCode() int {
 	return 0
 }
 
-type AddPlayToWinGameResponse struct {
+type AddPlayToWinGameByGameIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r AddPlayToWinGameResponse) Status() string {
+func (r AddPlayToWinGameByGameIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -2823,7 +2823,7 @@ func (r AddPlayToWinGameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AddPlayToWinGameResponse) StatusCode() int {
+func (r AddPlayToWinGameByGameIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3243,13 +3243,13 @@ func (c *ClientWithResponses) RemovePlayToWinGameWithResponse(ctx context.Contex
 	return ParseRemovePlayToWinGameResponse(rsp)
 }
 
-// AddPlayToWinGameWithResponse request returning *AddPlayToWinGameResponse
-func (c *ClientWithResponses) AddPlayToWinGameWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameResponse, error) {
-	rsp, err := c.AddPlayToWinGame(ctx, gameId, reqEditors...)
+// AddPlayToWinGameByGameIdWithResponse request returning *AddPlayToWinGameByGameIdResponse
+func (c *ClientWithResponses) AddPlayToWinGameByGameIdWithResponse(ctx context.Context, gameId openapi_types.UUID, reqEditors ...RequestEditorFn) (*AddPlayToWinGameByGameIdResponse, error) {
+	rsp, err := c.AddPlayToWinGameByGameId(ctx, gameId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAddPlayToWinGameResponse(rsp)
+	return ParseAddPlayToWinGameByGameIdResponse(rsp)
 }
 
 // DeletePlayToWinGameWithBodyWithResponse request with arbitrary body returning *DeletePlayToWinGameResponse
@@ -3940,15 +3940,15 @@ func ParseRemovePlayToWinGameResponse(rsp *http.Response) (*RemovePlayToWinGameR
 	return response, nil
 }
 
-// ParseAddPlayToWinGameResponse parses an HTTP response from a AddPlayToWinGameWithResponse call
-func ParseAddPlayToWinGameResponse(rsp *http.Response) (*AddPlayToWinGameResponse, error) {
+// ParseAddPlayToWinGameByGameIdResponse parses an HTTP response from a AddPlayToWinGameByGameIdWithResponse call
+func ParseAddPlayToWinGameByGameIdResponse(rsp *http.Response) (*AddPlayToWinGameByGameIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AddPlayToWinGameResponse{
+	response := &AddPlayToWinGameByGameIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -4246,7 +4246,7 @@ type ServerInterface interface {
 	RemovePlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
 	// Mark a library game as play to win
 	// (POST /api/v1/ptw/game/gameId/{gameId})
-	AddPlayToWinGame(c *gin.Context, gameId openapi_types.UUID)
+	AddPlayToWinGameByGameId(c *gin.Context, gameId openapi_types.UUID)
 
 	// (DELETE /api/v1/ptw/game/ptwId/{ptwId})
 	DeletePlayToWinGame(c *gin.Context, ptwId openapi_types.UUID)
@@ -4730,8 +4730,8 @@ func (siw *ServerInterfaceWrapper) RemovePlayToWinGame(c *gin.Context) {
 	siw.Handler.RemovePlayToWinGame(c, gameId)
 }
 
-// AddPlayToWinGame operation middleware
-func (siw *ServerInterfaceWrapper) AddPlayToWinGame(c *gin.Context) {
+// AddPlayToWinGameByGameId operation middleware
+func (siw *ServerInterfaceWrapper) AddPlayToWinGameByGameId(c *gin.Context) {
 
 	var err error
 
@@ -4751,7 +4751,7 @@ func (siw *ServerInterfaceWrapper) AddPlayToWinGame(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.AddPlayToWinGame(c, gameId)
+	siw.Handler.AddPlayToWinGameByGameId(c, gameId)
 }
 
 // DeletePlayToWinGame operation middleware
@@ -4977,7 +4977,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/library/transactions", wrapper.ListTransactionEvents)
 	router.GET(options.BaseURL+"/api/v1/ptw/entries/playToWinId/:playToWinId", wrapper.GetPlayToWinSessionEntries)
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.RemovePlayToWinGame)
-	router.POST(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.AddPlayToWinGame)
+	router.POST(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.AddPlayToWinGameByGameId)
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.DeletePlayToWinGame)
 	router.GET(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.GetPlayToWinGame)
 	router.PUT(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.UpdatePlayToWinGame)

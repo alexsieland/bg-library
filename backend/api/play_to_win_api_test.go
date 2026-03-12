@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// --- AddPlayToWinGame ---
+// --- AddPlayToWinGameByGameId ---
 
 func TestAddPlayToWinGame(t *testing.T) {
 	t.Run("Should return 204 No Content when game is successfully marked as Play to Win", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		server.AddPlayToWinGame(c, gameID)
+		server.AddPlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
@@ -72,7 +72,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		server.AddPlayToWinGame(c, gameID)
+		server.AddPlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		mockDB.AssertExpectations(t)
@@ -98,7 +98,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		server.AddPlayToWinGame(c, gameID)
+		server.AddPlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
@@ -122,7 +122,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		server.AddPlayToWinGame(c, gameID)
+		server.AddPlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockDB.AssertExpectations(t)
@@ -157,7 +157,7 @@ func TestAddPlayToWin(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		err := server.addPlayToWin(c, gameID, nil)
+		err := server.addPlayToWinByGameId(c, gameID, nil)
 
 		assert.NoError(t, err)
 		mockDB.AssertExpectations(t)
@@ -182,7 +182,7 @@ func TestAddPlayToWin(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		err := server.addPlayToWin(c, gameID, nil)
+		err := server.addPlayToWinByGameId(c, gameID, nil)
 
 		assert.NoError(t, err)
 		mockDB.AssertExpectations(t)
@@ -207,7 +207,7 @@ func TestAddPlayToWin(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/ptw/game/gameId/"+gameID.String(), nil)
 
-		err := server.addPlayToWin(c, gameID, nil)
+		err := server.addPlayToWinByGameId(c, gameID, nil)
 
 		assert.ErrorIs(t, err, expectedErr)
 		mockDB.AssertExpectations(t)
@@ -215,7 +215,7 @@ func TestAddPlayToWin(t *testing.T) {
 	})
 }
 
-// --- RemovePlayToWinGame ---
+// --- RemovePlayToWinGameByGameId ---
 
 func mockGetGameRow(mockDB *MockDatabase, gameID uuid.UUID, ptwGameID uuid.UUID) {
 	mockRow := new(MockRow)
@@ -258,7 +258,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), validRemoveBody(t, "claimed", nil))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
@@ -282,7 +282,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), validRemoveBody(t, "claimed", &comment))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		mockDB.AssertExpectations(t)
@@ -300,7 +300,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), bytes.NewBufferString("{invalid json}"))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "JSON body is malformed")
@@ -320,7 +320,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), validRemoveBody(t, "other", &longComment))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Validation error")
@@ -341,7 +341,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), validRemoveBody(t, "mistake", nil))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		mockDB.AssertExpectations(t)
@@ -361,7 +361,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), validRemoveBody(t, "other", nil))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockDB.AssertExpectations(t)
@@ -384,7 +384,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		c.Request = httptest.NewRequest("DELETE", "/ptw/game/gameId/"+gameID.String(), validRemoveBody(t, "mistake", nil))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		server.RemovePlayToWinGame(c, gameID)
+		server.RemovePlayToWinGameByGameId(c, gameID)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockDB.AssertExpectations(t)
@@ -1061,6 +1061,199 @@ func TestListPlayToWinGames(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
+		mockDB.AssertExpectations(t)
+	})
+}
+
+func TestDeletePlayToWinGameEndpoint(t *testing.T) {
+	t.Run("Should return 400 Bad Request when request body is malformed", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/ptw/game/ptwId/"+ptwID.String(), bytes.NewBufferString("{invalid json}"))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.DeletePlayToWinGame(c, ptwID)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		mockDB.AssertNotCalled(t, "Exec", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Should return 400 Bad Request when removal comment exceeds 500 characters", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+		longComment := string(make([]byte, 501))
+
+		body, _ := json.Marshal(RemovePlayToWinGameRequest{
+			RemovalReason:  RemovePlayToWinGameRequestRemovalReason("claimed"),
+			RemovalComment: &longComment,
+		})
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/ptw/game/ptwId/"+ptwID.String(), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.DeletePlayToWinGame(c, ptwID)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
+		mockDB.AssertNotCalled(t, "Exec", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Should call delete by play to win ID query when request is valid", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+		comment := "claimed"
+
+		body, _ := json.Marshal(RemovePlayToWinGameRequest{
+			RemovalReason:  RemovePlayToWinGameRequestRemovalReason("mistake"),
+			RemovalComment: &comment,
+		})
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{
+			pgtype.UUID{Bytes: ptwID, Valid: true},
+			db.NullPlayToWinGameDeletionType{PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeClaimed, Valid: true},
+			pgtype.Text{String: comment, Valid: true},
+		}).Return(pgconn.CommandTag{}, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/ptw/game/ptwId/"+ptwID.String(), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.DeletePlayToWinGame(c, ptwID)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockDB.AssertExpectations(t)
+	})
+}
+
+func TestDrawPlayToWinRaffle(t *testing.T) {
+	t.Run("Should return 200 OK with selected winner when entries exist", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+		entryID := uuid.New()
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
+				*args.Get(3).(*string) = "Alice"
+				*args.Get(4).(*string) = "alice123"
+				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			}).Return(nil).Once()
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwID, Valid: true}}).Return(mockRows, nil)
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwID, Valid: true}, pgtype.UUID{Bytes: entryID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/raffle/ptwId/"+ptwID.String(), nil)
+
+		server.DrawPlayToWinRaffle(c, ptwID)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response struct {
+			Winner PlayToWinEntry `json:"winner"`
+		}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, entryID, response.Winner.EntryId)
+		assert.Equal(t, "Alice", response.Winner.EntrantName)
+		assert.Equal(t, "alice123", response.Winner.EntrantUniqueId)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when listing entries fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwID, Valid: true}}).Return(nil, errors.New("db error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/raffle/ptwId/"+ptwID.String(), nil)
+
+		server.DrawPlayToWinRaffle(c, ptwID)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "db error")
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when updating winner fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+		entryID := uuid.New()
+
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
+				*args.Get(3).(*string) = "Alice"
+				*args.Get(4).(*string) = "alice123"
+				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			}).Return(nil).Once()
+		mockRows.On("Close").Return()
+		mockRows.On("Err").Return(nil)
+
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwID, Valid: true}}).Return(mockRows, nil)
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwID, Valid: true}, pgtype.UUID{Bytes: entryID, Valid: true}}).Return(pgconn.CommandTag{}, errors.New("update error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/raffle/ptwId/"+ptwID.String(), nil)
+
+		server.DrawPlayToWinRaffle(c, ptwID)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "update error")
+		mockDB.AssertExpectations(t)
+	})
+}
+
+func TestResetPlayToWinRaffle(t *testing.T) {
+	t.Run("Should return 204 No Content when raffle winners are reset", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, mock.Anything).Return(pgconn.CommandTag{}, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/raffle/reset", nil)
+
+		server.ResetPlayToWinRaffle(c)
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when reset query fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, mock.Anything).Return(pgconn.CommandTag{}, errors.New("reset error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/ptw/raffle/reset", nil)
+
+		server.ResetPlayToWinRaffle(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "reset error")
 		mockDB.AssertExpectations(t)
 	})
 }

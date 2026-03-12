@@ -528,7 +528,7 @@ paths:
       tags:
         - ptw
         - games
-      operationId: addPlayToWinGame
+      operationId: addPlayToWinGameByGameId
       summary: Mark a library game as play to win
       parameters:
         - in: path
@@ -551,7 +551,8 @@ paths:
       tags:
         - ptw
         - games
-      operationId: removePlayToWinGame
+      operationId: removePlayToWinGameByGameId
+
       summary: Mark a library game as not play to win
       parameters:
         - in: path
