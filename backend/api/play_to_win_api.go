@@ -117,7 +117,7 @@ func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
 		return
 	}
 
-	var request RemovePlayToWinGameJSONRequestBody
+	var request RemovePlayToWinGameRequest
 	if err = c.ShouldBindBodyWithJSON(&request); err != nil {
 		malformedJson(c)
 		return
