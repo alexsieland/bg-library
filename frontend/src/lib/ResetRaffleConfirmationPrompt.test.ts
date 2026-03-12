@@ -36,12 +36,14 @@ describe('ResetRaffleConfirmationPrompt', () => {
 
   it('Should call reset API when confirm is clicked', async () => {
     vi.mocked(apiClient.resetPlayToWinGameRaffle).mockResolvedValue({} as never);
-    render(ResetRaffleConfirmationPrompt, { props: { open: true } });
+    const onConfirm = vi.fn();
+    render(ResetRaffleConfirmationPrompt, { props: { open: true, onConfirm } });
 
     await fireEvent.click(screen.getByTestId('reset-raffle-confirm-button'));
 
     await waitFor(() => {
       expect(apiClient.resetPlayToWinGameRaffle).toHaveBeenCalledOnce();
+      expect(onConfirm).toHaveBeenCalledOnce();
     });
   });
 

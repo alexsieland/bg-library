@@ -43,7 +43,7 @@ CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'mistake', 'other
 CREATE TABLE play_to_win_games (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL UNIQUE REFERENCES games(id),
-    winner_id UUID REFERENCES patrons(id),
+    winner_id UUID REFERENCES play_to_win_entries(id),
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
     deletion_reason play_to_win_game_deletion_type,

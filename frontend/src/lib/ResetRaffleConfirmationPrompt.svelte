@@ -5,10 +5,11 @@
 
   interface Props {
     open?: boolean;
+    onConfirm?: () => void | Promise<void>;
     onCancel?: () => void;
   }
 
-  let { open = $bindable(false), onCancel }: Props = $props();
+  let { open = $bindable(false), onConfirm, onCancel }: Props = $props();
 
   let isLoading = $state(false);
 
@@ -16,6 +17,7 @@
     isLoading = true;
     try {
       await apiClient.resetPlayToWinGameRaffle();
+      await onConfirm?.();
     } finally {
       isLoading = false;
       open = false;
