@@ -128,6 +128,41 @@ func FromGame(dbGame db.Game, isPlayToWin bool) Game {
 	return game
 }
 
+func FromPlayToWinGameList(dbPTWGames []db.VwPlayToWinGameOverview) PlayToWinGameList {
+	games := make([]PlayToWinGame, len(dbPTWGames))
+	for i, dbPTWGame := range dbPTWGames {
+		games[i] = FromPlayToWinGameOverview(dbPTWGame)
+	}
+	return PlayToWinGameList{Games: games}
+}
+
+func FromPlayToWinGameOverview(dbPTWGame db.VwPlayToWinGameOverview) PlayToWinGame {
+	var winner *PlayToWinEntry
+	if dbPTWGame.WinnerID.Valid {
+		winnerName := ""
+		if dbPTWGame.WinnerName.Valid {
+			winnerName = dbPTWGame.WinnerName.String
+		}
+		winnerUniqueId := ""
+		if dbPTWGame.WinnerUniqueID.Valid {
+			winnerUniqueId = dbPTWGame.WinnerUniqueID.String
+		}
+		winner = &PlayToWinEntry{
+			EntryId:         pgUUIDToUUID(dbPTWGame.WinnerID),
+			EntrantName:     winnerName,
+			EntrantUniqueId: winnerUniqueId,
+		}
+	}
+
+	game := PlayToWinGame{
+		GameId:      pgUUIDToUUID(dbPTWGame.GameID),
+		PlayToWinId: pgUUIDToUUID(dbPTWGame.PlayToWinID),
+		Title:       dbPTWGame.GameTitle,
+		Winner:      winner,
+	}
+	return game
+}
+
 func SanitizeTitle(title string) string {
 	t := norm.NFD.String(strings.ToLower(title))
 	var result strings.Builder

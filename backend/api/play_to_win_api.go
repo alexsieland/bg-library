@@ -291,6 +291,22 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, ptwSession)
 }
 
+func (s Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	dbPtwGame, err := s.queries.GetPlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(ptwId))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error getting play to win game: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	ptwGame := FromPlayToWinGameOverview(dbPtwGame)
+	c.JSON(http.StatusOK, ptwGame)
+}
+
 func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) {
 	var (
 		sanitizedTitle string
@@ -323,23 +339,47 @@ func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPara
 		Offset:         offset,
 	}
 
-	dbPTWGames, err := s.queries.ListPlayToWinGames(c, requestParams)
+	dbPTWGames, err := s.queries.ListPlayToWinGames(c.Request.Context(), requestParams)
 	if err != nil {
 		log.Printf("Error listing play to win games: %v", err)
 		internalError(c, err)
 		return
 	}
 
-	ptwGameList := PlayToWinGameList{
-		Games: make([]PlayToWinGame, len(dbPTWGames)),
+	ptwGameList := FromPlayToWinGameList(dbPTWGames)
+
+	c.JSON(http.StatusOK, ptwGameList)
+}
+
+func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	var jsonObject UpdatePlayToWinGame
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		malformedJson(c)
+		return
 	}
-	for i, dbPTWGame := range dbPTWGames {
-		ptwGameList.Games[i] = PlayToWinGame{
-			GameId:      pgUUIDToUUID(dbPTWGame.GameID),
-			PlayToWinId: pgUUIDToUUID(dbPTWGame.PlayToWinID),
-			Title:       dbPTWGame.GameTitle,
+
+	winnerId := pgtype.UUID{
+		Valid: false,
+	}
+	if jsonObject.WinnerId == nil {
+		winnerId = pgtype.UUID{
+			Bytes: *jsonObject.WinnerId,
+			Valid: true,
 		}
 	}
 
-	c.JSON(http.StatusOK, ptwGameList)
+	params := db.UpdatePlayToWinEntryParams{
+		ID:       uuidToPgTypeUUID(ptwId),
+		WinnerID: winnerId,
+	}
+
+	err = s.queries.UpdatePlayToWinEntry(c.Request.Context(), params)
+	if err != nil {
+		log.Printf("Error updating play to win entry: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }

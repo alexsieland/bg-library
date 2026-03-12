@@ -675,6 +675,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/PlayToWinGameList'
 
+  /api/v1/ptw/game/ptwId/{ptwId}:
+    get:
+      tags:
+        - ptw
+      operationId: getPlayToWinGame
+      parameters:
+        - in: path
+          name: ptwId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Play to win game ID
+      responses:
+        '200':
+          description: Play to win game retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayToWinGame'
+        '404':
+          description: Play to win game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: Get a play to win game by ID
+    put:
+      tags:
+        - ptw
+      operationId: updatePlayToWinGame
+      parameters:
+        - in: path
+          name: ptwId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Play to win game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlayToWinGame'
+      responses:
+        '204':
+          description: Play to win game updated successfully
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: Update a play to win game by ID
+
 components:
   schemas:
     GameStatus:
@@ -1131,6 +1187,10 @@ components:
           type: string
           description: The title of the game
           example: "Azul"
+        winner:
+          type: object
+          $ref: '#/components/schemas/PlayToWinEntry'
+          description: The winner of the play to win game, not set if raffle has not happened
 
     PlayToWinGameList:
       type: object
@@ -1143,3 +1203,13 @@ components:
             $ref: '#/components/schemas/PlayToWinGame'
           description: Array of play to win games
       description: List of play to win games
+
+    UpdatePlayToWinGame:
+      type: object
+      properties:
+        winnerId:
+          type: string
+          format: uuid
+          description: The winner of the play to win game raffle
+          example: "d0414ad2-ebca-4363-a220-ebbd1ac3bbe4"
+      description: Update payload for a play to win game

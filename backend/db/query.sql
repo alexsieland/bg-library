@@ -126,20 +126,15 @@ WHERE sanitized_title ILIKE $1 AND patron_full_name ILIKE $2
 LIMIT $3 OFFSET $4;
 
 -- name: ListPlayToWinGames :many
-SELECT
-    ptw.id AS play_to_win_id,
-    ptw.game_id AS game_id,
-    COALESCE(g.title, 'Missing Game') AS game_title,
-    g.sanitized_title AS santized_title,
-    ptw.created_at AS created_at
-FROM vw_play_to_win_games AS ptw
-LEFT JOIN games AS g ON g.id = ptw.game_id
+SELECT *
+FROM vw_play_to_win_game_overview
 WHERE sanitized_title ILIKE $1
 LIMIT $2 OFFSET $3;
 
 -- name: GetPlayToWinGame :one
-SELECT * FROM vw_play_to_win_games
-WHERE id = $1;
+SELECT *
+FROM vw_play_to_win_game_overview
+WHERE play_to_win_id = $1;
 
 -- name: GetPlayToWinSessions :many
 SELECT
@@ -172,6 +167,11 @@ RETURNING *;
 -- name: CreatePlayToWinEntry :one
 INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
 RETURNING *;
+
+-- name: UpdatePlayToWinEntry :exec
+UPDATE play_to_win_games
+SET winner_id = $2
+WHERE id = $1;
 
 -- name: DeletePlayToWinGame :exec
 UPDATE play_to_win_games
