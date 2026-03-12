@@ -60,7 +60,8 @@ CREATE TABLE play_to_win_sessions (
     deleted_at TIMESTAMP,
     deletion_reason play_to_win_session_deletion_type,
     deletion_reason_comment VARCHAR(500),
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE(id, play_to_win_id)
 );
 
 CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
@@ -75,15 +76,16 @@ CREATE TABLE play_to_win_entries (
     deletion_reason play_to_win_entry_deletion_type,
     deletion_reason_comment VARCHAR(500),
     PRIMARY KEY (id),
+    UNIQUE(id, play_to_win_id),
     UNIQUE(session_id, entrant_unique_id),
-    UNIQUE(play_to_win_id, entrant_unique_id)
+    UNIQUE(play_to_win_id, entrant_unique_id),
+    FOREIGN KEY (session_id, play_to_win_id) REFERENCES play_to_win_sessions(id, play_to_win_id)
 );
 
 ALTER TABLE play_to_win_games
 ADD CONSTRAINT fk_play_to_win_games_winner_id
 FOREIGN KEY (winner_id, id)
-REFERENCES play_to_win_entries(id, play_to_win_id)
-ON DELETE SET NULL;;
+REFERENCES play_to_win_entries(id, play_to_win_id);
 
 CREATE INDEX idx_game_barcode ON games(barcode);
 

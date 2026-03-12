@@ -549,40 +549,44 @@ func TestAddPlayToWinSession(t *testing.T) {
 			pgtype.Int4{Int32: playtimeMinutes, Valid: true},
 		}).Return(mockSessionRow).Once()
 
-		// Mock CreatePlayToWinEntry for first entry - returns 8 columns
+		// Mock CreatePlayToWinEntry for first entry - returns 9 columns
 		mockEntry1Row := new(MockRow)
-		mockEntry1Row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockEntry1Row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID1, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*string) = entries[0].name
-				*args.Get(3).(*string) = entries[0].uniqueId
-				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(6).(*db.NullPlayToWinEntryDeletionType) = db.NullPlayToWinEntryDeletionType{Valid: false}
-				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(3).(*string) = entries[0].name
+				*args.Get(4).(*string) = entries[0].uniqueId
+				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+				*args.Get(7).(*db.NullPlayToWinEntryDeletionType) = db.NullPlayToWinEntryDeletionType{Valid: false}
+				*args.Get(8).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
+			pgtype.UUID{Bytes: playToWinID, Valid: true},
 			entries[0].name,
 			entries[0].uniqueId,
 		}).Return(mockEntry1Row).Once()
 
-		// Mock CreatePlayToWinEntry for second entry - returns 8 columns
+		// Mock CreatePlayToWinEntry for second entry - returns 9 columns
 		mockEntry2Row := new(MockRow)
-		mockEntry2Row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockEntry2Row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID2, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*string) = entries[1].name
-				*args.Get(3).(*string) = entries[1].uniqueId
-				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(6).(*db.NullPlayToWinEntryDeletionType) = db.NullPlayToWinEntryDeletionType{Valid: false}
-				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(3).(*string) = entries[1].name
+				*args.Get(4).(*string) = entries[1].uniqueId
+				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+				*args.Get(7).(*db.NullPlayToWinEntryDeletionType) = db.NullPlayToWinEntryDeletionType{Valid: false}
+				*args.Get(8).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
+			pgtype.UUID{Bytes: playToWinID, Valid: true},
 			entries[1].name,
 			entries[1].uniqueId,
 		}).Return(mockEntry2Row).Once()
@@ -644,21 +648,23 @@ func TestAddPlayToWinSession(t *testing.T) {
 			pgtype.Int4{Valid: false},
 		}).Return(mockSessionRow).Once()
 
-		// Mock CreatePlayToWinEntry - returns 8 columns
+		// Mock CreatePlayToWinEntry - returns 9 columns
 		mockEntryRow := new(MockRow)
-		mockEntryRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockEntryRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*string) = entries[0].name
-				*args.Get(3).(*string) = entries[0].uniqueId
-				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(6).(*db.NullPlayToWinEntryDeletionType) = db.NullPlayToWinEntryDeletionType{Valid: false}
-				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(3).(*string) = entries[0].name
+				*args.Get(4).(*string) = entries[0].uniqueId
+				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+				*args.Get(7).(*db.NullPlayToWinEntryDeletionType) = db.NullPlayToWinEntryDeletionType{Valid: false}
+				*args.Get(8).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
+			pgtype.UUID{Bytes: playToWinID, Valid: true},
 			entries[0].name,
 			entries[0].uniqueId,
 		}).Return(mockEntryRow).Once()
@@ -910,12 +916,13 @@ func TestAddPlayToWinSession(t *testing.T) {
 			pgtype.Int4{Valid: false},
 		}).Return(mockSessionRow).Once()
 
-		// Mock failed entry creation - 8 columns
+		// Mock failed entry creation - 9 columns
 		mockEntryRow := new(MockRow)
-		mockEntryRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockEntryRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(errors.New("entry creation error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
+			pgtype.UUID{Bytes: playToWinID, Valid: true},
 			entries[0].name,
 			entries[0].uniqueId,
 		}).Return(mockEntryRow).Once()
@@ -1115,7 +1122,7 @@ func TestDeletePlayToWinGameEndpoint(t *testing.T) {
 
 		mockDB.On("Exec", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: ptwID, Valid: true},
-			db.NullPlayToWinGameDeletionType{PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeClaimed, Valid: true},
+			db.NullPlayToWinGameDeletionType{PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake, Valid: true},
 			pgtype.Text{String: comment, Valid: true},
 		}).Return(pgconn.CommandTag{}, nil)
 
@@ -1126,7 +1133,32 @@ func TestDeletePlayToWinGameEndpoint(t *testing.T) {
 
 		server.DeletePlayToWinGame(c, ptwID)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Should return 500 Internal Server Error when delete by play to win ID query fails", func(t *testing.T) {
+		server, mockDB := setupTestServer()
+		ptwID := uuid.New()
+
+		body, _ := json.Marshal(RemovePlayToWinGameRequest{
+			RemovalReason: RemovePlayToWinGameRequestRemovalReason("mistake"),
+		})
+
+		mockDB.On("Exec", mock.Anything, mock.Anything, []any{
+			pgtype.UUID{Bytes: ptwID, Valid: true},
+			db.NullPlayToWinGameDeletionType{PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake, Valid: true},
+			pgtype.Text{Valid: false},
+		}).Return(pgconn.CommandTag{}, errors.New("db error"))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/ptw/game/ptwId/"+ptwID.String(), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		server.DeletePlayToWinGame(c, ptwID)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockDB.AssertExpectations(t)
 	})
 }

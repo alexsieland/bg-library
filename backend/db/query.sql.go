@@ -94,18 +94,24 @@ func (q *Queries) CreatePatron(ctx context.Context, arg CreatePatronParams) (Pat
 }
 
 const createPlayToWinEntry = `-- name: CreatePlayToWinEntry :one
-INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
+INSERT INTO play_to_win_entries (session_id, play_to_win_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
 RETURNING id, session_id, play_to_win_id, entrant_name, entrant_unique_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
 `
 
 type CreatePlayToWinEntryParams struct {
 	SessionID       pgtype.UUID
+	PlayToWinID     pgtype.UUID
 	EntrantName     string
 	EntrantUniqueID string
 }
 
 func (q *Queries) CreatePlayToWinEntry(ctx context.Context, arg CreatePlayToWinEntryParams) (PlayToWinEntry, error) {
-	row := q.db.QueryRow(ctx, createPlayToWinEntry, arg.SessionID, arg.EntrantName, arg.EntrantUniqueID)
+	row := q.db.QueryRow(ctx, createPlayToWinEntry,
+		arg.SessionID,
+		arg.PlayToWinID,
+		arg.EntrantName,
+		arg.EntrantUniqueID,
+	)
 	var i PlayToWinEntry
 	err := row.Scan(
 		&i.ID,
