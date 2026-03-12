@@ -226,4 +226,4 @@ WHERE id = $1;
 -- name: ResetPlayToWinGameWinners :exec
 UPDATE play_to_win_games
 SET winner_id = NULL
-WHERE deletion_reason != 'claimed' ;
+WHERE deletion_reason IS DISTINCT FROM 'claimed';

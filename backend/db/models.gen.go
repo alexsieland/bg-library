@@ -205,6 +205,7 @@ type Patron struct {
 type PlayToWinEntry struct {
 	ID                    pgtype.UUID
 	SessionID             pgtype.UUID
+	PlayToWinID           pgtype.UUID
 	EntrantName           string
 	EntrantUniqueID       string
 	CreatedAt             pgtype.Timestamp

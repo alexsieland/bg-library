@@ -95,7 +95,7 @@ func (q *Queries) CreatePatron(ctx context.Context, arg CreatePatronParams) (Pat
 
 const createPlayToWinEntry = `-- name: CreatePlayToWinEntry :one
 INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
-RETURNING id, session_id, entrant_name, entrant_unique_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
+RETURNING id, session_id, play_to_win_id, entrant_name, entrant_unique_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
 `
 
 type CreatePlayToWinEntryParams struct {
@@ -110,6 +110,7 @@ func (q *Queries) CreatePlayToWinEntry(ctx context.Context, arg CreatePlayToWinE
 	err := row.Scan(
 		&i.ID,
 		&i.SessionID,
+		&i.PlayToWinID,
 		&i.EntrantName,
 		&i.EntrantUniqueID,
 		&i.CreatedAt,
@@ -739,7 +740,7 @@ func (q *Queries) ListPlayToWinGames(ctx context.Context, arg ListPlayToWinGames
 const resetPlayToWinGameWinners = `-- name: ResetPlayToWinGameWinners :exec
 UPDATE play_to_win_games
 SET winner_id = NULL
-WHERE deletion_reason != 'claimed'
+WHERE deletion_reason IS DISTINCT FROM 'claimed'
 `
 
 func (q *Queries) ResetPlayToWinGameWinners(ctx context.Context) error {

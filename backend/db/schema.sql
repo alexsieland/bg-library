@@ -43,7 +43,7 @@ CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'mistake', 'other
 CREATE TABLE play_to_win_games (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL UNIQUE REFERENCES games(id),
-    winner_id UUID REFERENCES play_to_win_entries(id),
+    winner_id UUID,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
     deletion_reason play_to_win_game_deletion_type,
@@ -67,6 +67,7 @@ CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('failed_to_claim', 'foul_pl
 CREATE TABLE play_to_win_entries (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),
+    play_to_win_id UUID NOT NULL REFERENCES play_to_win_games(id),
     entrant_name VARCHAR(100) NOT NULL,
     entrant_unique_id VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -74,8 +75,15 @@ CREATE TABLE play_to_win_entries (
     deletion_reason play_to_win_entry_deletion_type,
     deletion_reason_comment VARCHAR(500),
     PRIMARY KEY (id),
-    UNIQUE(session_id, entrant_unique_id)
+    UNIQUE(session_id, entrant_unique_id),
+    UNIQUE(play_to_win_id, entrant_unique_id)
 );
+
+ALTER TABLE play_to_win_games
+ADD CONSTRAINT fk_play_to_win_games_winner_id
+FOREIGN KEY (winner_id, id)
+REFERENCES play_to_win_entries(id, play_to_win_id)
+ON DELETE SET NULL;;
 
 CREATE INDEX idx_game_barcode ON games(barcode);
 
