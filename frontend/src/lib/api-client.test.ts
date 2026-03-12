@@ -645,6 +645,115 @@ describe('ApiClient', () => {
       });
     });
 
+    describe('getPlayToWinGame', () => {
+      it('Should make a GET request to the ptw game URL with the provided ptwId', async () => {
+        const mockGame = { playToWinId: 'ptw-1', gameId: 'g1', title: 'Azul' };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockGame));
+
+        const result = await apiClient.getPlayToWinGame('ptw-1');
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/game/ptwId/ptw-1');
+        expect(request.method).toBe('GET');
+        expect(result).toHaveProperty('playToWinId', 'ptw-1');
+      });
+
+      it('Should propagate API errors when backend returns an error response', async () => {
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 404,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => ({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Play to win game not found',
+              details: [],
+            },
+          }),
+          text: async () =>
+            JSON.stringify({
+              error: {
+                code: 'NOT_FOUND',
+                message: 'Play to win game not found',
+                details: [],
+              },
+            }),
+        } as Response);
+
+        await expect(apiClient.getPlayToWinGame('missing-id')).rejects.toThrow(
+          'Play to win game not found'
+        );
+      });
+    });
+
+    describe('updatePlayToWinGame', () => {
+      it('Should make a PUT request with the ptw game payload', async () => {
+        const updatePayload = {
+          playToWinId: 'ptw-1',
+          gameId: 'g1',
+          title: 'Azul - Updated',
+        };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, updatePayload));
+
+        const result = await apiClient.updatePlayToWinGame('ptw-1', updatePayload as any);
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/game/ptwId/ptw-1');
+        expect(request.method).toBe('PUT');
+        expect(await request.json()).toEqual(updatePayload);
+        expect(result).toHaveProperty('title', 'Azul - Updated');
+      });
+    });
+
+    describe('deletePlayToWinGameByPlayToWinId', () => {
+      it('Should make a DELETE request with remove request payload', async () => {
+        const reqBody = { reason: 'Damaged prize copy' };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(204, undefined));
+
+        await apiClient.deletePlayToWinGameByPlayToWinId('ptw-1', reqBody as any);
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/game/ptwId/ptw-1');
+        expect(request.method).toBe('DELETE');
+        expect(await request.json()).toEqual(reqBody);
+      });
+    });
+
+    describe('resetPlayToWinGameRaffle', () => {
+      it('Should make a POST request to reset raffle endpoint', async () => {
+        vi.mocked(fetch).mockResolvedValue(mockResponse(204, undefined));
+
+        await apiClient.resetPlayToWinGameRaffle();
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/raffle/reset');
+        expect(request.method).toBe('POST');
+      });
+    });
+
+    describe('drawPlayToWinRaffle', () => {
+      it('Should make a POST request to draw endpoint with the provided ptwId', async () => {
+        const mockWinner = {
+          entryId: 'entry-1',
+          entrantName: 'Jane Doe',
+          entrantUniqueId: 'P-007',
+        };
+        vi.mocked(fetch).mockResolvedValue(mockResponse(200, mockWinner));
+
+        const result = await apiClient.drawPlayToWinRaffle('ptw-1');
+
+        expect(fetch).toHaveBeenCalled();
+        const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+        expect(request.url).toContain('/api/v1/ptw/raffle/ptwId/ptw-1');
+        expect(request.method).toBe('POST');
+        expect(result).toHaveProperty('entryId', 'entry-1');
+      });
+    });
+
     describe('getPlayToWinEntries', () => {
       it('Should make a GET request to the entries URL with the provided playToWinId', async () => {
         const mockEntries = {

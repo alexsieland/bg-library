@@ -1,6 +1,7 @@
 <script lang="ts">
   import { TrashBinSolid } from 'flowbite-svelte-icons';
   import { Button, Modal } from 'flowbite-svelte';
+  import { apiClient } from './api-client';
 
   interface Props {
     open?: boolean;
@@ -14,7 +15,7 @@
   async function handleConfirm() {
     isLoading = true;
     try {
-      // TODO reset all unclaimed play to win raffles
+      await apiClient.resetPlayToWinGameRaffle();
     } finally {
       isLoading = false;
       open = false;
