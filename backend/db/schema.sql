@@ -188,7 +188,7 @@ FROM play_to_win_entries ptw
 LEFT JOIN play_to_win_sessions ps ON ps.id = ptw.session_id
 LEFT JOIN play_to_win_games pg ON pg.id = ps.play_to_win_id
 LEFT JOIN games g ON g.id = pg.game_id
-WHERE (ptw.deletion_reason IN ('winner', 'failed_to_claim') OR ptw.deletion_reason IS NULL)
+WHERE (ptw.deletion_reason IN ('failed_to_claim') OR ptw.deletion_reason IS NULL)
   AND ps.deletion_reason IS NULL
 ORDER BY ptw.created_at DESC;
 
