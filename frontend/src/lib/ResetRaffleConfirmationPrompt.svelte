@@ -42,7 +42,17 @@
     Restart raffle?
   </p>
   <div class="flex items-center justify-center space-x-4">
-    <Button color="light" onclick={handleCancel} disabled={isLoading}>No, cancel</Button>
-    <Button color="rose" onclick={handleConfirm} disabled={isLoading}>Yes, I'm sure</Button>
+    <Button
+      color="light"
+      onclick={handleCancel}
+      disabled={isLoading}
+      data-testid="reset-raffle-cancel-button">No, cancel</Button
+    >
+    <Button
+      color="rose"
+      onclick={handleConfirm}
+      disabled={isLoading}
+      data-testid="reset-raffle-confirm-button">Yes, I'm sure</Button
+    >
   </div>
 </Modal>

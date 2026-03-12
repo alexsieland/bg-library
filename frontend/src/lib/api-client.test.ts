@@ -712,7 +712,7 @@ describe('ApiClient', () => {
         const reqBody = { reason: 'Damaged prize copy' };
         vi.mocked(fetch).mockResolvedValue(mockResponse(204, undefined));
 
-        await apiClient.deletePlayToWinGameByPlayToWinId('ptw-1', reqBody as any);
+        await apiClient.deletePlayToWinGame('ptw-1', reqBody as any);
 
         expect(fetch).toHaveBeenCalled();
         const request = vi.mocked(fetch).mock.calls[0][0] as Request;

@@ -10,7 +10,7 @@
     Dropdown,
   } from 'flowbite-svelte';
   import { ChevronDownOutline } from 'flowbite-svelte-icons';
-  import { apiClient, type PlayToWinGame } from './api-client';
+  import { apiClient, type DeletePlayToWinGameRequest, type PlayToWinGame } from './api-client';
   import { toasts } from './toast-store';
   import SearchBar from './SearchBar.svelte';
   import { onMount } from 'svelte';
@@ -39,6 +39,31 @@
     } finally {
       loading = false;
     }
+  }
+
+  async function drawWinner(playToWinId: string, gameTitle: string) {
+    const winner = await apiClient.drawPlayToWinRaffle(playToWinId);
+    if (winner) {
+      toasts.add(
+        `Winner drawn for Play To Win game ${gameTitle}: ${winner.entrantName} (${winner.entrantUniqueId})`,
+        'success'
+      );
+    } else {
+      toasts.add(`Failed to draw winner for Play To Win game ${gameTitle}`, 'error');
+    }
+  }
+
+  async function redrawWinner(playToWinId: string, winnerId: string, gameTitle: string) {
+    // TODO eventually this should delete the current winner and draw a new one then redraw the winner from the new pool
+    drawWinner(playToWinId, gameTitle);
+  }
+
+  async function claimRaffle(playToWinId: string, gameTitle: string) {
+    const reqBody: DeletePlayToWinGameRequest = {
+      RemovalReason: 'claimed',
+    };
+    await apiClient.deletePlayToWinGame(playToWinId, reqBody);
+    toasts.add(`Raffle claimed for Play To Win game ${gameTitle}`, 'success');
   }
 
   function handleSearch(query: string) {
