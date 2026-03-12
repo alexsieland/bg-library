@@ -233,7 +233,7 @@ func mockGetGameRow(mockDB *MockDatabase, gameID uuid.UUID, ptwGameID uuid.UUID)
 
 func validRemoveBody(t *testing.T, reason RemovePlayToWinGameRequestRemovalReason, comment *string) *bytes.Buffer {
 	t.Helper()
-	body, _ := json.Marshal(RemovePlayToWinGameJSONRequestBody{
+	body, _ := json.Marshal(RemovePlayToWinGameRequest{
 		RemovalReason:  reason,
 		RemovalComment: comment,
 	})
