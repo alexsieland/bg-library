@@ -168,6 +168,11 @@ RETURNING *;
 INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: UpdatePlayToWinEntry :exec
+UPDATE play_to_win_games
+SET winner_id = $2
+WHERE id = $1;
+
 -- name: DeletePlayToWinGame :exec
 UPDATE play_to_win_games
 SET deleted_at = now(),

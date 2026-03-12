@@ -339,7 +339,7 @@ func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPara
 		Offset:         offset,
 	}
 
-	dbPTWGames, err := s.queries.ListPlayToWinGames(c, requestParams)
+	dbPTWGames, err := s.queries.ListPlayToWinGames(c.Request.Context(), requestParams)
 	if err != nil {
 		log.Printf("Error listing play to win games: %v", err)
 		internalError(c, err)
@@ -349,4 +349,37 @@ func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPara
 	ptwGameList := FromPlayToWinGameList(dbPTWGames)
 
 	c.JSON(http.StatusOK, ptwGameList)
+}
+
+func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	var jsonObject UpdatePlayToWinGame
+	err := c.ShouldBindBodyWithJSON(&jsonObject)
+	if err != nil {
+		malformedJson(c)
+		return
+	}
+
+	winnerId := pgtype.UUID{
+		Valid: false,
+	}
+	if jsonObject.WinnerId == nil {
+		winnerId = pgtype.UUID{
+			Bytes: *jsonObject.WinnerId,
+			Valid: true,
+		}
+	}
+
+	params := db.UpdatePlayToWinEntryParams{
+		ID:       uuidToPgTypeUUID(ptwId),
+		WinnerID: winnerId,
+	}
+
+	err = s.queries.UpdatePlayToWinEntry(c.Request.Context(), params)
+	if err != nil {
+		log.Printf("Error updating play to win entry: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }

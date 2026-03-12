@@ -982,3 +982,19 @@ func (q *Queries) SearchTransactionEvents(ctx context.Context, arg SearchTransac
 	}
 	return items, nil
 }
+
+const updatePlayToWinEntry = `-- name: UpdatePlayToWinEntry :exec
+UPDATE play_to_win_games
+SET winner_id = $2
+WHERE id = $1
+`
+
+type UpdatePlayToWinEntryParams struct {
+	ID       pgtype.UUID
+	WinnerID pgtype.UUID
+}
+
+func (q *Queries) UpdatePlayToWinEntry(ctx context.Context, arg UpdatePlayToWinEntryParams) error {
+	_, err := q.db.Exec(ctx, updatePlayToWinEntry, arg.ID, arg.WinnerID)
+	return err
+}
