@@ -8,11 +8,13 @@
     Table,
     Button,
     Dropdown,
+    DropdownItem,
   } from 'flowbite-svelte';
   import { ChevronDownOutline } from 'flowbite-svelte-icons';
-  import { apiClient, type PlayToWinGame } from './api-client';
+  import { apiClient, type DeletePlayToWinGameRequest, type PlayToWinGame } from './api-client';
   import { toasts } from './toast-store';
   import SearchBar from './SearchBar.svelte';
+  import ResetRaffleConfirmationPrompt from './ResetRaffleConfirmationPrompt.svelte';
   import { onMount } from 'svelte';
 
   const PAGE_SIZE = 20;
@@ -22,6 +24,7 @@
   let loading = $state(true);
   let error: string | null = $state(null);
   let offset = $state(0);
+  let resetRaffleConfirmationOpen = $state(false);
 
   let filteredGames = $derived(playToWinList.games);
   let hasPreviousPage = $derived(offset > 0);
@@ -38,6 +41,51 @@
       toasts.add(`Failed to load Play To Win games: ${errorMessage}`, 'error');
     } finally {
       loading = false;
+    }
+  }
+
+  async function drawWinner(playToWinId: string, gameTitle: string) {
+    try {
+      const winner = await apiClient.drawPlayToWinRaffle(playToWinId);
+      if (!winner) {
+        toasts.add(`Failed to draw winner for Play To Win game ${gameTitle}`, 'error');
+        return;
+      }
+
+      playToWinList = {
+        ...playToWinList,
+        games: playToWinList.games.map((game) =>
+          game.playToWinId === playToWinId ? { ...game, winner } : game
+        ),
+      };
+
+      toasts.add(
+        `Winner drawn for Play To Win game ${gameTitle}: ${winner.entrantName} (${winner.entrantUniqueId})`,
+        'success'
+      );
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      toasts.add(
+        `Failed to draw winner for Play To Win game ${gameTitle}: ${errorMessage}`,
+        'error'
+      );
+    }
+  }
+
+  async function claimRaffle(playToWinId: string, gameTitle: string) {
+    try {
+      const reqBody: DeletePlayToWinGameRequest = {
+        RemovalReason: 'claimed',
+      };
+      await apiClient.deletePlayToWinGame(playToWinId, reqBody);
+      toasts.add(`Raffle claimed for Play To Win game ${gameTitle}`, 'success');
+      await fetchPlayToWinGames();
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      toasts.add(
+        `Failed to claim raffle for Play To Win game ${gameTitle}: ${errorMessage}`,
+        'error'
+      );
     }
   }
 
@@ -64,6 +112,11 @@
   });
 </script>
 
+<ResetRaffleConfirmationPrompt
+  bind:open={resetRaffleConfirmationOpen}
+  onConfirm={fetchPlayToWinGames}
+/>
+
 <div
   class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
 >
@@ -81,7 +134,9 @@
         <ChevronDownOutline class="ml-2 h-3 w-3" />
       </Button>
       <Dropdown simple class="w-44 divide-y divide-gray-100">
-        <span class="hidden" aria-hidden="true"></span>
+        <DropdownItem onclick={() => (resetRaffleConfirmationOpen = true)}
+          >Restart Raffle</DropdownItem
+        >
       </Dropdown>
     </div>
   </div>
@@ -134,8 +189,21 @@
               </TableBodyCell>
               <TableBodyCell class="px-4 py-3">
                 <div class="flex gap-2">
-                  <Button color="primary" size="sm">Draw Winner</Button>
-                  <Button color="emerald" size="sm" disabled>Claimed</Button>
+                  <Button
+                    color="primary"
+                    size="sm"
+                    onclick={() => drawWinner(game.playToWinId, game.title)}
+                    data-testid={`ptw-management-draw-button-${game.playToWinId}`}
+                    >Draw Winner</Button
+                  >
+                  <Button
+                    color="emerald"
+                    size="sm"
+                    disabled={!game.winner}
+                    onclick={() => claimRaffle(game.playToWinId, game.title)}
+                    data-testid={`ptw-management-claim-button-${game.playToWinId}`}
+                    >Claim Raffle</Button
+                  >
                 </div>
               </TableBodyCell>
             </TableBodyRow>

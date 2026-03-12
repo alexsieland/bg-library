@@ -1,20 +1,23 @@
 <script lang="ts">
   import { TrashBinSolid } from 'flowbite-svelte-icons';
   import { Button, Modal } from 'flowbite-svelte';
+  import { apiClient } from './api-client';
 
   interface Props {
     open?: boolean;
+    onConfirm?: () => void | Promise<void>;
     onCancel?: () => void;
   }
 
-  let { open = $bindable(false), onCancel }: Props = $props();
+  let { open = $bindable(false), onConfirm, onCancel }: Props = $props();
 
   let isLoading = $state(false);
 
   async function handleConfirm() {
     isLoading = true;
     try {
-      // TODO reset all unclaimed play to win raffles
+      await apiClient.resetPlayToWinGameRaffle();
+      await onConfirm?.();
     } finally {
       isLoading = false;
       open = false;
@@ -41,7 +44,17 @@
     Restart raffle?
   </p>
   <div class="flex items-center justify-center space-x-4">
-    <Button color="light" onclick={handleCancel} disabled={isLoading}>No, cancel</Button>
-    <Button color="rose" onclick={handleConfirm} disabled={isLoading}>Yes, I'm sure</Button>
+    <Button
+      color="light"
+      onclick={handleCancel}
+      disabled={isLoading}
+      data-testid="reset-raffle-cancel-button">No, cancel</Button
+    >
+    <Button
+      color="rose"
+      onclick={handleConfirm}
+      disabled={isLoading}
+      data-testid="reset-raffle-confirm-button">Yes, I'm sure</Button
+    >
   </div>
 </Modal>

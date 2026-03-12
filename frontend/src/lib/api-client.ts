@@ -297,10 +297,7 @@ class ApiClient {
     return this.handleResponse(res);
   }
 
-  async deletePlayToWinGameByPlayToWinId(
-    ptwId: string,
-    reqBody: DeletePlayToWinGameRequest
-  ): Promise<void> {
+  async deletePlayToWinGame(ptwId: string, reqBody: DeletePlayToWinGameRequest): Promise<void> {
     const res = await this.client.DELETE(API_PATHS.deletePlayToWinGame, {
       params: { path: { ptwId } },
       body: reqBody,

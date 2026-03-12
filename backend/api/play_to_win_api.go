@@ -185,9 +185,10 @@ type ptwEntry struct {
 	EntrantUniqueId string `json:"entrantUniqueId"`
 }
 
-func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
+func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, playToWinID pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
 	playToWinEntryParams := db.CreatePlayToWinEntryParams{
 		SessionID:       ptwSessionId,
+		PlayToWinID:     playToWinID,
 		EntrantName:     entry.EntrantName,
 		EntrantUniqueID: entry.EntrantUniqueId,
 	}
@@ -268,7 +269,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 
 	// Create all play to win entries for session
 	for i, entry := range ptwEntries {
-		entry, err := s.addPlayToWinEntry(c, dbPtwSession.ID, entry, tx)
+		entry, err := s.addPlayToWinEntry(c, dbPtwSession.ID, dbPtwSession.PlayToWinID, entry, tx)
 		if err != nil {
 			log.Printf("Error creating play to win entry: %v", err)
 			internalError(c, err)
@@ -363,7 +364,7 @@ func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 	winnerId := pgtype.UUID{
 		Valid: false,
 	}
-	if jsonObject.WinnerId == nil {
+	if jsonObject.WinnerId != nil {
 		winnerId = pgtype.UUID{
 			Bytes: *jsonObject.WinnerId,
 			Valid: true,
@@ -377,6 +378,12 @@ func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 
 	err = s.queries.UpdatePlayToWinEntry(c.Request.Context(), params)
 	if err != nil {
+		if isForeignKeyConstraintViolation(err) {
+			var errorDetails ErrorDetails
+			errorDetails.AddErrorDetail("winnerId", "Must reference an entry belonging to this play to win game")
+			validationError(c, errorDetails)
+			return
+		}
 		log.Printf("Error updating play to win entry: %v", err)
 		internalError(c, err)
 		return
@@ -398,8 +405,9 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		errorDetails.ValidateStringLength("deletionComment", *request.RemovalComment, 0, 500)
 	}
 	var deletionReason *string
-	if request.RemovalComment != nil {
-		deletionReason = request.RemovalComment
+	if request.RemovalReason != "" {
+		reason := string(request.RemovalReason)
+		deletionReason = &reason
 	}
 
 	reason := playToWinGameDeletionReason(deletionReason, &errorDetails)
@@ -414,7 +422,14 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		DeletionReasonComment: stringToPgText(request.RemovalComment),
 	}
 
-	s.queries.DeletePlayToWinGameByPlayToWinId(c.Request.Context(), deleteParams)
+	err = s.queries.DeletePlayToWinGameByPlayToWinId(c.Request.Context(), deleteParams)
+	if err != nil {
+		log.Printf("Error deleting play to win game: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {

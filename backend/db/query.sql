@@ -165,7 +165,7 @@ INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, 
 RETURNING *;
 
 -- name: CreatePlayToWinEntry :one
-INSERT INTO play_to_win_entries (session_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3)
+INSERT INTO play_to_win_entries (session_id, play_to_win_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: UpdatePlayToWinEntry :exec
@@ -226,4 +226,4 @@ WHERE id = $1;
 -- name: ResetPlayToWinGameWinners :exec
 UPDATE play_to_win_games
 SET winner_id = NULL
-WHERE deletion_reason != 'claimed' ;
+WHERE deletion_reason IS DISTINCT FROM 'claimed';
