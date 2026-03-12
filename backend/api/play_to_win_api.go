@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"log"
+	"math/rand/v2"
 	"net/http"
 
 	"github.com/alexsieland/bg-library/db"
@@ -381,5 +382,82 @@ func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		return
 	}
 
+	c.JSON(http.StatusNoContent, nil)
+}
+
+func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	var request RemovePlayToWinGameRequest
+	err := c.ShouldBindBodyWithJSON(&request)
+	if err != nil {
+		malformedJson(c)
+		return
+	}
+
+	var errorDetails ErrorDetails
+	if request.RemovalComment != nil {
+		errorDetails.ValidateStringLength("deletionComment", *request.RemovalComment, 0, 500)
+	}
+	var deletionReason *string
+	if request.RemovalComment != nil {
+		deletionReason = request.RemovalComment
+	}
+
+	reason := playToWinGameDeletionReason(deletionReason, &errorDetails)
+	if !errorDetails.Empty() {
+		validationError(c, errorDetails)
+		return
+	}
+
+	deleteParams := db.DeletePlayToWinGameByPlayToWinIdParams{
+		ID:                    uuidToPgTypeUUID(ptwId),
+		DeletionReason:        reason,
+		DeletionReasonComment: stringToPgText(request.RemovalComment),
+	}
+
+	s.queries.DeletePlayToWinGameByPlayToWinId(c.Request.Context(), deleteParams)
+}
+
+func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
+	pgPtwId := uuidToPgTypeUUID(ptwId)
+	entries, err := s.queries.GetPlayToWinEntries(c.Request.Context(), pgPtwId)
+	if err != nil {
+		log.Printf("Error getting play to win entries: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	selectedPos := rand.IntN(len(entries))
+	selectedEntry := entries[selectedPos]
+
+	updateParams := db.UpdatePlayToWinEntryParams{
+		ID:       pgPtwId,
+		WinnerID: selectedEntry.EntryID,
+	}
+
+	err = s.queries.UpdatePlayToWinEntry(c.Request.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating play to win entry: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	winner := PlayToWinEntry{
+		EntrantName:     selectedEntry.EntrantName,
+		EntrantUniqueId: selectedEntry.EntrantUniqueID,
+		EntryId:         pgUUIDToUUID(selectedEntry.EntryID),
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"winner": winner,
+	})
+}
+
+func (s Server) ResetPlayToWinRaffle(c *gin.Context) {
+	err := s.queries.ResetPlayToWinGameWinners(c.Request.Context())
+	if err != nil {
+		log.Printf("Error resetting play to win raffle: %v", err)
+		internalError(c, err)
+		return
+	}
 	c.JSON(http.StatusNoContent, nil)
 }
