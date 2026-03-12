@@ -30,14 +30,15 @@ func TestAddPlayToWinGame(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-				*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(4).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
-				*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
+				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+				*args.Get(5).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
+				*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Commit", mock.Anything).Return(nil)
@@ -62,7 +63,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 
 		pgErr := &pgconn.PgError{Code: "23503"}
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(pgErr)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
@@ -87,7 +88,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 
 		pgErr := &pgconn.PgError{Code: "23505"}
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(pgErr)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
@@ -112,7 +113,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(errors.New("unexpected db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
@@ -139,14 +140,15 @@ func TestAddPlayToWin(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-				*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(4).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
-				*args.Get(5).(*pgtype.Text) = pgtype.Text{Valid: false}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
+				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+				*args.Get(5).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
+				*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Commit", mock.Anything).Return(nil)
@@ -170,7 +172,7 @@ func TestAddPlayToWin(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(&pgconn.PgError{Code: "23505"})
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
@@ -196,7 +198,7 @@ func TestAddPlayToWin(t *testing.T) {
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(expectedErr)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
@@ -942,26 +944,33 @@ func TestListPlayToWinGames(t *testing.T) {
 		playToWinID2 := uuid.New()
 		gameID1 := uuid.New()
 		gameID2 := uuid.New()
+		winnerEntryID := uuid.New()
 
 		mockRows := new(MockRows)
 		mockRows.On("Next").Return(true).Once()
 		mockRows.On("Next").Return(true).Once()
 		mockRows.On("Next").Return(false).Once()
-		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID1, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID1, Valid: true}
 				*args.Get(2).(*string) = "Azul"
-				*args.Get(3).(*pgtype.Text) = pgtype.Text{String: SanitizeTitle("Azul"), Valid: true}
+				*args.Get(3).(*string) = SanitizeTitle("Azul")
 				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Bytes: winnerEntryID, Valid: true}
+				*args.Get(6).(*pgtype.Text) = pgtype.Text{String: "Alice", Valid: true}
+				*args.Get(7).(*pgtype.Text) = pgtype.Text{String: "alice123", Valid: true}
 			}).Return(nil).Once()
-		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID2, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID2, Valid: true}
 				*args.Get(2).(*string) = "Catan"
-				*args.Get(3).(*pgtype.Text) = pgtype.Text{String: SanitizeTitle("Catan"), Valid: true}
+				*args.Get(3).(*string) = SanitizeTitle("Catan")
 				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+				*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Valid: false}
+				*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
+				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil).Once()
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
@@ -982,9 +991,14 @@ func TestListPlayToWinGames(t *testing.T) {
 		assert.Equal(t, playToWinID1, response.Games[0].PlayToWinId)
 		assert.Equal(t, gameID1, response.Games[0].GameId)
 		assert.Equal(t, "Azul", response.Games[0].Title)
+		assert.NotNil(t, response.Games[0].Winner)
+		assert.Equal(t, winnerEntryID, response.Games[0].Winner.EntryId)
+		assert.Equal(t, "Alice", response.Games[0].Winner.EntrantName)
+		assert.Equal(t, "alice123", response.Games[0].Winner.EntrantUniqueId)
 		assert.Equal(t, playToWinID2, response.Games[1].PlayToWinId)
 		assert.Equal(t, gameID2, response.Games[1].GameId)
 		assert.Equal(t, "Catan", response.Games[1].Title)
+		assert.Nil(t, response.Games[1].Winner)
 		mockDB.AssertExpectations(t)
 	})
 
