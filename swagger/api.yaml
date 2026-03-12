@@ -528,7 +528,7 @@ paths:
       tags:
         - ptw
         - games
-      operationId: addPlayToWinGame
+      operationId: addPlayToWinGameByGameId
       summary: Mark a library game as play to win
       parameters:
         - in: path
@@ -551,7 +551,8 @@ paths:
       tags:
         - ptw
         - games
-      operationId: removePlayToWinGame
+      operationId: removePlayToWinGameByGameId
+
       summary: Mark a library game as not play to win
       parameters:
         - in: path
@@ -730,6 +731,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       description: Update a play to win game by ID
+    delete:
+      tags:
+        - ptw
+      operationId: deletePlayToWinGame
+      parameters:
+        - in: path
+          name: ptwId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Play to win game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemovePlayToWinGameRequest'
+      responses:
+        '204':
+          description: Play to win game deleted successfully
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ptw/raffle/reset:
+    post:
+      tags:
+        - ptw
+      operationId: resetPlayToWinRaffle
+      summary: Reset the play to win raffle
+      responses:
+        '204':
+          description: Play to win raffle reset successfully
+      description: Reset the play to win raffle for all games
+
+  /api/v1/ptw/raffle/ptwId/{ptwId}:
+    post:
+      tags:
+        - ptw
+      operationId: drawPlayToWinRaffle
+      parameters:
+        - in: path
+          name: ptwId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Play to win game ID
+      responses:
+        '200':
+          description: Play to win raffle winner selected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayToWinEntry'
+        '404':
+          description: Play to win game not found
+    description: Draw a random winner for a specific play to win game
 
 components:
   schemas:

@@ -74,7 +74,7 @@ func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlay
 	}
 
 	if isPlayToWin {
-		err = s.addPlayToWin(c, pgUUIDToUUID(game.ID), tx)
+		err = s.addPlayToWinByGameId(c, pgUUIDToUUID(game.ID), tx)
 	}
 	return game, err
 }
@@ -279,7 +279,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 	// if edit included play to win status, then see if we need to add or remove the play to win game entry
 	if jsonObject.IsPlayToWin != nil {
 		if *jsonObject.IsPlayToWin == true && !dbGame.PlayToWinGameID.Valid {
-			err = s.addPlayToWin(c, gameId, &tx)
+			err = s.addPlayToWinByGameId(c, gameId, &tx)
 			if err != nil {
 				log.Printf("Error adding play to win game: %v", err)
 				internalError(c, err)
@@ -288,7 +288,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 		} else if *jsonObject.IsPlayToWin == false && dbGame.PlayToWinGameID.Valid {
 			// If game was play to win, but is now not, then remove it with the reason 'mistake'
 			reason := string(db.PlayToWinGameDeletionTypeMistake)
-			err = s.removePlayToWin(c, gameId, &reason, nil, &tx)
+			err = s.removePlayToWinByGameId(c, gameId, &reason, nil, &tx)
 			if err != nil {
 				log.Printf("Error removing play to win game: %v", err)
 				internalError(c, err)

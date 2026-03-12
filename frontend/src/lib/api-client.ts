@@ -23,8 +23,13 @@ const API_PATHS = {
   checkInGame: '/api/v1/library/checkin',
   checkOutGame: '/api/v1/library/checkout',
   listPlayToWinGames: '/api/v1/ptw/games',
+  getPlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}',
+  updatePlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}',
+  deletePlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}',
   getPlayToWinEntries: '/api/v1/ptw/entries/playToWinId/{playToWinId}',
   addPlayToWinSession: '/api/v1/ptw/session',
+  resetPlayToWinRaffle: '/api/v1/ptw/raffle/reset',
+  drawPlayToWinRaffle: '/api/v1/ptw/raffle/ptwId/{ptwId}',
 } as const satisfies Record<string, ApiPath>;
 
 export type Game = components['schemas']['Game'];
@@ -38,6 +43,8 @@ export type CheckOutRequest = components['schemas']['CheckOutRequest'];
 export type LibraryTransaction = components['schemas']['LibraryTransaction'];
 export type PlayToWinGameList = components['schemas']['PlayToWinGameList'];
 export type PlayToWinGame = components['schemas']['PlayToWinGame'];
+export type UpdatePlayToWinGame = components['schemas']['UpdatePlayToWinGame'];
+export type DeletePlayToWinGameRequest = components['schemas']['RemovePlayToWinGameRequest'];
 export type PlayToWinSession = components['schemas']['PlayToWinSession'];
 export type CreatePlayToWinSessionRequest = components['schemas']['CreatePlayToWinSessionRequest'];
 export type CreatePlayToWinSessionEntry =
@@ -271,6 +278,44 @@ class ApiClient {
   ): Promise<PlayToWinGameList> {
     const res = await this.client.GET(API_PATHS.listPlayToWinGames, {
       params: { query: { title, limit, offset } },
+    });
+    return this.handleResponse(res);
+  }
+
+  async getPlayToWinGame(ptwId: string): Promise<PlayToWinGame> {
+    const res = await this.client.GET(API_PATHS.getPlayToWinGame, {
+      params: { path: { ptwId } },
+    });
+    return this.handleResponse(res);
+  }
+
+  async updatePlayToWinGame(ptwId: string, game: PlayToWinGame): Promise<PlayToWinGame> {
+    const res = await this.client.PUT(API_PATHS.updatePlayToWinGame, {
+      params: { path: { ptwId } },
+      body: game,
+    });
+    return this.handleResponse(res);
+  }
+
+  async deletePlayToWinGameByPlayToWinId(
+    ptwId: string,
+    reqBody: DeletePlayToWinGameRequest
+  ): Promise<void> {
+    const res = await this.client.DELETE(API_PATHS.deletePlayToWinGame, {
+      params: { path: { ptwId } },
+      body: reqBody,
+    });
+    return this.handleResponse(res);
+  }
+
+  async resetPlayToWinGameRaffle(): Promise<void> {
+    const res = await this.client.POST(API_PATHS.resetPlayToWinRaffle, {});
+    return this.handleResponse(res);
+  }
+
+  async drawPlayToWinRaffle(ptwId: string): Promise<PlayToWinEntry> {
+    const res = await this.client.POST(API_PATHS.drawPlayToWinRaffle, {
+      params: { path: { ptwId } },
     });
     return this.handleResponse(res);
   }

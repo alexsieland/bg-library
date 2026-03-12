@@ -155,7 +155,7 @@ describe('PatronsManagementTable', () => {
     const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
     await fireEvent.click(deleteButtons[0]);
     await waitFor(() => {
-      expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument();
+      expect(screen.getByTestId('delete-confirmation-modal')).toBeInTheDocument();
     });
   });
   // -------------------------------------------------------------------------

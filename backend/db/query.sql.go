@@ -228,6 +228,25 @@ func (q *Queries) DeletePlayToWinGame(ctx context.Context, arg DeletePlayToWinGa
 	return err
 }
 
+const deletePlayToWinGameByPlayToWinId = `-- name: DeletePlayToWinGameByPlayToWinId :exec
+UPDATE play_to_win_games
+SET deleted_at = now(),
+    deletion_reason = $2,
+    deletion_reason_comment = $3
+WHERE deleted_at IS NULL AND id = $1
+`
+
+type DeletePlayToWinGameByPlayToWinIdParams struct {
+	ID                    pgtype.UUID
+	DeletionReason        NullPlayToWinGameDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
+func (q *Queries) DeletePlayToWinGameByPlayToWinId(ctx context.Context, arg DeletePlayToWinGameByPlayToWinIdParams) error {
+	_, err := q.db.Exec(ctx, deletePlayToWinGameByPlayToWinId, arg.ID, arg.DeletionReason, arg.DeletionReasonComment)
+	return err
+}
+
 const deletePlayToWinSession = `-- name: DeletePlayToWinSession :exec
 UPDATE play_to_win_sessions
 SET deleted_at = now(),
@@ -715,6 +734,17 @@ func (q *Queries) ListPlayToWinGames(ctx context.Context, arg ListPlayToWinGames
 		return nil, err
 	}
 	return items, nil
+}
+
+const resetPlayToWinGameWinners = `-- name: ResetPlayToWinGameWinners :exec
+UPDATE play_to_win_games
+SET winner_id = NULL
+WHERE deletion_reason != 'claimed'
+`
+
+func (q *Queries) ResetPlayToWinGameWinners(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, resetPlayToWinGameWinners)
+	return err
 }
 
 const restorePlayToWinEntry = `-- name: RestorePlayToWinEntry :exec

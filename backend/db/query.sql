@@ -180,6 +180,14 @@ SET deleted_at = now(),
     deletion_reason_comment = $3
 WHERE deleted_at IS NULL AND game_id = $1;
 
+
+-- name: DeletePlayToWinGameByPlayToWinId :exec
+UPDATE play_to_win_games
+SET deleted_at = now(),
+    deletion_reason = $2,
+    deletion_reason_comment = $3
+WHERE deleted_at IS NULL AND id = $1;
+
 -- name: RestorePlayToWinGame :exec
 UPDATE play_to_win_games
 SET deleted_at = NULL,
@@ -214,3 +222,8 @@ SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
 WHERE id = $1;
+
+-- name: ResetPlayToWinGameWinners :exec
+UPDATE play_to_win_games
+SET winner_id = NULL
+WHERE deletion_reason != 'claimed' ;
