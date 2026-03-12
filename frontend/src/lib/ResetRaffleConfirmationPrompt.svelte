@@ -27,7 +27,14 @@
   }
 </script>
 
-<Modal title="" bind:open autoclose={false} size="sm" class="w-full">
+<Modal
+  title=""
+  bind:open
+  autoclose={false}
+  size="sm"
+  class="w-full"
+  data-testid="reset-raffle-confirmation-prompt"
+>
   <TrashBinSolid class="mx-auto h-11 w-11 shrink-0" />
   <p class="mb-4 text-center text-gray-500 dark:text-gray-300">
     This will reset the winners for all unclaimed play to win raffles. This action cannot be undone.

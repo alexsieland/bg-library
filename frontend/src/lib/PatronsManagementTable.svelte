@@ -14,7 +14,7 @@
   import { apiClient, type Patron } from './api-client';
   import { toasts } from './toast-store';
   import AddPatronModal from './AddPatronModal.svelte';
-  import DeleteConfirmationPrompt from './ResetRaffleConfirmationPrompt.svelte';
+  import DeleteConfirmationPrompt from './DeleteConfirmationPrompt.svelte';
   import CsvUploadModal from './CsvUploadModal.svelte';
   import SearchBar from './SearchBar.svelte';
   import Debounce from './snippets/debounce.svelte';
