@@ -15,7 +15,7 @@
   import { apiClient, type GameStatusList, type Game } from './api-client';
   import { toasts } from './toast-store';
   import AddGameModal from './AddGameModal.svelte';
-  import DeleteConfirmationPrompt from './DeleteConfirmationPrompt.svelte';
+  import DeleteConfirmationPrompt from './ResetRaffleConfirmationPrompt.svelte';
   import CsvUploadModal from './CsvUploadModal.svelte';
   import SearchBar from './SearchBar.svelte';
   import Debounce from './snippets/debounce.svelte';
