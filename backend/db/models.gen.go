@@ -14,6 +14,7 @@ import (
 type PlayToWinEntryDeletionType string
 
 const (
+	PlayToWinEntryDeletionTypeWinner           PlayToWinEntryDeletionType = "winner"
 	PlayToWinEntryDeletionTypeFailedToClaim    PlayToWinEntryDeletionType = "failed_to_claim"
 	PlayToWinEntryDeletionTypeFoulPlay         PlayToWinEntryDeletionType = "foul_play"
 	PlayToWinEntryDeletionTypeDuplicateEntrant PlayToWinEntryDeletionType = "duplicate_entrant"
@@ -185,17 +186,6 @@ func (ns NullTransactionEventType) Value() (driver.Value, error) {
 	return string(ns.TransactionEventType), nil
 }
 
-type DuplicatePlayToWinGame struct {
-	ID                    pgtype.UUID
-	GameID                pgtype.UUID
-	RefID                 pgtype.UUID
-	WinnerID              pgtype.UUID
-	CreatedAt             pgtype.Timestamp
-	DeletedAt             pgtype.Timestamp
-	DeletionReason        NullPlayToWinGameDeletionType
-	DeletionReasonComment pgtype.Text
-}
-
 type Game struct {
 	ID             pgtype.UUID
 	Title          string
@@ -228,6 +218,7 @@ type PlayToWinEntry struct {
 type PlayToWinGame struct {
 	ID                    pgtype.UUID
 	GameID                pgtype.UUID
+	RefID                 pgtype.UUID
 	WinnerID              pgtype.UUID
 	CreatedAt             pgtype.Timestamp
 	DeletedAt             pgtype.Timestamp

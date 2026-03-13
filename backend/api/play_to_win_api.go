@@ -244,8 +244,9 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	}
 
 	// Create the play to win session params
+	ptwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(jsonObject.PlayToWinId))
 	ptwSessionParams := db.CreatePlayToWinSessionParams{
-		PlayToWinID:     uuidToPgTypeUUID(jsonObject.PlayToWinId),
+		PlayToWinID:     ptwId,
 		PlaytimeMinutes: int32ToPgInt4(jsonObject.PlaytimeMinutes),
 	}
 
@@ -411,6 +412,7 @@ func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 }
 
 func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	// Get request body
 	var request RemovePlayToWinGameRequest
 	err := c.ShouldBindBodyWithJSON(&request)
 	if err != nil {
@@ -418,6 +420,20 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		return
 	}
 
+	// Check that the game exists
+	dbPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(ptwId))
+	ptwGame, err := s.queries.GetPlayToWinGame(c.Request.Context(), dbPtwId)
+	if err != nil {
+		if isNotFound(err) {
+			// Since delete deletes, if the game is not found we can pretend it was deleted and return 204
+			c.JSON(http.StatusNoContent, nil)
+			return
+		}
+		log.Printf("Error getting play to win game: %v", err)
+		internalError(c, err)
+	}
+
+	// Validate request body fields and convert to db types
 	var errorDetails ErrorDetails
 	if request.RemovalComment != nil {
 		errorDetails.ValidateStringLength("deletionComment", *request.RemovalComment, 0, 500)
@@ -440,13 +456,69 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		DeletionReasonComment: stringToPgText(request.RemovalComment),
 	}
 
-	err = s.queries.DeletePlayToWinGameByPlayToWinId(c.Request.Context(), deleteParams)
+	// Start transaction
+	tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
+	if err != nil {
+		log.Printf("Error creating play to win session: %v", err)
+		internalError(c, err)
+		return
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback(c.Request.Context())
+		}
+	}()
+
+	// Soft delete the play to win game
+	err = s.queries.WithTx(tx).DeletePlayToWinGameByPlayToWinId(c.Request.Context(), deleteParams)
 	if err != nil {
 		log.Printf("Error deleting play to win game: %v", err)
 		internalError(c, err)
 		return
 	}
 
+	// If the deletion was a claimed prize, also delete the play to win entry to prevent it from showing up in the duplicate game raffle results
+	if deleteParams.DeletionReason.Valid &&
+		deleteParams.DeletionReason.PlayToWinGameDeletionType == db.PlayToWinGameDeletionTypeClaimed {
+
+		// If claimed prize, soft delete the play to win entry so that entry is not available for potential duplicate game raffles
+		if ptwGame.WinnerID.Valid {
+			deleteEntryReason := db.NullPlayToWinEntryDeletionType{
+				PlayToWinEntryDeletionType: db.PlayToWinEntryDeletionTypeWinner,
+				Valid:                      true,
+			}
+			deleteEntryParams := db.DeletePlayToWinEntryParams{
+				ID:                    ptwGame.WinnerID,
+				DeletionReason:        deleteEntryReason,
+				DeletionReasonComment: pgtype.Text{Valid: false},
+			}
+			err = s.queries.WithTx(tx).DeletePlayToWinEntry(c.Request.Context(), deleteEntryParams)
+			if err != nil {
+				log.Printf("Error deleting play to win entry: %v", err)
+				internalError(c, err)
+				return
+			}
+		}
+
+		// If claimed prize, soft delete the library game because it is no longer available for check out
+		err = s.queries.WithTx(tx).DeleteGame(c.Request.Context(), ptwGame.GameID)
+		if err != nil {
+			log.Printf("Error deleting play to win entry: %v", err)
+			internalError(c, err)
+			return
+		}
+	}
+
+	// Commit transaction
+	err = tx.Commit(c.Request.Context())
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		internalError(c, err)
+		return
+	}
+
+	// Set tx to nil to prevent deferred rollback and return 204
+	tx = nil
 	c.JSON(http.StatusNoContent, nil)
 }
 

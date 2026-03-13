@@ -65,7 +65,7 @@ CREATE TABLE play_to_win_sessions (
     UNIQUE(id, play_to_win_id)
 );
 
-CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
+CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('winner','failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
 CREATE TABLE play_to_win_entries (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),

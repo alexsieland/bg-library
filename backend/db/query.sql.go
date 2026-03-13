@@ -129,7 +129,7 @@ func (q *Queries) CreatePlayToWinEntry(ctx context.Context, arg CreatePlayToWinE
 
 const createPlayToWinGame = `-- name: CreatePlayToWinGame :one
 INSERT INTO play_to_win_games (game_id) VALUES ($1)
-RETURNING id, game_id, winner_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
+RETURNING id, game_id, ref_id, winner_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
 `
 
 func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (PlayToWinGame, error) {
@@ -138,6 +138,7 @@ func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (
 	err := row.Scan(
 		&i.ID,
 		&i.GameID,
+		&i.RefID,
 		&i.WinnerID,
 		&i.CreatedAt,
 		&i.DeletedAt,
