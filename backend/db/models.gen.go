@@ -14,7 +14,7 @@ import (
 type PlayToWinEntryDeletionType string
 
 const (
-	PlayToWinEntryDeletionTypeWinner           PlayToWinEntryDeletionType = "winner"
+	PlayToWinEntryDeletionTypeWon              PlayToWinEntryDeletionType = "won"
 	PlayToWinEntryDeletionTypeFailedToClaim    PlayToWinEntryDeletionType = "failed_to_claim"
 	PlayToWinEntryDeletionTypeFoulPlay         PlayToWinEntryDeletionType = "foul_play"
 	PlayToWinEntryDeletionTypeDuplicateEntrant PlayToWinEntryDeletionType = "duplicate_entrant"

@@ -484,7 +484,7 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		// If claimed prize, soft delete the play to win entry so that entry is not available for potential duplicate game raffles
 		if ptwGame.WinnerID.Valid {
 			deleteEntryReason := db.NullPlayToWinEntryDeletionType{
-				PlayToWinEntryDeletionType: db.PlayToWinEntryDeletionTypeWinner,
+				PlayToWinEntryDeletionType: db.PlayToWinEntryDeletionTypeWon,
 				Valid:                      true,
 			}
 			deleteEntryParams := db.DeletePlayToWinEntryParams{

@@ -65,7 +65,7 @@ CREATE TABLE play_to_win_sessions (
     UNIQUE(id, play_to_win_id)
 );
 
-CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('winner','failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
+CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('won','failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
 CREATE TABLE play_to_win_entries (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),
@@ -204,7 +204,7 @@ FROM play_to_win_entries ptw
 LEFT JOIN play_to_win_sessions ps ON ps.id = ptw.session_id
 LEFT JOIN play_to_win_games pg ON pg.id = ps.play_to_win_id
 LEFT JOIN games g ON g.id = pg.game_id
-WHERE (ptw.deletion_reason IN ('failed_to_claim') OR ptw.deletion_reason IS NULL)
+WHERE (ptw.deletion_reason IN ('won','failed_to_claim') OR ptw.deletion_reason IS NULL)
   AND ps.deletion_reason IS NULL
 ORDER BY ptw.created_at DESC;
 
