@@ -185,6 +185,17 @@ func (ns NullTransactionEventType) Value() (driver.Value, error) {
 	return string(ns.TransactionEventType), nil
 }
 
+type DuplicatePlayToWinGame struct {
+	ID                    pgtype.UUID
+	GameID                pgtype.UUID
+	RefID                 pgtype.UUID
+	WinnerID              pgtype.UUID
+	CreatedAt             pgtype.Timestamp
+	DeletedAt             pgtype.Timestamp
+	DeletionReason        NullPlayToWinGameDeletionType
+	DeletionReasonComment pgtype.Text
+}
+
 type Game struct {
 	ID             pgtype.UUID
 	Title          string
@@ -341,6 +352,7 @@ type VwPlayToWinEntryEvent struct {
 type VwPlayToWinGame struct {
 	ID        pgtype.UUID
 	GameID    pgtype.UUID
+	RefID     pgtype.UUID
 	CreatedAt pgtype.Timestamp
 	WinnerID  pgtype.UUID
 }
@@ -350,6 +362,7 @@ type VwPlayToWinGameOverview struct {
 	GameID         pgtype.UUID
 	GameTitle      string
 	SanitizedTitle string
+	RefID          pgtype.UUID
 	CreatedAt      pgtype.Timestamp
 	WinnerID       pgtype.UUID
 	WinnerName     pgtype.Text

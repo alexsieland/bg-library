@@ -392,6 +392,19 @@ func (q *Queries) GetGameStatus(ctx context.Context, gameID pgtype.UUID) (VwGame
 	return i, err
 }
 
+const getParentPlayToWinId = `-- name: GetParentPlayToWinId :one
+SELECT COALESCE(ref_id, id) AS parent_id
+FROM vw_play_to_win_games
+WHERE id = $1
+`
+
+func (q *Queries) GetParentPlayToWinId(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getParentPlayToWinId, id)
+	var parent_id pgtype.UUID
+	err := row.Scan(&parent_id)
+	return parent_id, err
+}
+
 const getPatron = `-- name: GetPatron :one
 SELECT id, full_name, barcode, created_at
 FROM vw_library_patrons
@@ -477,7 +490,7 @@ func (q *Queries) GetPlayToWinEntries(ctx context.Context, playToWinID pgtype.UU
 }
 
 const getPlayToWinGame = `-- name: GetPlayToWinGame :one
-SELECT play_to_win_id, game_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
+SELECT play_to_win_id, game_id, game_title, sanitized_title, ref_id, created_at, winner_id, winner_name, winner_unique_id
 FROM vw_play_to_win_game_overview
 WHERE play_to_win_id = $1
 `
@@ -490,6 +503,7 @@ func (q *Queries) GetPlayToWinGame(ctx context.Context, playToWinID pgtype.UUID)
 		&i.GameID,
 		&i.GameTitle,
 		&i.SanitizedTitle,
+		&i.RefID,
 		&i.CreatedAt,
 		&i.WinnerID,
 		&i.WinnerName,
@@ -702,7 +716,7 @@ func (q *Queries) ListPatrons(ctx context.Context, arg ListPatronsParams) ([]VwL
 }
 
 const listPlayToWinGames = `-- name: ListPlayToWinGames :many
-SELECT play_to_win_id, game_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
+SELECT play_to_win_id, game_id, game_title, sanitized_title, ref_id, created_at, winner_id, winner_name, winner_unique_id
 FROM vw_play_to_win_game_overview
 WHERE sanitized_title ILIKE $1
 LIMIT $2 OFFSET $3
@@ -728,6 +742,7 @@ func (q *Queries) ListPlayToWinGames(ctx context.Context, arg ListPlayToWinGames
 			&i.GameID,
 			&i.GameTitle,
 			&i.SanitizedTitle,
+			&i.RefID,
 			&i.CreatedAt,
 			&i.WinnerID,
 			&i.WinnerName,

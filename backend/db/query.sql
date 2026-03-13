@@ -136,6 +136,11 @@ SELECT *
 FROM vw_play_to_win_game_overview
 WHERE play_to_win_id = $1;
 
+-- name: GetParentPlayToWinId :one
+SELECT COALESCE(ref_id, id) AS parent_id
+FROM vw_play_to_win_games
+WHERE id = $1;
+
 -- name: GetPlayToWinSessions :many
 SELECT
     id AS session_id,

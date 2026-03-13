@@ -14,6 +14,22 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
+// Get Parent Play To Win ID from Ref ID.
+// Intended for use when CRUD operations are performed on a session or entry
+// This ensures the id always points the parent play-to-win game rather than the duplicate.
+func (s Server) getParentPlayToWinId(c *gin.Context, ptwId pgtype.UUID) pgtype.UUID {
+	if !ptwId.Valid {
+		return ptwId
+	}
+	parentId, err := s.queries.GetParentPlayToWinId(c.Request.Context(), ptwId)
+	if err == nil {
+		if parentId.Valid {
+			return parentId
+		}
+	}
+	return ptwId
+}
+
 func (s Server) addPlayToWinByGameId(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
 	var (
 		err error
@@ -159,7 +175,8 @@ func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
 }
 
 func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
-	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, uuidToPgTypeUUID(playToWinId))
+	pgPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(playToWinId))
+	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, pgPtwId)
 	if err != nil {
 		log.Printf("Error getting play to win entries: %v", err)
 		internalError(c, err)
@@ -186,9 +203,10 @@ type ptwEntry struct {
 }
 
 func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, playToWinID pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
+	pgPtwId := s.getParentPlayToWinId(c, playToWinID)
 	playToWinEntryParams := db.CreatePlayToWinEntryParams{
 		SessionID:       ptwSessionId,
-		PlayToWinID:     playToWinID,
+		PlayToWinID:     pgPtwId,
 		EntrantName:     entry.EntrantName,
 		EntrantUniqueID: entry.EntrantUniqueId,
 	}
@@ -433,7 +451,12 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 }
 
 func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
-	pgPtwId := uuidToPgTypeUUID(ptwId)
+	pgPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(ptwId))
+	if !pgPtwId.Valid {
+		notFound(c)
+		return
+	}
+
 	entries, err := s.queries.GetPlayToWinEntries(c.Request.Context(), pgPtwId)
 	if err != nil {
 		log.Printf("Error getting play to win entries: %v", err)
