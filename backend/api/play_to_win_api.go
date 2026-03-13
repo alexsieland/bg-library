@@ -30,6 +30,52 @@ func (s Server) getParentPlayToWinId(c *gin.Context, ptwId pgtype.UUID) pgtype.U
 	return ptwId
 }
 
+// Groups are a behind-the-scene element that auto-collates duplicate games together for raffling purposes.
+// Auto-create group
+func (s Server) getOrCreatePlayToWinGroup(c *gin.Context, groupName string, optTx *pgx.Tx) pgtype.UUID {
+	var (
+		err error
+		tx  pgx.Tx
+	)
+
+	if optTx != nil {
+		tx = *optTx
+	} else {
+		tx, err = s.Database.BeginTx(c, pgx.TxOptions{})
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if tx != nil {
+				_ = tx.Rollback(c.Request.Context())
+			}
+		}()
+	}
+
+	_, err = s.queries.GetPlayToWinGroupByName(c.Request.Context(), groupName)
+	if err != nil {
+		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
+		if isUniqueConstraintViolation(err) {
+			err = s.queries.WithTx(tx).RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+
+	if optTx == nil {
+		err := tx.Commit(c.Request.Context())
+		if err != nil {
+			log.Printf("Error committing play to win game transaction: %v", err)
+			return err
+		}
+		tx = nil
+	}
+	return nil
+}
+
 func (s Server) addPlayToWinByGameId(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
 	var (
 		err error

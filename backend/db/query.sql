@@ -134,43 +134,48 @@ LIMIT $2 OFFSET $3;
 -- name: GetPlayToWinGame :one
 SELECT *
 FROM vw_play_to_win_game_overview
-WHERE play_to_win_id = $1;
+WHERE ptw_game_id = $1;
 
--- name: GetParentPlayToWinId :one
-SELECT COALESCE(ref_id, id) AS parent_id
-FROM vw_play_to_win_games
+-- name: GetPlayToWinGroup :one
+SELECT id, name, created_at
+FROM play_to_win_groups
 WHERE id = $1;
+
+-- name: GetPlayToWinGroupByName :one
+SELECT id, name, created_at
+FROM play_to_win_groups
+WHERE name = $1;
 
 -- name: GetPlayToWinSessions :many
 SELECT
-    id AS session_id,
-    play_to_win_id,
+    id AS ptw_session_id,
+    ptw_group_id,
     playtime_minutes,
     created_at
 FROM vw_play_to_win_sessions
-WHERE play_to_win_id = $1;
+WHERE ptw_group_id = $1;
 
 -- name: GetPlayToWinEntries :many
 SELECT
-    id AS entry_id,
-    session_id,
-    play_to_win_id,
+    id AS ptw_entry_id,
+    ptw_session_id,
+    ptw_group_id,
     entrant_name,
     entrant_unique_id,
     created_at
 FROM vw_play_to_win_entries
-WHERE play_to_win_id = $1;
+WHERE ptw_group_id = $1;
 
 -- name: CreatePlayToWinGame :one
 INSERT INTO play_to_win_games (game_id) VALUES ($1)
 RETURNING *;
 
 -- name: CreatePlayToWinSession :one
-INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, $2)
+INSERT INTO play_to_win_sessions (ptw_group_id, playtime_minutes) VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreatePlayToWinEntry :one
-INSERT INTO play_to_win_entries (session_id, play_to_win_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
+INSERT INTO play_to_win_entries (ptw_session_id, ptw_group_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: UpdatePlayToWinWinner :exec

@@ -41,7 +41,7 @@ CREATE TABLE transaction_events (
 
 CREATE TABLE play_to_win_groups (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
     PRIMARY KEY (id)
@@ -127,17 +127,19 @@ CREATE INDEX idx_active_play_to_win_games
     WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_play_to_win_game_game_id ON play_to_win_games(game_id);
-CREATE INDEX idx_play_to_win_session_play_to_win_id ON play_to_win_sessions(play_to_win_id);
-CREATE INDEX idx_play_to_win_entries_session_id ON play_to_win_entries(ptw_session_id);
+CREATE INDEX idx_play_to_win_session_ptw_group_id ON play_to_win_sessions(ptw_group_id);
+CREATE INDEX idx_play_to_win_entries_ptw_session_id ON play_to_win_entries(ptw_session_id);
 
 CREATE VIEW vw_play_to_win_games AS
-SELECT  id,
-        game_id,
-        ptw_group_id,
-        created_at,
-        winner_id
-FROM play_to_win_games
-WHERE deleted_at IS NULL;
+SELECT  ga.id,
+        ga.game_id,
+        ga.ptw_group_id,
+        gr.name AS group_name,
+        ga.created_at,
+        ga.winner_id
+FROM play_to_win_games AS ga
+LEFT JOIN play_to_win_groups AS gr ON gr.id = ga.ptw_group_id
+WHERE ga.deleted_at IS NULL;
 
 CREATE VIEW vw_library_games AS
 SELECT
@@ -174,7 +176,7 @@ WHERE deleted_at IS NOT NULL;
 CREATE VIEW vw_play_to_win_entries AS
 SELECT ptw_entries.id,
        ptw_entries.ptw_session_id,
-       ptw_sessions.play_to_win_id,
+       ptw_sessions.ptw_group_id,
        ptw_entries.entrant_name,
        ptw_entries.entrant_unique_id,
        ptw_entries.created_at
@@ -184,11 +186,11 @@ WHERE ptw_entries.deleted_at IS NULL;
 
 CREATE VIEW vw_play_to_win_game_overview AS
 SELECT
-    ptw_game.id AS play_to_win_id,
+    ptw_game.id AS ptw_game_id,
     ptw_game.game_id AS game_id,
+    ptw_game.ptw_group_id AS ptw_group_id,
     COALESCE(g.title, 'Missing Game') AS game_title,
     COALESCE(g.sanitized_title, 'missing game') AS sanitized_title,
-    ptw_game.ref_id AS ref_id,
     ptw_game.created_at AS created_at,
     ptw_entry.id AS winner_id,
     ptw_entry.entrant_name AS winner_name,
@@ -248,7 +250,7 @@ SELECT DISTINCT ON (g.id)
         t.id AS transaction_id,
         t.checkout_timestamp,
         t.checkin_timestamp,
-        ptw.id AS play_to_win_game_id
+        ptw.id AS ptw_game_id
 FROM vw_library_games AS g
 LEFT JOIN transactions AS t ON t.game_id = g.id
 LEFT JOIN vw_library_patrons AS p ON t.patron_id = p.id
@@ -283,51 +285,3 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_checkin_event
     AFTER UPDATE ON transactions
     FOR EACH ROW EXECUTE FUNCTION fn_record_checkin_event();
-
-CREATE OR REPLACE FUNCTION fn_check_play_to_win_duplicate()
-    RETURNS TRIGGER AS $$
-DECLARE
-    v_sanitized_title VARCHAR(100);
-    v_ref_id          UUID;
-BEGIN
-    -- Resolve the sanitized title for the newly inserted game
-    SELECT sanitized_title
-    INTO v_sanitized_title
-    FROM games
-    WHERE id = NEW.game_id;
-
-    -- Find the oldest *primary* (non-duplicate) play_to_win entry with the same
-    -- sanitized_title, excluding the row we just inserted.
-    -- ref_id IS NULL in vw_play_to_win_game_overview identifies primary entries
-    -- We must restrict to primary entries (ref_id IS NULL) to prevent
-    -- ref_id chains — all duplicates must point directly to a primary entry.
-    SELECT play_to_win_id
-    INTO v_ref_id
-    FROM vw_play_to_win_game_overview
-    WHERE sanitized_title = v_sanitized_title
-      AND ref_id = play_to_win_id
-      AND play_to_win_id != NEW.id
-    ORDER BY created_at ASC
-    LIMIT 1;
-
-    -- If a matching primary entry exists, reclassify the new row as a duplicate
-    IF v_ref_id IS NOT NULL THEN
-        UPDATE play_to_win_games
-        SET ref_id = v_ref_id
-        WHERE id = NEW.id;
-    END IF;
-
-    -- If no matching primary entry exists, ref id will point to itself
-    IF v_ref_id IS NULL THEN
-        UPDATE play_to_win_games
-        SET ref_id = NEW.id
-        WHERE id = NEW.id;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_play_to_win_duplicate_check
-    AFTER INSERT ON play_to_win_games
-    FOR EACH ROW EXECUTE FUNCTION fn_check_play_to_win_duplicate();
