@@ -182,14 +182,15 @@ func TestAddGame(t *testing.T) {
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
 		mockPtwRow := new(MockRow)
-		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
 			*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-			*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-			*args.Get(5).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
-			*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
+			*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ref_id
+			*args.Get(3).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
+			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(6).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
+			*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
 		mockTx.On("Commit", mock.Anything).Return(nil)
@@ -232,7 +233,7 @@ func TestAddGame(t *testing.T) {
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
 		mockPtwRow := new(MockRow)
-		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("ptw db error"))
+		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("ptw db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
 		mockTx.On("Rollback", mock.Anything).Return(nil)
 
@@ -817,14 +818,15 @@ func TestBulkAddGames(t *testing.T) {
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{title, SanitizeTitle(title), pgtype.Text{String: barcode, Valid: true}}).Return(mockGameRow).Once()
 
 		mockPtwRow := new(MockRow)
-		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
 			*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-			*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-			*args.Get(5).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
-			*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
+			*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ref_id
+			*args.Get(3).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
+			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(6).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
+			*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
 		}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockPtwRow).Once()
 

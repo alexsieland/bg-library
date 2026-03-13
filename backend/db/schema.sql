@@ -39,11 +39,19 @@ CREATE TABLE transaction_events (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE play_to_win_groups (
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
 CREATE TYPE play_to_win_game_deletion_type AS ENUM ('claimed', 'mistake', 'other');
 CREATE TABLE play_to_win_games (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL UNIQUE REFERENCES games(id),
-    ref_id UUID REFERENCES play_to_win_games(id),
+    ptw_group_id UUID NOT NULL REFERENCES play_to_win_groups(id),
     winner_id UUID,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
@@ -55,21 +63,21 @@ CREATE TABLE play_to_win_games (
 CREATE TYPE play_to_win_session_deletion_type AS ENUM ('foul_play', 'too_many_players', 'too_few_players', 'abnormal_playtime', 'other');
 CREATE TABLE play_to_win_sessions (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
-    play_to_win_id UUID NOT NULL REFERENCES play_to_win_games(id),
+    ptw_group_id UUID NOT NULL REFERENCES play_to_win_groups(id),
     playtime_minutes INTEGER,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
     deletion_reason play_to_win_session_deletion_type,
     deletion_reason_comment VARCHAR(500),
     PRIMARY KEY (id),
-    UNIQUE(id, play_to_win_id)
+    UNIQUE(id, ptw_group_id)
 );
 
 CREATE TYPE play_to_win_entry_deletion_type AS ENUM ('won','failed_to_claim', 'foul_play', 'duplicate_entrant', 'other');
 CREATE TABLE play_to_win_entries (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
-    session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),
-    play_to_win_id UUID NOT NULL REFERENCES play_to_win_games(id),
+    ptw_session_id UUID NOT NULL REFERENCES play_to_win_sessions(id),
+    ptw_group_id UUID NOT NULL REFERENCES play_to_win_groups(id),
     entrant_name VARCHAR(100) NOT NULL,
     entrant_unique_id VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -77,16 +85,16 @@ CREATE TABLE play_to_win_entries (
     deletion_reason play_to_win_entry_deletion_type,
     deletion_reason_comment VARCHAR(500),
     PRIMARY KEY (id),
-    UNIQUE(id, play_to_win_id),
-    UNIQUE(session_id, entrant_unique_id),
-    UNIQUE(play_to_win_id, entrant_unique_id),
-    FOREIGN KEY (session_id, play_to_win_id) REFERENCES play_to_win_sessions(id, play_to_win_id)
+    UNIQUE(id, ptw_group_id),
+    UNIQUE(ptw_session_id, entrant_unique_id),
+    UNIQUE(ptw_group_id, entrant_unique_id),
+    FOREIGN KEY (ptw_session_id, ptw_group_id) REFERENCES play_to_win_sessions(id, ptw_group_id)
 );
 
 ALTER TABLE play_to_win_games
 ADD CONSTRAINT fk_play_to_win_games_winner_id
-FOREIGN KEY (winner_id)
-REFERENCES play_to_win_entries(id);
+FOREIGN KEY (winner_id, ptw_group_id)
+REFERENCES play_to_win_entries(id, ptw_group_id);
 
 CREATE INDEX idx_game_barcode ON games(barcode);
 
@@ -120,12 +128,12 @@ CREATE INDEX idx_active_play_to_win_games
 
 CREATE INDEX idx_play_to_win_game_game_id ON play_to_win_games(game_id);
 CREATE INDEX idx_play_to_win_session_play_to_win_id ON play_to_win_sessions(play_to_win_id);
-CREATE INDEX idx_play_to_win_entries_session_id ON play_to_win_entries(session_id);
+CREATE INDEX idx_play_to_win_entries_session_id ON play_to_win_entries(ptw_session_id);
 
 CREATE VIEW vw_play_to_win_games AS
 SELECT  id,
         game_id,
-        ref_id,
+        ptw_group_id,
         created_at,
         winner_id
 FROM play_to_win_games
@@ -154,24 +162,24 @@ FROM play_to_win_games
 WHERE deleted_at IS NOT NULL;
 
 CREATE VIEW vw_play_to_win_sessions AS
-SELECT  id, play_to_win_id, playtime_minutes, created_at
+SELECT  id, ptw_group_id, playtime_minutes, created_at
 FROM play_to_win_sessions
 WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_deleted_play_to_win_sessions AS
-SELECT id, play_to_win_id, deleted_at, deletion_reason, deletion_reason_comment
+SELECT id, ptw_group_id, deleted_at, deletion_reason, deletion_reason_comment
 FROM play_to_win_sessions
 WHERE deleted_at IS NOT NULL;
 
 CREATE VIEW vw_play_to_win_entries AS
 SELECT ptw_entries.id,
-       ptw_entries.session_id,
+       ptw_entries.ptw_session_id,
        ptw_sessions.play_to_win_id,
        ptw_entries.entrant_name,
        ptw_entries.entrant_unique_id,
        ptw_entries.created_at
 FROM play_to_win_entries ptw_entries
-LEFT JOIN vw_play_to_win_sessions ptw_sessions ON ptw_sessions.id = ptw_entries.session_id
+LEFT JOIN vw_play_to_win_sessions ptw_sessions ON ptw_sessions.id = ptw_entries.ptw_session_id
 WHERE ptw_entries.deleted_at IS NULL;
 
 CREATE VIEW vw_play_to_win_game_overview AS
@@ -191,8 +199,8 @@ LEFT JOIN games AS g ON g.id = ptw_game.game_id;
 
 CREATE VIEW vw_play_to_win_entry_events AS
 SELECT ptw.id as entry_id,
-       ptw.session_id,
-       ps.play_to_win_id,
+       ptw.ptw_session_id,
+       ps.ptw_group_id,
        ptw.entrant_name,
        ptw.entrant_unique_id,
        ptw.deletion_reason,
@@ -201,15 +209,15 @@ SELECT ptw.id as entry_id,
        g.title AS game_title,
        ptw.created_at
 FROM play_to_win_entries ptw
-LEFT JOIN play_to_win_sessions ps ON ps.id = ptw.session_id
-LEFT JOIN play_to_win_games pg ON pg.id = ps.play_to_win_id
+LEFT JOIN play_to_win_sessions ps ON ps.id = ptw.ptw_session_id
+LEFT JOIN play_to_win_games pg ON pg.id = ps.ptw_group_id
 LEFT JOIN games g ON g.id = pg.game_id
 WHERE (ptw.deletion_reason IN ('won','failed_to_claim') OR ptw.deletion_reason IS NULL)
   AND ps.deletion_reason IS NULL
 ORDER BY ptw.created_at DESC;
 
 CREATE VIEW vw_deleted_play_to_win_entries AS
-SELECT id, session_id, deleted_at, deletion_reason, deletion_reason_comment
+SELECT id, ptw_session_id, deleted_at, deletion_reason, deletion_reason_comment
 FROM play_to_win_entries
 WHERE deleted_at IS NOT NULL;
 
@@ -297,7 +305,7 @@ BEGIN
     INTO v_ref_id
     FROM vw_play_to_win_game_overview
     WHERE sanitized_title = v_sanitized_title
-      AND ref_id IS NULL
+      AND ref_id = play_to_win_id
       AND play_to_win_id != NEW.id
     ORDER BY created_at ASC
     LIMIT 1;
@@ -306,6 +314,13 @@ BEGIN
     IF v_ref_id IS NOT NULL THEN
         UPDATE play_to_win_games
         SET ref_id = v_ref_id
+        WHERE id = NEW.id;
+    END IF;
+
+    -- If no matching primary entry exists, ref id will point to itself
+    IF v_ref_id IS NULL THEN
+        UPDATE play_to_win_games
+        SET ref_id = NEW.id
         WHERE id = NEW.id;
     END IF;
 
