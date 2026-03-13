@@ -441,7 +441,15 @@ func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
 		return
 	}
 
-	selectedPos := rand.IntN(len(entries))
+	if len(entries) == 0 {
+		notFound(c)
+		return
+	}
+
+	selectedPos := 0
+	if len(entries) > 1 {
+		selectedPos = rand.IntN(len(entries))
+	}
 	selectedEntry := entries[selectedPos]
 
 	updateParams := db.UpdatePlayToWinEntryParams{
@@ -462,9 +470,7 @@ func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
 		EntryId:         pgUUIDToUUID(selectedEntry.EntryID),
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"winner": winner,
-	})
+	c.JSON(http.StatusOK, winner)
 }
 
 func (s Server) ResetPlayToWinRaffle(c *gin.Context) {

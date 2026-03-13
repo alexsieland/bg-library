@@ -47,10 +47,6 @@
   async function drawWinner(playToWinId: string, gameTitle: string) {
     try {
       const winner = await apiClient.drawPlayToWinRaffle(playToWinId);
-      if (!winner) {
-        toasts.add(`Failed to draw winner for Play To Win game ${gameTitle}`, 'error');
-        return;
-      }
 
       playToWinList = {
         ...playToWinList,
@@ -65,6 +61,12 @@
       );
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      if (errorMessage.includes('Resource not found')) {
+        console.warn(errorMessage);
+        toasts.add(`No winner drawn for ${gameTitle}. Did anyone enter the raffle?`, 'warn');
+        return;
+      }
+      console.error(errorMessage);
       toasts.add(
         `Failed to draw winner for Play To Win game ${gameTitle}: ${errorMessage}`,
         'error'
