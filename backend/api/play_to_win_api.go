@@ -390,12 +390,12 @@ func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 		}
 	}
 
-	params := db.UpdatePlayToWinEntryParams{
+	params := db.UpdatePlayToWinWinnerParams{
 		ID:       uuidToPgTypeUUID(ptwId),
 		WinnerID: winnerId,
 	}
 
-	err = s.queries.UpdatePlayToWinEntry(c.Request.Context(), params)
+	err = s.queries.UpdatePlayToWinWinner(c.Request.Context(), params)
 	if err != nil {
 		if isForeignKeyConstraintViolation(err) {
 			var errorDetails ErrorDetails
@@ -421,8 +421,7 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 	}
 
 	// Check that the game exists
-	dbPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(ptwId))
-	ptwGame, err := s.queries.GetPlayToWinGame(c.Request.Context(), dbPtwId)
+	ptwGame, err := s.queries.GetPlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(ptwId))
 	if err != nil {
 		if isNotFound(err) {
 			// Since delete deletes, if the game is not found we can pretend it was deleted and return 204
@@ -523,13 +522,13 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 }
 
 func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
-	pgPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(ptwId))
-	if !pgPtwId.Valid {
+	parentPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(ptwId))
+	if !parentPtwId.Valid {
 		notFound(c)
 		return
 	}
 
-	entries, err := s.queries.GetPlayToWinEntries(c.Request.Context(), pgPtwId)
+	entries, err := s.queries.GetPlayToWinEntries(c.Request.Context(), parentPtwId)
 	if err != nil {
 		log.Printf("Error getting play to win entries: %v", err)
 		internalError(c, err)
@@ -547,12 +546,12 @@ func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
 	}
 	selectedEntry := entries[selectedPos]
 
-	updateParams := db.UpdatePlayToWinEntryParams{
-		ID:       pgPtwId,
+	updateParams := db.UpdatePlayToWinWinnerParams{
+		ID:       uuidToPgTypeUUID(ptwId),
 		WinnerID: selectedEntry.EntryID,
 	}
 
-	err = s.queries.UpdatePlayToWinEntry(c.Request.Context(), updateParams)
+	err = s.queries.UpdatePlayToWinWinner(c.Request.Context(), updateParams)
 	if err != nil {
 		log.Printf("Error updating play to win entry: %v", err)
 		internalError(c, err)

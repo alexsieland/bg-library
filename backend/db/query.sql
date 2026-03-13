@@ -173,7 +173,7 @@ RETURNING *;
 INSERT INTO play_to_win_entries (session_id, play_to_win_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
 RETURNING *;
 
--- name: UpdatePlayToWinEntry :exec
+-- name: UpdatePlayToWinWinner :exec
 UPDATE play_to_win_games
 SET winner_id = $2
 WHERE id = $1;

@@ -85,8 +85,8 @@ CREATE TABLE play_to_win_entries (
 
 ALTER TABLE play_to_win_games
 ADD CONSTRAINT fk_play_to_win_games_winner_id
-FOREIGN KEY (winner_id, id)
-REFERENCES play_to_win_entries(id, play_to_win_id);
+FOREIGN KEY (winner_id)
+REFERENCES play_to_win_entries(id);
 
 CREATE INDEX idx_game_barcode ON games(barcode);
 
