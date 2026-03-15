@@ -26,23 +26,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		gameID := uuid.New()
 		ptwID := uuid.New()
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
-				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ref_id
-				*args.Get(3).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
-				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(6).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
-				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
-			}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
-		mockTx.On("Commit", mock.Anything).Return(nil)
+		mockTx := setupAddPlayToWinMocksForSuccess(mockDB, gameID, ptwID)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -62,10 +46,10 @@ func TestAddPlayToWinGame(t *testing.T) {
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
-		pgErr := &pgconn.PgError{Code: "23503"}
+		// Fail at GetGame with FK violation
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-			Return(pgErr)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(&pgconn.PgError{Code: "23503"})
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
 
@@ -84,16 +68,7 @@ func TestAddPlayToWinGame(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-
-		pgErr := &pgconn.PgError{Code: "23505"}
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-			Return(pgErr)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
-		mockTx.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
-		mockTx.On("Rollback", mock.Anything).Return(nil)
+		mockTx := setupAddPlayToWinMocksForIdempotent(mockDB, gameID)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -113,8 +88,9 @@ func TestAddPlayToWinGame(t *testing.T) {
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
+		// Fail at GetGame with unexpected error
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(errors.New("unexpected db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
@@ -137,23 +113,7 @@ func TestAddPlayToWin(t *testing.T) {
 		gameID := uuid.New()
 		ptwID := uuid.New()
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
-				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ref_id
-				*args.Get(3).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
-				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-				*args.Get(6).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
-				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
-			}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
-		mockTx.On("Commit", mock.Anything).Return(nil)
+		mockTx := setupAddPlayToWinMocksForSuccess(mockDB, gameID, ptwID)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -170,15 +130,7 @@ func TestAddPlayToWin(t *testing.T) {
 		server, mockDB := setupTestServer()
 		gameID := uuid.New()
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-			Return(&pgconn.PgError{Code: "23505"})
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
-		mockTx.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
-		mockTx.On("Rollback", mock.Anything).Return(nil)
+		mockTx := setupAddPlayToWinMocksForIdempotent(mockDB, gameID)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -199,8 +151,9 @@ func TestAddPlayToWin(t *testing.T) {
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
+		// Fail at GetGame
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(expectedErr)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 		mockTx.On("Rollback", mock.Anything).Return(nil)
@@ -221,25 +174,154 @@ func TestAddPlayToWin(t *testing.T) {
 
 func mockGetGameRow(mockDB *MockDatabase, gameID uuid.UUID, ptwGameID uuid.UUID) {
 	mockRow := new(MockRow)
-	mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+	mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-			*args.Get(1).(*string) = "Catan"
-			*args.Get(2).(*string) = "catan"
-			*args.Get(3).(*pgtype.Text) = pgtype.Text{Valid: false}
-			*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameID, Valid: true}
-			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(1).(*string) = "Catan" // display_title
+			*args.Get(2).(*string) = "Catan" // title
+			*args.Get(3).(*string) = "catan"
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}
+			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameID, Valid: true}
+			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 		}).Return(nil)
 	mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 }
 
-func mockGetParentPlayToWinIdRow(mockDB *MockDatabase, ptwGameId uuid.UUID, parentID uuid.UUID) {
-	mockRow := new(MockRow)
-	mockRow.On("Scan", mock.Anything).Run(func(args mock.Arguments) {
-		*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: parentID, Valid: true}
-	}).Return(nil)
-	// Parent resolution can occur multiple times within a single request path.
-	mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRow)
+// setupAddPlayToWinMocksForSuccess mocks the full happy-path flow of addPlayToWinByGameId.
+// It sets up BeginTx, GetGame, two getOrCreatePlayToWinGroup calls (with savepoints),
+// and CreatePlayToWinGame. Returns mockTx for AssertExpectations.
+func setupAddPlayToWinMocksForSuccess(mockDB *MockDatabase, gameID uuid.UUID, ptwID uuid.UUID) *MockTx {
+	groupID := uuid.New()
+	mockTx := new(MockTx)
+	mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
+
+	// GetGame via tx (7 scan args: ID, DisplayTitle, Title, SanitizedTitle, Barcode, PlayToWinGameID, CreatedAt)
+	mockGetGameRow := new(MockRow)
+	mockGetGameRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = "Catan" // display_title
+			*args.Get(2).(*string) = "Catan" // title
+			*args.Get(3).(*string) = "catan"
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}
+			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Valid: false}
+			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+		}).Return(nil)
+	mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockGetGameRow).Once()
+
+	// First getOrCreatePlayToWinGroup: group does not exist, create it
+	sp1 := new(MockTx)
+	mockTx.On("Begin", mock.Anything).Return(sp1, nil).Once()
+	mockGroupNotFoundRow := new(MockRow)
+	mockGroupNotFoundRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
+	sp1.On("QueryRow", mock.Anything, mock.Anything, []any{"Catan"}).Return(mockGroupNotFoundRow)
+	sp1.On("Rollback", mock.Anything).Return(nil)
+	mockCreateGroupRow := new(MockRow)
+	mockCreateGroupRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: groupID, Valid: true}
+			*args.Get(1).(*string) = "Catan"
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+		}).Return(nil)
+	mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{"Catan"}).Return(mockCreateGroupRow).Once()
+
+	// Second getOrCreatePlayToWinGroup (debug call): group now exists
+	sp2 := new(MockTx)
+	mockTx.On("Begin", mock.Anything).Return(sp2, nil).Once()
+	mockGroupFoundRow := new(MockRow)
+	mockGroupFoundRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: groupID, Valid: true}
+			*args.Get(1).(*string) = "Catan"
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+		}).Return(nil)
+	sp2.On("QueryRow", mock.Anything, mock.Anything, []any{"Catan"}).Return(mockGroupFoundRow)
+	sp2.On("Commit", mock.Anything).Return(nil)
+
+	// CreatePlayToWinGame savepoint
+	sp3 := new(MockTx)
+	mockTx.On("Begin", mock.Anything).Return(sp3, nil).Once()
+	mockPtwRow := new(MockRow)
+	mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
+			*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: groupID, Valid: true}
+			*args.Get(3).(*pgtype.UUID) = pgtype.UUID{Valid: false} // winner_id
+			*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+			*args.Get(6).(*db.NullPlayToWinGameDeletionType) = db.NullPlayToWinGameDeletionType{Valid: false}
+			*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
+		}).Return(nil)
+	sp3.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, pgtype.UUID{Bytes: groupID, Valid: true}}).Return(mockPtwRow)
+	sp3.On("Commit", mock.Anything).Return(nil)
+
+	mockTx.On("Commit", mock.Anything).Return(nil)
+	return mockTx
+}
+
+// setupAddPlayToWinMocksForIdempotent mocks addPlayToWinByGameId when the PTW game already exists
+// (CreatePlayToWinGame returns 23505), triggering a restore instead.
+func setupAddPlayToWinMocksForIdempotent(mockDB *MockDatabase, gameID uuid.UUID) *MockTx {
+	groupID := uuid.New()
+	mockTx := new(MockTx)
+	mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil).Once()
+
+	mockGetGameRow := new(MockRow)
+	mockGetGameRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
+			*args.Get(1).(*string) = "Catan"
+			*args.Get(2).(*string) = "Catan"
+			*args.Get(3).(*string) = "catan"
+			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}
+			*args.Get(5).(*pgtype.UUID) = pgtype.UUID{Valid: false}
+			*args.Get(6).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+		}).Return(nil)
+	mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockGetGameRow).Once()
+
+	sp1 := new(MockTx)
+	mockTx.On("Begin", mock.Anything).Return(sp1, nil).Once()
+	mockGroupNotFoundRow := new(MockRow)
+	mockGroupNotFoundRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
+	sp1.On("QueryRow", mock.Anything, mock.Anything, []any{"Catan"}).Return(mockGroupNotFoundRow)
+	sp1.On("Rollback", mock.Anything).Return(nil)
+	mockCreateGroupRow := new(MockRow)
+	mockCreateGroupRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: groupID, Valid: true}
+			*args.Get(1).(*string) = "Catan"
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
+		}).Return(nil)
+	mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{"Catan"}).Return(mockCreateGroupRow).Once()
+
+	sp2 := new(MockTx)
+	mockTx.On("Begin", mock.Anything).Return(sp2, nil).Once()
+	mockGroupFoundRow := new(MockRow)
+	mockGroupFoundRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: groupID, Valid: true}
+			*args.Get(1).(*string) = "Catan"
+			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
+		}).Return(nil)
+	sp2.On("QueryRow", mock.Anything, mock.Anything, []any{"Catan"}).Return(mockGroupFoundRow)
+	sp2.On("Commit", mock.Anything).Return(nil)
+
+	// CreatePlayToWinGame returns unique constraint violation
+	sp3 := new(MockTx)
+	mockTx.On("Begin", mock.Anything).Return(sp3, nil).Once()
+	mockPtwRow := new(MockRow)
+	mockPtwRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(&pgconn.PgError{Code: "23505"})
+	sp3.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}, pgtype.UUID{Bytes: groupID, Valid: true}}).Return(mockPtwRow)
+	sp3.On("Rollback", mock.Anything).Return(nil)
+
+	// RestorePlayToWinGameByLibraryGameId via tx
+	mockTx.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
+	mockTx.On("Commit", mock.Anything).Return(nil)
+	return mockTx
 }
 
 func mockGetPlayToWinGameOverviewRow(mockDB *MockDatabase, ptwID uuid.UUID, gameID uuid.UUID) {
@@ -248,9 +330,9 @@ func mockGetPlayToWinGameOverviewRow(mockDB *MockDatabase, ptwID uuid.UUID, game
 		Run(func(args mock.Arguments) {
 			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true}
 			*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID, Valid: true}
-			*args.Get(2).(*string) = "Catan"
-			*args.Get(3).(*string) = "catan"
-			*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Valid: false}
+			*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwID, Valid: true} // PtwGroupID (reuse ptwID for AddPlayToWinSession compatibility)
+			*args.Get(3).(*string) = "Catan"
+			*args.Get(4).(*string) = "catan"
 			*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 			*args.Get(6).(*pgtype.UUID) = pgtype.UUID{Valid: false}
 			*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
@@ -360,7 +442,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		gameID := uuid.New()
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(pgx.ErrNoRows)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
@@ -380,7 +462,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		gameID := uuid.New()
 
 		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(errors.New("db error"))
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 
@@ -454,7 +536,6 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRows, nil)
 
 		w := httptest.NewRecorder()
@@ -486,7 +567,6 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRows, nil)
 
 		w := httptest.NewRecorder()
@@ -507,7 +587,6 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 		server, mockDB := setupTestServer()
 		ptwGameId := uuid.New()
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(nil, errors.New("db error"))
 
 		w := httptest.NewRecorder()
@@ -560,7 +639,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Bob Jones", uniqueId: "bob456"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockGetPlayToWinGameOverviewRow(mockDB, ptwGameId, uuid.New())
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -660,7 +739,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Alice Smith", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockGetPlayToWinGameOverviewRow(mockDB, ptwGameId, uuid.New())
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -838,20 +917,10 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-
-		pgErr := &pgconn.PgError{Code: "23503"}
-		mockSessionRow := new(MockRow)
-		mockSessionRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-			Return(pgErr)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
-			pgtype.UUID{Bytes: ptwGameId, Valid: true},
-			pgtype.Int4{Valid: false},
-		}).Return(mockSessionRow).Once()
-
-		mockTx.On("Rollback", mock.Anything).Return(nil)
+		mockRow := new(MockRow)
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(pgx.ErrNoRows)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRow)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -862,7 +931,6 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return 500 Internal Server Error when transaction begin fails", func(t *testing.T) {
@@ -873,7 +941,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockGetPlayToWinGameOverviewRow(mockDB, ptwGameId, uuid.New())
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(nil, errors.New("tx error"))
 
 		w := httptest.NewRecorder()
@@ -896,7 +964,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockGetPlayToWinGameOverviewRow(mockDB, ptwGameId, uuid.New())
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -932,7 +1000,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockGetPlayToWinGameOverviewRow(mockDB, ptwGameId, uuid.New())
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -998,9 +1066,9 @@ func TestListPlayToWinGames(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId1, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID1, Valid: true}
-				*args.Get(2).(*string) = "Azul"
-				*args.Get(3).(*string) = SanitizeTitle("Azul")
-				*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ref_id
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ptw_group_id
+				*args.Get(3).(*string) = "Azul"
+				*args.Get(4).(*string) = SanitizeTitle("Azul")
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 				*args.Get(6).(*pgtype.UUID) = pgtype.UUID{Bytes: winnerEntryID, Valid: true}
 				*args.Get(7).(*pgtype.Text) = pgtype.Text{String: "Alice", Valid: true}
@@ -1010,9 +1078,9 @@ func TestListPlayToWinGames(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId2, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID2, Valid: true}
-				*args.Get(2).(*string) = "Catan"
-				*args.Get(3).(*string) = SanitizeTitle("Catan")
-				*args.Get(4).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ref_id
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Valid: false} // ptw_group_id
+				*args.Get(3).(*string) = "Catan"
+				*args.Get(4).(*string) = SanitizeTitle("Catan")
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 				*args.Get(6).(*pgtype.UUID) = pgtype.UUID{Valid: false}
 				*args.Get(7).(*pgtype.Text) = pgtype.Text{Valid: false}
@@ -1250,14 +1318,12 @@ func TestDrawPlayToWinRaffle(t *testing.T) {
 		server.DrawPlayToWinRaffle(c, ptwID)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var response struct {
-			Winner PlayToWinEntry `json:"winner"`
-		}
+		var response PlayToWinEntry
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, entryID, response.Winner.EntryId)
-		assert.Equal(t, "Alice", response.Winner.EntrantName)
-		assert.Equal(t, "alice123", response.Winner.EntrantUniqueId)
+		assert.Equal(t, entryID, response.EntryId)
+		assert.Equal(t, "Alice", response.EntrantName)
+		assert.Equal(t, "alice123", response.EntrantUniqueId)
 		mockDB.AssertExpectations(t)
 	})
 
