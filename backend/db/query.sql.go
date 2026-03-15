@@ -47,7 +47,7 @@ func (q *Queries) CheckOutGame(ctx context.Context, arg CheckOutGameParams) (Tra
 
 const createGame = `-- name: CreateGame :one
 INSERT INTO games ( title, sanitized_title, barcode ) VALUES ( $1, $2, $3 )
-RETURNING id, title, sanitized_title, created_at, deleted_at, barcode
+RETURNING id, title, display_title, sanitized_title, created_at, deleted_at, barcode
 `
 
 type CreateGameParams struct {
@@ -62,6 +62,7 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, e
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
+		&i.DisplayTitle,
 		&i.SanitizedTitle,
 		&i.CreatedAt,
 		&i.DeletedAt,
@@ -128,12 +129,17 @@ func (q *Queries) CreatePlayToWinEntry(ctx context.Context, arg CreatePlayToWinE
 }
 
 const createPlayToWinGame = `-- name: CreatePlayToWinGame :one
-INSERT INTO play_to_win_games (game_id) VALUES ($1)
+INSERT INTO play_to_win_games (game_id, ptw_group_id) VALUES ($1, $2)
 RETURNING id, game_id, ptw_group_id, winner_id, created_at, deleted_at, deletion_reason, deletion_reason_comment
 `
 
-func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (PlayToWinGame, error) {
-	row := q.db.QueryRow(ctx, createPlayToWinGame, gameID)
+type CreatePlayToWinGameParams struct {
+	GameID     pgtype.UUID
+	PtwGroupID pgtype.UUID
+}
+
+func (q *Queries) CreatePlayToWinGame(ctx context.Context, arg CreatePlayToWinGameParams) (PlayToWinGame, error) {
+	row := q.db.QueryRow(ctx, createPlayToWinGame, arg.GameID, arg.PtwGroupID)
 	var i PlayToWinGame
 	err := row.Scan(
 		&i.ID,
@@ -144,6 +150,23 @@ func (q *Queries) CreatePlayToWinGame(ctx context.Context, gameID pgtype.UUID) (
 		&i.DeletedAt,
 		&i.DeletionReason,
 		&i.DeletionReasonComment,
+	)
+	return i, err
+}
+
+const createPlayToWinGroup = `-- name: CreatePlayToWinGroup :one
+INSERT INTO play_to_win_groups (name) VALUES ($1)
+RETURNING id, name, created_at, deleted_at
+`
+
+func (q *Queries) CreatePlayToWinGroup(ctx context.Context, name string) (PlayToWinGroup, error) {
+	row := q.db.QueryRow(ctx, createPlayToWinGroup, name)
+	var i PlayToWinGroup
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -276,7 +299,7 @@ func (q *Queries) DeletePlayToWinSession(ctx context.Context, arg DeletePlayToWi
 
 const editGame = `-- name: EditGame :exec
 UPDATE games
-SET title = $2,
+SET display_title = $2,
     sanitized_title = $3,
     barcode = $4
 WHERE id = $1
@@ -284,7 +307,7 @@ WHERE id = $1
 
 type EditGameParams struct {
 	ID             pgtype.UUID
-	Title          string
+	DisplayTitle   pgtype.Text
 	SanitizedTitle string
 	Barcode        pgtype.Text
 }
@@ -292,7 +315,7 @@ type EditGameParams struct {
 func (q *Queries) EditGame(ctx context.Context, arg EditGameParams) error {
 	_, err := q.db.Exec(ctx, editGame,
 		arg.ID,
-		arg.Title,
+		arg.DisplayTitle,
 		arg.SanitizedTitle,
 		arg.Barcode,
 	)
@@ -318,7 +341,7 @@ func (q *Queries) EditPatron(ctx context.Context, arg EditPatronParams) error {
 }
 
 const getGame = `-- name: GetGame :one
-SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
+SELECT id, display_title, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 WHERE id = $1
 `
@@ -328,6 +351,7 @@ func (q *Queries) GetGame(ctx context.Context, id pgtype.UUID) (VwLibraryGame, e
 	var i VwLibraryGame
 	err := row.Scan(
 		&i.ID,
+		&i.DisplayTitle,
 		&i.Title,
 		&i.SanitizedTitle,
 		&i.Barcode,
@@ -338,7 +362,7 @@ func (q *Queries) GetGame(ctx context.Context, id pgtype.UUID) (VwLibraryGame, e
 }
 
 const getGameByBarcode = `-- name: GetGameByBarcode :many
-SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
+SELECT id, display_title, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 WHERE barcode = $1
 `
@@ -354,6 +378,7 @@ func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) ([]
 		var i VwLibraryGame
 		if err := rows.Scan(
 			&i.ID,
+			&i.DisplayTitle,
 			&i.Title,
 			&i.SanitizedTitle,
 			&i.Barcode,
@@ -429,7 +454,7 @@ func (q *Queries) GetPatronByBarcode(ctx context.Context, barcode pgtype.Text) (
 	return i, err
 }
 
-const getPlayToWinEntries = `-- name: GetPlayToWinEntries :many
+const getPlayToWinEntriesByGroupId = `-- name: GetPlayToWinEntriesByGroupId :many
 SELECT
     id AS ptw_entry_id,
     ptw_session_id,
@@ -441,7 +466,7 @@ FROM vw_play_to_win_entries
 WHERE ptw_group_id = $1
 `
 
-type GetPlayToWinEntriesRow struct {
+type GetPlayToWinEntriesByGroupIdRow struct {
 	PtwEntryID      pgtype.UUID
 	PtwSessionID    pgtype.UUID
 	PtwGroupID      pgtype.UUID
@@ -450,15 +475,64 @@ type GetPlayToWinEntriesRow struct {
 	CreatedAt       pgtype.Timestamp
 }
 
-func (q *Queries) GetPlayToWinEntries(ctx context.Context, ptwGroupID pgtype.UUID) ([]GetPlayToWinEntriesRow, error) {
-	rows, err := q.db.Query(ctx, getPlayToWinEntries, ptwGroupID)
+func (q *Queries) GetPlayToWinEntriesByGroupId(ctx context.Context, ptwGroupID pgtype.UUID) ([]GetPlayToWinEntriesByGroupIdRow, error) {
+	rows, err := q.db.Query(ctx, getPlayToWinEntriesByGroupId, ptwGroupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPlayToWinEntriesRow
+	var items []GetPlayToWinEntriesByGroupIdRow
 	for rows.Next() {
-		var i GetPlayToWinEntriesRow
+		var i GetPlayToWinEntriesByGroupIdRow
+		if err := rows.Scan(
+			&i.PtwEntryID,
+			&i.PtwSessionID,
+			&i.PtwGroupID,
+			&i.EntrantName,
+			&i.EntrantUniqueID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPlayToWinEntriesByPlayToWinGameId = `-- name: GetPlayToWinEntriesByPlayToWinGameId :many
+SELECT
+    e.id AS ptw_entry_id,
+    ptw_session_id,
+    e.ptw_group_id,
+    entrant_name,
+    entrant_unique_id,
+    e.created_at
+FROM vw_play_to_win_entries e
+LEFT JOIN play_to_win_games g ON e.ptw_group_id = g.ptw_group_id
+WHERE g.id = $1
+`
+
+type GetPlayToWinEntriesByPlayToWinGameIdRow struct {
+	PtwEntryID      pgtype.UUID
+	PtwSessionID    pgtype.UUID
+	PtwGroupID      pgtype.UUID
+	EntrantName     string
+	EntrantUniqueID string
+	CreatedAt       pgtype.Timestamp
+}
+
+func (q *Queries) GetPlayToWinEntriesByPlayToWinGameId(ctx context.Context, id pgtype.UUID) ([]GetPlayToWinEntriesByPlayToWinGameIdRow, error) {
+	rows, err := q.db.Query(ctx, getPlayToWinEntriesByPlayToWinGameId, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayToWinEntriesByPlayToWinGameIdRow
+	for rows.Next() {
+		var i GetPlayToWinEntriesByPlayToWinGameIdRow
 		if err := rows.Scan(
 			&i.PtwEntryID,
 			&i.PtwSessionID,
@@ -502,38 +576,26 @@ func (q *Queries) GetPlayToWinGame(ctx context.Context, ptwGameID pgtype.UUID) (
 
 const getPlayToWinGroup = `-- name: GetPlayToWinGroup :one
 SELECT id, name, created_at
-FROM play_to_win_groups
+FROM vw_play_to_win_groups
 WHERE id = $1
 `
 
-type GetPlayToWinGroupRow struct {
-	ID        pgtype.UUID
-	Name      string
-	CreatedAt pgtype.Timestamp
-}
-
-func (q *Queries) GetPlayToWinGroup(ctx context.Context, id pgtype.UUID) (GetPlayToWinGroupRow, error) {
+func (q *Queries) GetPlayToWinGroup(ctx context.Context, id pgtype.UUID) (VwPlayToWinGroup, error) {
 	row := q.db.QueryRow(ctx, getPlayToWinGroup, id)
-	var i GetPlayToWinGroupRow
+	var i VwPlayToWinGroup
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }
 
 const getPlayToWinGroupByName = `-- name: GetPlayToWinGroupByName :one
 SELECT id, name, created_at
-FROM play_to_win_groups
+FROM vw_play_to_win_groups
 WHERE name = $1
 `
 
-type GetPlayToWinGroupByNameRow struct {
-	ID        pgtype.UUID
-	Name      string
-	CreatedAt pgtype.Timestamp
-}
-
-func (q *Queries) GetPlayToWinGroupByName(ctx context.Context, name string) (GetPlayToWinGroupByNameRow, error) {
+func (q *Queries) GetPlayToWinGroupByName(ctx context.Context, name string) (VwPlayToWinGroup, error) {
 	row := q.db.QueryRow(ctx, getPlayToWinGroupByName, name)
-	var i GetPlayToWinGroupByNameRow
+	var i VwPlayToWinGroup
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }
@@ -624,7 +686,7 @@ func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGam
 }
 
 const listGames = `-- name: ListGames :many
-SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
+SELECT id, display_title, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2
@@ -646,6 +708,7 @@ func (q *Queries) ListGames(ctx context.Context, arg ListGamesParams) ([]VwLibra
 		var i VwLibraryGame
 		if err := rows.Scan(
 			&i.ID,
+			&i.DisplayTitle,
 			&i.Title,
 			&i.SanitizedTitle,
 			&i.Barcode,
@@ -923,7 +986,7 @@ func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusPara
 }
 
 const searchGames = `-- name: SearchGames :many
-SELECT id, title, sanitized_title, barcode, play_to_win_game_id, created_at
+SELECT id, display_title, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games
 WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
@@ -947,6 +1010,7 @@ func (q *Queries) SearchGames(ctx context.Context, arg SearchGamesParams) ([]VwL
 		var i VwLibraryGame
 		if err := rows.Scan(
 			&i.ID,
+			&i.DisplayTitle,
 			&i.Title,
 			&i.SanitizedTitle,
 			&i.Barcode,

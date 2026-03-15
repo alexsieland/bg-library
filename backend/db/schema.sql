@@ -1,6 +1,7 @@
 CREATE TABLE games (
     id UUID UNIQUE DEFAULT gen_random_uuid(),
-    title VARCHAR(100) NOT NULL,
+    title VARCHAR(100) NOT NULL, -- Immutable for historical reference but not used for searching or display
+    display_title VARCHAR(100),
     sanitized_title VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP,
@@ -144,6 +145,7 @@ WHERE ga.deleted_at IS NULL;
 CREATE VIEW vw_library_games AS
 SELECT
     g.id,
+    COALESCE(g.display_title, g.title) AS display_title,
     g.title,
     g.sanitized_title,
     g.barcode,
@@ -162,6 +164,11 @@ CREATE VIEW vw_deleted_play_to_win_games AS
 SELECT  id, game_id, deleted_at, deletion_reason, deletion_reason_comment
 FROM play_to_win_games
 WHERE deleted_at IS NOT NULL;
+
+CREATE VIEW vw_play_to_win_groups AS
+SELECT id, name, created_at
+FROM play_to_win_groups
+WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_play_to_win_sessions AS
 SELECT  id, ptw_group_id, playtime_minutes, created_at
@@ -189,15 +196,15 @@ SELECT
     ptw_game.id AS ptw_game_id,
     ptw_game.game_id AS game_id,
     ptw_game.ptw_group_id AS ptw_group_id,
-    COALESCE(g.title, 'Missing Game') AS game_title,
+    COALESCE(g.display_title, 'Missing Game') AS game_title,
     COALESCE(g.sanitized_title, 'missing game') AS sanitized_title,
     ptw_game.created_at AS created_at,
     ptw_entry.id AS winner_id,
     ptw_entry.entrant_name AS winner_name,
     ptw_entry.entrant_unique_id AS winner_unique_id
 FROM vw_play_to_win_games AS ptw_game
-LEFT JOIN vw_play_to_win_entries AS ptw_entry ON ptw_game.winner_id = ptw_entry.id
-LEFT JOIN games AS g ON g.id = ptw_game.game_id;
+LEFT JOIN vw_library_games AS g ON g.id = ptw_game.game_id
+LEFT JOIN vw_play_to_win_entries AS ptw_entry ON ptw_game.winner_id = ptw_entry.id;
 
 CREATE VIEW vw_play_to_win_entry_events AS
 SELECT ptw.id as entry_id,
@@ -243,7 +250,7 @@ ORDER BY te.event_timestamp DESC;
 CREATE VIEW vw_game_status AS
 SELECT DISTINCT ON (g.id)
         g.id AS game_id,
-        g.title AS game_title,
+        g.display_title AS game_title,
         g.sanitized_title,
         t.patron_id,
         p.full_name AS patron_full_name,

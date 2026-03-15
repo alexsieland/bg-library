@@ -189,6 +189,7 @@ func (ns NullTransactionEventType) Value() (driver.Value, error) {
 type Game struct {
 	ID             pgtype.UUID
 	Title          string
+	DisplayTitle   pgtype.Text
 	SanitizedTitle string
 	CreatedAt      pgtype.Timestamp
 	DeletedAt      pgtype.Timestamp
@@ -299,6 +300,7 @@ type VwGameStatus struct {
 
 type VwLibraryGame struct {
 	ID              pgtype.UUID
+	DisplayTitle    string
 	Title           string
 	SanitizedTitle  string
 	Barcode         pgtype.Text
@@ -366,6 +368,12 @@ type VwPlayToWinGameOverview struct {
 	WinnerID       pgtype.UUID
 	WinnerName     pgtype.Text
 	WinnerUniqueID pgtype.Text
+}
+
+type VwPlayToWinGroup struct {
+	ID        pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamp
 }
 
 type VwPlayToWinSession struct {

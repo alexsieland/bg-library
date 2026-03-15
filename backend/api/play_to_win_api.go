@@ -14,36 +14,20 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
-// Get Parent Play To Win ID from Ref ID.
-// Intended for use when CRUD operations are performed on a session or entry
-// This ensures the id always points the parent play-to-win game rather than the duplicate.
-func (s Server) getParentPlayToWinId(c *gin.Context, ptwId pgtype.UUID) pgtype.UUID {
-	if !ptwId.Valid {
-		return ptwId
-	}
-	parentId, err := s.queries.GetParentPlayToWinId(c.Request.Context(), ptwId)
-	if err == nil {
-		if parentId.Valid {
-			return parentId
-		}
-	}
-	return ptwId
-}
-
 // Groups are a behind-the-scene element that auto-collates duplicate games together for raffling purposes.
-// Auto-create group
-func (s Server) getOrCreatePlayToWinGroup(c *gin.Context, groupName string, optTx *pgx.Tx) pgtype.UUID {
+func (s Server) getOrCreatePlayToWinGroup(c *gin.Context, groupName string, optTx *pgx.Tx) (pgtype.UUID, error) {
 	var (
 		err error
 		tx  pgx.Tx
 	)
 
+	// Setup transaction if needed
 	if optTx != nil {
 		tx = *optTx
 	} else {
 		tx, err = s.Database.BeginTx(c, pgx.TxOptions{})
 		if err != nil {
-			return err
+			return pgtype.UUID{}, err
 		}
 		defer func() {
 			if tx != nil {
@@ -52,28 +36,29 @@ func (s Server) getOrCreatePlayToWinGroup(c *gin.Context, groupName string, optT
 		}()
 	}
 
-	_, err = s.queries.GetPlayToWinGroupByName(c.Request.Context(), groupName)
+	// Attempt to create the group, or return the existing one if it already exists
+	ptwGroup, err := s.queries.WithTx(tx).CreatePlayToWinGroup(c.Request.Context(), groupName)
 	if err != nil {
-		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.WithTx(tx).RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+			existingPtwGroup, err := s.queries.GetPlayToWinGroupByName(c.Request.Context(), groupName)
 			if err != nil {
-				return err
+				return pgtype.UUID{}, err
 			}
-			return nil
+			return existingPtwGroup.ID, nil
 		}
-		return err
+		return pgtype.UUID{}, err
 	}
 
+	// Commit transaction if created by this function
 	if optTx == nil {
 		err := tx.Commit(c.Request.Context())
 		if err != nil {
 			log.Printf("Error committing play to win game transaction: %v", err)
-			return err
+			return pgtype.UUID{}, err
 		}
 		tx = nil
 	}
-	return nil
+	return ptwGroup.ID, nil
 }
 
 func (s Server) addPlayToWinByGameId(c *gin.Context, gameId types.UUID, optTx *pgx.Tx) error {
@@ -96,7 +81,20 @@ func (s Server) addPlayToWinByGameId(c *gin.Context, gameId types.UUID, optTx *p
 		}()
 	}
 
-	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+	game, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+	if err != nil {
+		return err
+	}
+
+	ptwGroupId, err := s.getOrCreatePlayToWinGroup(c, game.Title, &tx)
+	if err != nil {
+		return err
+	}
+	createPtwGameParams := db.CreatePlayToWinGameParams{
+		GameID:     uuidToPgTypeUUID(gameId),
+		PtwGroupID: ptwGroupId,
+	}
+	_, err = s.queries.WithTx(tx).CreatePlayToWinGame(c.Request.Context(), createPtwGameParams)
 	if err != nil {
 		// If unique constraint violation, this is idempotent: restore soft-deleted row if needed.
 		if isUniqueConstraintViolation(err) {
@@ -220,9 +218,8 @@ func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUID) {
-	pgPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(playToWinId))
-	dbPtwEntries, err := s.queries.GetPlayToWinEntries(c, pgPtwId)
+func (s Server) GetPlayToWinGameEntries(c *gin.Context, ptwGameId types.UUID) {
+	dbPtwEntries, err := s.queries.GetPlayToWinEntriesByPlayToWinGameId(c, uuidToPgTypeUUID(ptwGameId))
 	if err != nil {
 		log.Printf("Error getting play to win entries: %v", err)
 		internalError(c, err)
@@ -234,7 +231,7 @@ func (s Server) GetPlayToWinSessionEntries(c *gin.Context, playToWinId types.UUI
 	}
 	for i, dbPtwEntry := range dbPtwEntries {
 		ptwEntryList.Entries[i] = PlayToWinEntry{
-			EntryId:         pgUUIDToUUID(dbPtwEntry.EntryID),
+			EntryId:         pgUUIDToUUID(dbPtwEntry.PtwEntryID),
 			EntrantName:     dbPtwEntry.EntrantName,
 			EntrantUniqueId: dbPtwEntry.EntrantUniqueID,
 		}
@@ -248,11 +245,10 @@ type ptwEntry struct {
 	EntrantUniqueId string `json:"entrantUniqueId"`
 }
 
-func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, playToWinID pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
-	pgPtwId := s.getParentPlayToWinId(c, playToWinID)
+func (s Server) addPlayToWinEntry(c *gin.Context, ptwSessionId pgtype.UUID, ptwGroupId pgtype.UUID, entry ptwEntry, tx pgx.Tx) (db.PlayToWinEntry, error) {
 	playToWinEntryParams := db.CreatePlayToWinEntryParams{
-		SessionID:       ptwSessionId,
-		PlayToWinID:     pgPtwId,
+		PtwSessionID:    ptwSessionId,
+		PtwGroupID:      ptwGroupId,
 		EntrantName:     entry.EntrantName,
 		EntrantUniqueID: entry.EntrantUniqueId,
 	}
@@ -290,9 +286,18 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 	}
 
 	// Create the play to win session params
-	ptwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(jsonObject.PlayToWinId))
+	ptwGame, err := s.queries.GetPlayToWinGame(c, uuidToPgTypeUUID(jsonObject.PlayToWinId))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(c)
+			return
+		}
+		log.Printf("Error getting play to win game: %v", err)
+		internalError(c, err)
+		return
+	}
 	ptwSessionParams := db.CreatePlayToWinSessionParams{
-		PlayToWinID:     ptwId,
+		PtwGroupID:      ptwGame.PtwGroupID,
 		PlaytimeMinutes: int32ToPgInt4(jsonObject.PlaytimeMinutes),
 	}
 
@@ -334,7 +339,7 @@ func (s Server) AddPlayToWinSession(c *gin.Context) {
 
 	// Create all play to win entries for session
 	for i, entry := range ptwEntries {
-		entry, err := s.addPlayToWinEntry(c, dbPtwSession.ID, dbPtwSession.PlayToWinID, entry, tx)
+		entry, err := s.addPlayToWinEntry(c, dbPtwSession.ID, dbPtwSession.PtwGroupID, entry, tx)
 		if err != nil {
 			log.Printf("Error creating play to win entry: %v", err)
 			internalError(c, err)
@@ -568,13 +573,7 @@ func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 }
 
 func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
-	parentPtwId := s.getParentPlayToWinId(c, uuidToPgTypeUUID(ptwId))
-	if !parentPtwId.Valid {
-		notFound(c)
-		return
-	}
-
-	entries, err := s.queries.GetPlayToWinEntries(c.Request.Context(), parentPtwId)
+	entries, err := s.queries.GetPlayToWinEntriesByPlayToWinGameId(c.Request.Context(), uuidToPgTypeUUID(ptwId))
 	if err != nil {
 		log.Printf("Error getting play to win entries: %v", err)
 		internalError(c, err)
@@ -594,7 +593,7 @@ func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
 
 	updateParams := db.UpdatePlayToWinWinnerParams{
 		ID:       uuidToPgTypeUUID(ptwId),
-		WinnerID: selectedEntry.EntryID,
+		WinnerID: selectedEntry.PtwEntryID,
 	}
 
 	err = s.queries.UpdatePlayToWinWinner(c.Request.Context(), updateParams)
@@ -607,7 +606,7 @@ func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
 	winner := PlayToWinEntry{
 		EntrantName:     selectedEntry.EntrantName,
 		EntrantUniqueId: selectedEntry.EntrantUniqueID,
-		EntryId:         pgUUIDToUUID(selectedEntry.EntryID),
+		EntryId:         pgUUIDToUUID(selectedEntry.PtwEntryID),
 	}
 
 	c.JSON(http.StatusOK, winner)
