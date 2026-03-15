@@ -642,6 +642,20 @@ func (q *Queries) GetPlayToWinSessions(ctx context.Context, ptwGroupID pgtype.UU
 	return items, nil
 }
 
+const isPlayToWinGameDeleted = `-- name: IsPlayToWinGameDeleted :one
+SELECT
+    deleted_at IS NOT NULL :: bool AS is_deleted
+FROM play_to_win_games
+WHERE id = $1
+`
+
+func (q *Queries) IsPlayToWinGameDeleted(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, isPlayToWinGameDeleted, id)
+	var is_deleted bool
+	err := row.Scan(&is_deleted)
+	return is_deleted, err
+}
+
 const listCheckedOutGames = `-- name: ListCheckedOutGames :many
 SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp, ptw_game_id
 FROM vw_game_status
