@@ -233,13 +233,13 @@ func mockGetGameRow(mockDB *MockDatabase, gameID uuid.UUID, ptwGameID uuid.UUID)
 	mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameID, Valid: true}}).Return(mockRow)
 }
 
-func mockGetParentPlayToWinIdRow(mockDB *MockDatabase, playToWinID uuid.UUID, parentID uuid.UUID) {
+func mockGetParentPlayToWinIdRow(mockDB *MockDatabase, ptwGameId uuid.UUID, parentID uuid.UUID) {
 	mockRow := new(MockRow)
 	mockRow.On("Scan", mock.Anything).Run(func(args mock.Arguments) {
 		*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: parentID, Valid: true}
 	}).Return(nil)
 	// Parent resolution can occur multiple times within a single request path.
-	mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: playToWinID, Valid: true}}).Return(mockRow)
+	mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRow)
 }
 
 func mockGetPlayToWinGameOverviewRow(mockDB *MockDatabase, ptwID uuid.UUID, gameID uuid.UUID) {
@@ -419,12 +419,12 @@ func TestRemovePlayToWinGame(t *testing.T) {
 	})
 }
 
-// --- GetPlayToWinSessionEntries ---
+// --- GetPlayToWinGameEntries ---
 
-func TestGetPlayToWinSessionEntries(t *testing.T) {
+func TestGetPlayToWinGameEntries(t *testing.T) {
 	t.Run("Should return 200 OK with list of entries when entries exist", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 		sessionID := uuid.New()
 		entryID1 := uuid.New()
 		entryID2 := uuid.New()
@@ -437,7 +437,7 @@ func TestGetPlayToWinSessionEntries(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID1, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(3).(*string) = "Alice Smith"
 				*args.Get(4).(*string) = "alice123"
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
@@ -446,7 +446,7 @@ func TestGetPlayToWinSessionEntries(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID2, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(3).(*string) = "Bob Jones"
 				*args.Get(4).(*string) = "bob456"
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
@@ -454,14 +454,14 @@ func TestGetPlayToWinSessionEntries(t *testing.T) {
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: playToWinID, Valid: true}}).Return(mockRows, nil)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRows, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/ptw/"+playToWinID.String()+"/entries", nil)
+		c.Request = httptest.NewRequest("GET", "/ptw/"+ptwGameId.String()+"/entries", nil)
 
-		server.GetPlayToWinSessionEntries(c, playToWinID)
+		server.GetPlayToWinGameEntries(c, ptwGameId)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response PlayToWinEntryList
@@ -479,21 +479,21 @@ func TestGetPlayToWinSessionEntries(t *testing.T) {
 
 	t.Run("Should return 200 OK with empty list when no entries exist", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		mockRows := new(MockRows)
 		mockRows.On("Next").Return(false)
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: playToWinID, Valid: true}}).Return(mockRows, nil)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(mockRows, nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/ptw/"+playToWinID.String()+"/entries", nil)
+		c.Request = httptest.NewRequest("GET", "/ptw/"+ptwGameId.String()+"/entries", nil)
 
-		server.GetPlayToWinSessionEntries(c, playToWinID)
+		server.GetPlayToWinGameEntries(c, ptwGameId)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response PlayToWinEntryList
@@ -505,16 +505,16 @@ func TestGetPlayToWinSessionEntries(t *testing.T) {
 
 	t.Run("Should return 500 Internal Server Error when DB query fails", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: playToWinID, Valid: true}}).Return(nil, errors.New("db error"))
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
+		mockDB.On("Query", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(nil, errors.New("db error"))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/ptw/"+playToWinID.String()+"/entries", nil)
+		c.Request = httptest.NewRequest("GET", "/ptw/"+ptwGameId.String()+"/entries", nil)
 
-		server.GetPlayToWinSessionEntries(c, playToWinID)
+		server.GetPlayToWinGameEntries(c, ptwGameId)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "db error")
@@ -524,12 +524,12 @@ func TestGetPlayToWinSessionEntries(t *testing.T) {
 
 // --- AddPlayToWinSession ---
 
-func validSessionBody(t *testing.T, playToWinID uuid.UUID, playtimeMinutes *int32, entries []struct{ name, uniqueId string }) *bytes.Buffer {
+func validSessionBody(t *testing.T, ptwGameId uuid.UUID, playtimeMinutes *int32, entries []struct{ name, uniqueId string }) *bytes.Buffer {
 	t.Helper()
 
 	// Build the request using the generated CreatePlayToWinSessionRequest type
 	request := CreatePlayToWinSessionRequest{
-		PlayToWinId:     playToWinID,
+		PlayToWinId:     ptwGameId,
 		PlaytimeMinutes: playtimeMinutes,
 		Entries: make([]struct {
 			EntrantName     string `json:"entrantName"`
@@ -549,7 +549,7 @@ func validSessionBody(t *testing.T, playToWinID uuid.UUID, playtimeMinutes *int3
 func TestAddPlayToWinSession(t *testing.T) {
 	t.Run("Should return 201 Created when session is successfully created with entries", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 		sessionID := uuid.New()
 		entryID1 := uuid.New()
 		entryID2 := uuid.New()
@@ -560,7 +560,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Bob Jones", uniqueId: "bob456"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -569,7 +569,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 		mockSessionRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(2).(*pgtype.Int4) = pgtype.Int4{Int32: playtimeMinutes, Valid: true}
 				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
@@ -577,7 +577,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 				*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			pgtype.Int4{Int32: playtimeMinutes, Valid: true},
 		}).Return(mockSessionRow).Once()
 
@@ -587,7 +587,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID1, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(3).(*string) = entries[0].name
 				*args.Get(4).(*string) = entries[0].uniqueId
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
@@ -597,7 +597,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			entries[0].name,
 			entries[0].uniqueId,
 		}).Return(mockEntry1Row).Once()
@@ -608,7 +608,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID2, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(3).(*string) = entries[1].name
 				*args.Get(4).(*string) = entries[1].uniqueId
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
@@ -618,7 +618,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			entries[1].name,
 			entries[1].uniqueId,
 		}).Return(mockEntry2Row).Once()
@@ -628,7 +628,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, &playtimeMinutes, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, &playtimeMinutes, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -652,7 +652,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 201 Created when session is created without playtime", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 		sessionID := uuid.New()
 		entryID := uuid.New()
 
@@ -660,7 +660,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			{name: "Alice Smith", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -669,7 +669,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 		mockSessionRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(2).(*pgtype.Int4) = pgtype.Int4{Valid: false}
 				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
@@ -677,7 +677,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 				*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			pgtype.Int4{Valid: false},
 		}).Return(mockSessionRow).Once()
 
@@ -687,7 +687,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: entryID, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(2).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(3).(*string) = entries[0].name
 				*args.Get(4).(*string) = entries[0].uniqueId
 				*args.Get(5).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
@@ -697,7 +697,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			entries[0].name,
 			entries[0].uniqueId,
 		}).Return(mockEntryRow).Once()
@@ -707,7 +707,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -736,7 +736,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when playtimeMinutes is negative", func(t *testing.T) {
 		server, _ := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 		playtimeMinutes := int32(-5)
 
 		entries := []struct{ name, uniqueId string }{
@@ -745,7 +745,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, &playtimeMinutes, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, &playtimeMinutes, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -756,7 +756,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when entrantName is empty", func(t *testing.T) {
 		server, _ := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "", uniqueId: "alice123"},
@@ -764,7 +764,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -775,7 +775,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when entrantName exceeds 100 characters", func(t *testing.T) {
 		server, _ := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: string(make([]byte, 101)), uniqueId: "alice123"},
@@ -783,7 +783,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -794,7 +794,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when entrantUniqueId is empty", func(t *testing.T) {
 		server, _ := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "Alice", uniqueId: ""},
@@ -802,7 +802,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -813,7 +813,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 400 Bad Request when entrantUniqueId exceeds 100 characters", func(t *testing.T) {
 		server, _ := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "Alice", uniqueId: string(make([]byte, 101))},
@@ -821,7 +821,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -832,13 +832,13 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 404 Not Found when play to win game does not exist (FK violation)", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -847,7 +847,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 		mockSessionRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(pgErr)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			pgtype.Int4{Valid: false},
 		}).Return(mockSessionRow).Once()
 
@@ -855,7 +855,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -867,18 +867,18 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 500 Internal Server Error when transaction begin fails", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(nil, errors.New("tx error"))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -890,13 +890,13 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 500 Internal Server Error when CreatePlayToWinSession fails", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -904,7 +904,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 		mockSessionRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(errors.New("db error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			pgtype.Int4{Valid: false},
 		}).Return(mockSessionRow).Once()
 
@@ -912,7 +912,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -925,14 +925,14 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 	t.Run("Should return 500 Internal Server Error when CreatePlayToWinEntry fails", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
 		sessionID := uuid.New()
 
 		entries := []struct{ name, uniqueId string }{
 			{name: "Alice", uniqueId: "alice123"},
 		}
 
-		mockGetParentPlayToWinIdRow(mockDB, playToWinID, playToWinID)
+		mockGetParentPlayToWinIdRow(mockDB, ptwGameId, ptwGameId)
 		mockTx := new(MockTx)
 		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
 
@@ -941,7 +941,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 		mockSessionRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
 				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: sessionID, Valid: true}
-				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID, Valid: true}
+				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId, Valid: true}
 				*args.Get(2).(*pgtype.Int4) = pgtype.Int4{Valid: false}
 				*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
 				*args.Get(4).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
@@ -949,7 +949,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 				*args.Get(6).(*pgtype.Text) = pgtype.Text{Valid: false}
 			}).Return(nil)
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			pgtype.Int4{Valid: false},
 		}).Return(mockSessionRow).Once()
 
@@ -959,7 +959,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 			Return(errors.New("entry creation error"))
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{
 			pgtype.UUID{Bytes: sessionID, Valid: true},
-			pgtype.UUID{Bytes: playToWinID, Valid: true},
+			pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			entries[0].name,
 			entries[0].uniqueId,
 		}).Return(mockEntryRow).Once()
@@ -969,7 +969,7 @@ func TestAddPlayToWinSession(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, playToWinID, nil, entries))
+		c.Request = httptest.NewRequest("POST", "/ptw/session", validSessionBody(t, ptwGameId, nil, entries))
 		c.Request.Header.Set("Content-Type", "application/json")
 
 		server.AddPlayToWinSession(c)
@@ -984,8 +984,8 @@ func TestAddPlayToWinSession(t *testing.T) {
 func TestListPlayToWinGames(t *testing.T) {
 	t.Run("Should return 200 OK with play to win game list when called without filters", func(t *testing.T) {
 		server, mockDB := setupTestServer()
-		playToWinID1 := uuid.New()
-		playToWinID2 := uuid.New()
+		ptwGameId1 := uuid.New()
+		ptwGameId2 := uuid.New()
 		gameID1 := uuid.New()
 		gameID2 := uuid.New()
 		winnerEntryID := uuid.New()
@@ -996,7 +996,7 @@ func TestListPlayToWinGames(t *testing.T) {
 		mockRows.On("Next").Return(false).Once()
 		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID1, Valid: true}
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId1, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID1, Valid: true}
 				*args.Get(2).(*string) = "Azul"
 				*args.Get(3).(*string) = SanitizeTitle("Azul")
@@ -1008,7 +1008,7 @@ func TestListPlayToWinGames(t *testing.T) {
 			}).Return(nil).Once()
 		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: playToWinID2, Valid: true}
+				*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: ptwGameId2, Valid: true}
 				*args.Get(1).(*pgtype.UUID) = pgtype.UUID{Bytes: gameID2, Valid: true}
 				*args.Get(2).(*string) = "Catan"
 				*args.Get(3).(*string) = SanitizeTitle("Catan")
@@ -1034,14 +1034,14 @@ func TestListPlayToWinGames(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Len(t, response.Games, 2)
-		assert.Equal(t, playToWinID1, response.Games[0].PlayToWinId)
+		assert.Equal(t, ptwGameId1, response.Games[0].PlayToWinId)
 		assert.Equal(t, gameID1, response.Games[0].GameId)
 		assert.Equal(t, "Azul", response.Games[0].Title)
 		assert.NotNil(t, response.Games[0].Winner)
 		assert.Equal(t, winnerEntryID, response.Games[0].Winner.EntryId)
 		assert.Equal(t, "Alice", response.Games[0].Winner.EntrantName)
 		assert.Equal(t, "alice123", response.Games[0].Winner.EntrantUniqueId)
-		assert.Equal(t, playToWinID2, response.Games[1].PlayToWinId)
+		assert.Equal(t, ptwGameId2, response.Games[1].PlayToWinId)
 		assert.Equal(t, gameID2, response.Games[1].GameId)
 		assert.Equal(t, "Catan", response.Games[1].Title)
 		assert.Nil(t, response.Games[1].Winner)
