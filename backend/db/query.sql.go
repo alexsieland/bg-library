@@ -590,7 +590,7 @@ func (q *Queries) GetPlayToWinGroup(ctx context.Context, id pgtype.UUID) (VwPlay
 const getPlayToWinGroupByName = `-- name: GetPlayToWinGroupByName :one
 SELECT id, name, created_at
 FROM vw_play_to_win_groups
-WHERE name = $1
+WHERE name ILIKE $1
 `
 
 func (q *Queries) GetPlayToWinGroupByName(ctx context.Context, name string) (VwPlayToWinGroup, error) {
@@ -640,20 +640,6 @@ func (q *Queries) GetPlayToWinSessions(ctx context.Context, ptwGroupID pgtype.UU
 		return nil, err
 	}
 	return items, nil
-}
-
-const isPlayToWinGameDeleted = `-- name: IsPlayToWinGameDeleted :one
-SELECT
-    deleted_at IS NOT NULL :: bool AS is_deleted
-FROM play_to_win_games
-WHERE id = $1
-`
-
-func (q *Queries) IsPlayToWinGameDeleted(ctx context.Context, id pgtype.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, isPlayToWinGameDeleted, id)
-	var is_deleted bool
-	err := row.Scan(&is_deleted)
-	return is_deleted, err
 }
 
 const listCheckedOutGames = `-- name: ListCheckedOutGames :many
@@ -895,6 +881,19 @@ WHERE deleted_at IS NOT NULL AND id = $1
 
 func (q *Queries) RestorePlayToWinGame(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, restorePlayToWinGame, id)
+	return err
+}
+
+const restorePlayToWinGameByLibraryGameId = `-- name: RestorePlayToWinGameByLibraryGameId :exec
+UPDATE play_to_win_games
+SET deleted_at = NULL,
+    deletion_reason = NULL,
+    deletion_reason_comment = NULL
+WHERE deleted_at IS NOT NULL AND game_id = $1
+`
+
+func (q *Queries) RestorePlayToWinGameByLibraryGameId(ctx context.Context, gameID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, restorePlayToWinGameByLibraryGameId, gameID)
 	return err
 }
 

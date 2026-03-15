@@ -45,20 +45,20 @@ func (s Server) getOrCreatePlayToWinGroup(c *gin.Context, groupName string, optT
 		return pgtype.UUID{}, err
 	}
 
-	ptwGroup, err := s.queries.WithTx(sp).CreatePlayToWinGroup(c.Request.Context(), groupName)
+	existingPtwGroup, err := s.queries.WithTx(sp).GetPlayToWinGroupByName(c.Request.Context(), groupName)
 	if err == nil {
 		// Created new group successfully, commit the checkpoint transaction and return the new ID
-		ptwGroupId = ptwGroup.ID
+		ptwGroupId = existingPtwGroup.ID
 		_ = sp.Commit(c.Request.Context())
 	} else {
 		// If unique constraint violation, the group already exists, so just return the existing ID
 		_ = sp.Rollback(c.Request.Context())
-		if isUniqueConstraintViolation(err) {
-			existingPtwGroup, err := s.queries.WithTx(tx).GetPlayToWinGroupByName(c.Request.Context(), groupName)
+		if isNotFound(err) {
+			ptwGroup, err := s.queries.WithTx(tx).CreatePlayToWinGroup(c.Request.Context(), groupName)
 			if err != nil {
 				return pgtype.UUID{}, err
 			}
-			ptwGroupId = existingPtwGroup.ID
+			ptwGroupId = ptwGroup.ID
 		} else {
 			return pgtype.UUID{}, err
 		}
@@ -129,7 +129,7 @@ func (s Server) addPlayToWinByGameId(c *gin.Context, gameId types.UUID, optTx *p
 		// If unique constraint violation, restore soft-deleted row.
 		_ = sp.Rollback(c.Request.Context())
 		if isUniqueConstraintViolation(err) {
-			err = s.queries.WithTx(tx).RestorePlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+			err = s.queries.WithTx(tx).RestorePlayToWinGameByLibraryGameId(c.Request.Context(), uuidToPgTypeUUID(gameId))
 			if err != nil {
 				return err
 			}

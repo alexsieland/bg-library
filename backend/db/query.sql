@@ -144,7 +144,7 @@ WHERE id = $1;
 -- name: GetPlayToWinGroupByName :one
 SELECT *
 FROM vw_play_to_win_groups
-WHERE name = $1;
+WHERE name ILIKE $1;
 
 -- name: CreatePlayToWinGroup :one
 INSERT INTO play_to_win_groups (name) VALUES ($1)
@@ -220,6 +220,13 @@ SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
 WHERE deleted_at IS NOT NULL AND id = $1;
+
+-- name: RestorePlayToWinGameByLibraryGameId :exec
+UPDATE play_to_win_games
+SET deleted_at = NULL,
+    deletion_reason = NULL,
+    deletion_reason_comment = NULL
+WHERE deleted_at IS NOT NULL AND game_id = $1;
 
 -- name: DeletePlayToWinSession :exec
 UPDATE play_to_win_sessions
