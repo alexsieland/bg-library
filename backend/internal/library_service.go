@@ -12,7 +12,9 @@ type LibraryService struct {
 	queries  *db.Queries
 }
 
-func WithinTx[T any](s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (*T, error)) (*T, error) {
+// withinTxImpl is the non-generic implementation function variable. Tests
+// can replace this to control transaction behavior in unit tests.
+var withinTxImpl func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) = func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) {
 	var (
 		tx  pgx.Tx
 		err error
@@ -36,11 +38,31 @@ func WithinTx[T any](s *LibraryService, ctx context.Context, optTx pgx.Tx, fn fu
 		return nil, err
 	}
 	if optTx == nil {
-		err = tx.Commit(ctx)
-		if err != nil {
+		if err = tx.Commit(ctx); err != nil {
 			return nil, err
 		}
+		// prevent the deferred rollback from running
 		tx = nil
 	}
 	return result, nil
+}
+
+// WithinTx is a generic, type-safe wrapper around the non-generic
+// `withinTxImpl`. Tests should override `withinTxImpl` when they need to
+// mock transaction behavior; they must not attempt to assign a generic
+// function literal to `WithinTx` (Go does not allow function literals with
+// type parameters).
+func WithinTx[T any](s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (*T, error)) (*T, error) {
+	wrapper := func(tx pgx.Tx) (any, error) {
+		res, err := fn(tx)
+		return any(res), err
+	}
+	out, err := withinTxImpl(s, ctx, optTx, wrapper)
+	if err != nil {
+		return nil, err
+	}
+	if out == nil {
+		return nil, nil
+	}
+	return out.(*T), nil
 }
