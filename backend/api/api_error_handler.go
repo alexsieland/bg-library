@@ -11,7 +11,7 @@ import (
 func extractRequestBody[T any](c *gin.Context, request T) {
 	err := c.ShouldBindBodyWithJSON(&request)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponse(MALFORMEDREQUEST, "JSON body is malformed"))
+		malformedJson(c)
 	}
 }
 
@@ -28,6 +28,7 @@ func badRequest(c *gin.Context, message string) {
 }
 
 func malformedJson(c *gin.Context) {
+	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponse(MALFORMEDREQUEST, "JSON body is malformed"))
 }
 
 func validationError(c *gin.Context, errorDetails ErrorDetails) {

@@ -19,6 +19,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// Use this as a base, but rework the test cases.
+// The PatronApi no longer handles any calls to the database, that is all handled by the PatronService
+// The PatronService should be mocked, do not test any of it's methods directly.
+// The PatronApi should only test request and response mutation.
+// The api Server is responsible for the actual mapping of errors and response to HTTP status codes
+
 func TestAddPatron(t *testing.T) {
 	t.Run("Should return 201 Created when valid patron is added", func(t *testing.T) {
 		server, mockDB := setupTestServer()

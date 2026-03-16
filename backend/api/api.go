@@ -72,6 +72,8 @@ func RegisterSwagger(r *gin.Engine) {
 	})
 }
 
+// Patron API
+
 func (s Server) AddPatron(c *gin.Context) {
 	var request AddPatronJSONRequestBody
 	extractRequestBody[AddPatronJSONRequestBody](c, request)
@@ -141,4 +143,112 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, bulkAddResponse)
+}
+
+// Transaction API
+
+func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) CheckOutGame(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Game API
+
+func (s Server) AddGame(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) BulkAddGames(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Play To Win API
+
+func (s Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) AddPlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) AddPlayToWinSession(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Play To Win Raffle API
+
+func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ResetPlayToWinRaffle(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
 }
