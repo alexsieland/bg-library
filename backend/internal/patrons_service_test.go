@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -15,9 +16,7 @@ import (
 
 func TestPatronServiceInsertPatron(t *testing.T) {
 	t.Run("Should insert patron when no transaction is provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 
 		expectedPatron := testPatron(uuid.New(), "Jane Doe", nil)
 		mockRow := new(MockRow)
@@ -35,9 +34,7 @@ func TestPatronServiceInsertPatron(t *testing.T) {
 	})
 
 	t.Run("Should return already exists error when insert violates a unique constraint", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		barcode := "P-1001"
 
 		mockRow := new(MockRow)
@@ -55,8 +52,7 @@ func TestPatronServiceInsertPatron(t *testing.T) {
 	})
 
 	t.Run("Should use the provided transaction when one is supplied", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
+		service, _, _ := setupPatronServiceWithMockTx(t)
 		providedTx := new(MockTx)
 		barcode := "P-1002"
 
@@ -66,7 +62,7 @@ func TestPatronServiceInsertPatron(t *testing.T) {
 
 		providedTx.On("QueryRow", mock.Anything, mock.Anything, []any{"Alex Doe", pgtype.Text{String: barcode, Valid: true}}).Return(mockRow).Once()
 
-		patron, err := service.InsertPatron(ctx, "Alex Doe", &barcode, providedTx)
+		patron, err := service.InsertPatron(context.Background(), "Alex Doe", &barcode, providedTx)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedPatron, patron)
@@ -77,9 +73,7 @@ func TestPatronServiceInsertPatron(t *testing.T) {
 
 func TestPatronServiceDeletePatron(t *testing.T) {
 	t.Run("Should delete patron when no transaction is provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		patronID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 
 		mockTx.On("Exec", mock.Anything, mock.Anything, []any{patronID}).Return(pgconn.CommandTag{}, nil).Once()
@@ -92,9 +86,7 @@ func TestPatronServiceDeletePatron(t *testing.T) {
 	})
 
 	t.Run("Should return not found error when delete affects no patron", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		patronID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 
 		mockTx.On("Exec", mock.Anything, mock.Anything, []any{patronID}).Return(pgconn.CommandTag{}, pgx.ErrNoRows).Once()
@@ -109,9 +101,7 @@ func TestPatronServiceDeletePatron(t *testing.T) {
 
 func TestPatronServiceGetPatron(t *testing.T) {
 	t.Run("Should return patron when no transaction is provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		barcode := "P-2001"
 		expectedPatron := testLibraryPatron(uuid.New(), "Jordan Doe", &barcode)
 		mockRow := new(MockRow)
@@ -129,9 +119,7 @@ func TestPatronServiceGetPatron(t *testing.T) {
 	})
 
 	t.Run("Should return not found error when patron does not exist", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		patronID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 		mockRow := new(MockRow)
 
@@ -150,8 +138,7 @@ func TestPatronServiceGetPatron(t *testing.T) {
 
 func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 	t.Run("Should return patron from the database when no transaction is provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, mockDB := setupTestPatronService()
+		service, _, mockDB := setupPatronServiceWithDB(t)
 		barcode := "P-3001"
 		expectedPatron := testLibraryPatron(uuid.New(), "Morgan Doe", &barcode)
 		mockRow := new(MockRow)
@@ -159,7 +146,7 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 		MockVwLibraryPatronScan(mockRow, expectedPatron, nil)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow).Once()
 
-		patron, err := service.GetPatronByBarcode(ctx, barcode, nil)
+		patron, err := service.GetPatronByBarcode(context.Background(), barcode, nil)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedPatron, patron)
@@ -168,8 +155,7 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 	})
 
 	t.Run("Should use the provided transaction when barcode lookup runs inside a transaction", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
+		service, _, _ := setupPatronServiceWithDB(t)
 		providedTx := new(MockTx)
 		barcode := "P-3002"
 		expectedPatron := testLibraryPatron(uuid.New(), "Taylor Doe", &barcode)
@@ -178,7 +164,7 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 		MockVwLibraryPatronScan(mockRow, expectedPatron, nil)
 		providedTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow).Once()
 
-		patron, err := service.GetPatronByBarcode(ctx, barcode, providedTx)
+		patron, err := service.GetPatronByBarcode(context.Background(), barcode, providedTx)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedPatron, patron)
@@ -187,15 +173,14 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 	})
 
 	t.Run("Should return not found error when barcode does not match a patron", func(t *testing.T) {
-		ctx := t.Context()
-		service, mockDB := setupTestPatronService()
+		service, _, mockDB := setupPatronServiceWithDB(t)
 		barcode := "P-3003"
 		mockRow := new(MockRow)
 
 		MockRowScanError(mockRow, 4, pgx.ErrNoRows)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow).Once()
 
-		patron, err := service.GetPatronByBarcode(ctx, barcode, nil)
+		patron, err := service.GetPatronByBarcode(context.Background(), barcode, nil)
 
 		assert.Equal(t, db.VwLibraryPatron{}, patron)
 		assert.ErrorIs(t, err, ErrNotFound)
@@ -206,9 +191,7 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 
 func TestPatronServiceUpdatePatron(t *testing.T) {
 	t.Run("Should update patron when no transaction is provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		patronID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 
 		mockTx.On("Exec", mock.Anything, mock.Anything, []any{patronID, "Updated Name", pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, nil).Once()
@@ -221,24 +204,21 @@ func TestPatronServiceUpdatePatron(t *testing.T) {
 	})
 
 	t.Run("Should use the provided transaction when updating a barcode", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
+		service, _, _ := setupPatronServiceWithMockTx(t)
 		providedTx := new(MockTx)
 		patronID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 		barcode := "P-4001"
 
 		providedTx.On("Exec", mock.Anything, mock.Anything, []any{patronID, "Updated Name", pgtype.Text{String: barcode, Valid: true}}).Return(pgconn.CommandTag{}, nil).Once()
 
-		err := service.UpdatePatron(ctx, patronID, "Updated Name", &barcode, providedTx)
+		err := service.UpdatePatron(context.Background(), patronID, "Updated Name", &barcode, providedTx)
 
 		assert.NoError(t, err)
 		providedTx.AssertExpectations(t)
 	})
 
 	t.Run("Should return already exists error when update violates a unique constraint", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
-		mockTx := MockWithinTx(t)
+		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		patronID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 		barcode := "P-4002"
 
@@ -254,8 +234,7 @@ func TestPatronServiceUpdatePatron(t *testing.T) {
 
 func TestPatronServiceListPatrons(t *testing.T) {
 	t.Run("Should list patrons when search name is not provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, mockDB := setupTestPatronService()
+		service, ctx, mockDB := setupPatronServiceWithDB(t)
 		barcode := "P-5001"
 		expectedPatrons := []db.VwLibraryPatron{
 			testLibraryPatron(uuid.New(), "Casey Doe", &barcode),
@@ -275,8 +254,7 @@ func TestPatronServiceListPatrons(t *testing.T) {
 	})
 
 	t.Run("Should search patrons when a name filter is provided", func(t *testing.T) {
-		ctx := t.Context()
-		service, _ := setupTestPatronService()
+		service, _, _ := setupPatronServiceWithDB(t)
 		providedTx := new(MockTx)
 		searchName := "Doe"
 		expectedPatrons := []db.VwLibraryPatron{testLibraryPatron(uuid.New(), "Jamie Doe", nil)}
@@ -285,7 +263,7 @@ func TestPatronServiceListPatrons(t *testing.T) {
 		MockVwLibraryPatronRows(mockRows, expectedPatrons, nil)
 		providedTx.On("Query", mock.Anything, mock.Anything, []any{"%Doe%", int32(10), int32(5)}).Return(mockRows, nil).Once()
 
-		patrons, err := service.ListPatrons(ctx, &searchName, 10, 5, providedTx)
+		patrons, err := service.ListPatrons(context.Background(), &searchName, 10, 5, providedTx)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedPatrons, patrons)
@@ -294,8 +272,7 @@ func TestPatronServiceListPatrons(t *testing.T) {
 	})
 
 	t.Run("Should return the query error when listing patrons fails", func(t *testing.T) {
-		ctx := t.Context()
-		service, mockDB := setupTestPatronService()
+		service, ctx, mockDB := setupPatronServiceWithDB(t)
 		expectedErr := errors.New("query failed")
 
 		mockDB.On("Query", mock.Anything, mock.Anything, []any{int32(15), int32(30)}).Return(nil, expectedErr).Once()
@@ -311,6 +288,19 @@ func TestPatronServiceListPatrons(t *testing.T) {
 func setupTestPatronService() (PatronService, *MockDatabase) {
 	libService, mockDB := setupTestLibraryService()
 	return PatronService{libService: libService}, mockDB
+}
+
+func setupPatronServiceWithMockTx(t *testing.T) (PatronService, context.Context, *MockTx) {
+	ctx := t.Context()
+	service, _ := setupTestPatronService()
+	mockTx := MockWithinTx(t)
+	return service, ctx, mockTx
+}
+
+func setupPatronServiceWithDB(t *testing.T) (PatronService, context.Context, *MockDatabase) {
+	ctx := t.Context()
+	service, mockDB := setupTestPatronService()
+	return service, ctx, mockDB
 }
 
 func testPatron(id uuid.UUID, fullName string, barcode *string) db.Patron {
