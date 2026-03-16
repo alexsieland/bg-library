@@ -6,6 +6,10 @@ type ErrorDetails struct {
 	Details []ErrorDetail
 }
 
+func (e ErrorDetails) Error() string {
+	return fmt.Sprintf("Validation Error Details: %v", e.Details)
+}
+
 func (e *ErrorDetails) Empty() bool {
 	return len(e.Details) == 0
 }

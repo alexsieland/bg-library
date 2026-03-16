@@ -12,6 +12,13 @@ type LibraryService struct {
 	queries  *db.Queries
 }
 
+func NewLibraryService(database db.DB) *LibraryService {
+	return &LibraryService{
+		Database: database,
+		queries:  db.New(database),
+	}
+}
+
 // withinTxImpl is the non-generic implementation function variable. Tests
 // can replace this to control transaction behavior in unit tests.
 var withinTxImpl func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) = func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) {
