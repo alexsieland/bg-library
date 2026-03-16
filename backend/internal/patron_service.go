@@ -1,8 +1,9 @@
 package internal
 
 import (
+	"context"
+
 	"github.com/alexsieland/bg-library/db"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -11,8 +12,8 @@ type PatronService struct {
 	libService *LibraryService
 }
 
-func (s PatronService) InsertPatron(c *gin.Context, name string, barcode *string, optTx *pgx.Tx) (db.Patron, error) {
-	patron, err := WithinTx(s.libService, optTx, func(tx pgx.Tx) (*db.Patron, error) {
+func (s PatronService) InsertPatron(ctx context.Context, name string, barcode *string, optTx pgx.Tx) (db.Patron, error) {
+	patron, err := WithinTx(s.libService, ctx, optTx, func(tx pgx.Tx) (*db.Patron, error) {
 		dbBarcode := pgtype.Text{Valid: false}
 		if barcode != nil {
 			dbBarcode = pgtype.Text{String: *barcode, Valid: true}
@@ -22,97 +23,111 @@ func (s PatronService) InsertPatron(c *gin.Context, name string, barcode *string
 			Barcode:  dbBarcode,
 		}
 
-		dbPatron, err := s.libService.queries.WithTx(tx).CreatePatron(c.Request.Context(), createPatronParams)
+		dbPatron, err := s.libService.queries.WithTx(tx).CreatePatron(ctx, createPatronParams)
 		return &dbPatron, err
 	})
+
 	if err != nil || patron == nil {
 		return db.Patron{}, wrapDatabaseError(err)
 	}
 	return *patron, nil
 }
 
-func (s PatronService) DeletePatron(c *gin.Context, patronId pgtype.UUID, optTx *pgx.Tx) error {
-	_, err := WithinTx(s.libService, optTx, func(tx pgx.Tx) (*struct{}, error) {
-		err := s.libService.queries.WithTx(tx).DeletePatron(c.Request.Context(), patronId)
+func (s PatronService) DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error {
+	_, err := WithinTx(s.libService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libService.queries.WithTx(tx).DeletePatron(ctx, patronId)
 		return nil, err
 	})
+
 	return wrapDatabaseError(err)
 }
 
-func (s PatronService) GetPatron(c *gin.Context, patronId pgtype.UUID) (db.VwLibraryPatron, error) {
-	patron, err := WithinTx(s.libService, nil, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
-		dbPatron, err := s.libService.queries.WithTx(tx).GetPatron(c.Request.Context(), patronId)
+func (s PatronService) GetPatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryPatron, error) {
+	patron, err := WithinTx(s.libService, ctx, optTx, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
+		dbPatron, err := s.libService.queries.WithTx(tx).GetPatron(ctx, patronId)
 		if err != nil {
 			return nil, err
 		}
 		return &dbPatron, nil
 	})
+
 	if err != nil || patron == nil {
 		return db.VwLibraryPatron{}, wrapDatabaseError(err)
 	}
 	return *patron, nil
 }
 
-func (s PatronService) GetPatronByBarcode(c *gin.Context, patronBarcode string) (db.VwLibraryPatron, error) {
-	patron, err := WithinTx(s.libService, nil, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
-		var barcode = pgtype.Text{String: patronBarcode, Valid: true}
-		dbPatron, err := s.libService.queries.WithTx(tx).GetPatronByBarcode(c.Request.Context(), barcode)
-		if err != nil {
-			return nil, wrapDatabaseError(err)
-		}
-		return &dbPatron, nil
-	})
-	if err != nil || patron == nil {
-		return db.VwLibraryPatron{}, wrapDatabaseError(err)
+func (s PatronService) GetPatronByBarcode(ctx context.Context, patronBarcode string, optTx pgx.Tx) (db.VwLibraryPatron, error) {
+	var (
+		dbPatron db.VwLibraryPatron
+		err      error
+	)
+
+	barcode := pgtype.Text{String: patronBarcode, Valid: true}
+	if optTx != nil {
+		dbPatron, err = s.libService.queries.WithTx(optTx).GetPatronByBarcode(ctx, barcode)
+	} else {
+		dbPatron, err = s.libService.queries.GetPatronByBarcode(ctx, barcode)
 	}
-	return *patron, nil
+
+	if err != nil {
+		return dbPatron, wrapDatabaseError(err)
+	}
+	return dbPatron, nil
 }
 
-func (s PatronService) UpdatePatron(c *gin.Context, patronId pgtype.UUID, fullName string, barcode *string) error {
-	_, err := WithinTx(s.libService, nil, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
+func (s PatronService) UpdatePatron(ctx context.Context, patronId pgtype.UUID, fullName string, barcode *string, optTx pgx.Tx) error {
+	_, err := WithinTx(s.libService, ctx, optTx, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
 		dbBarcode := pgtype.Text{Valid: false}
 		if barcode != nil {
 			dbBarcode = pgtype.Text{String: *barcode, Valid: true}
 		}
 
-		err := s.libService.queries.WithTx(tx).EditPatron(c.Request.Context(), db.EditPatronParams{
+		err := s.libService.queries.WithTx(tx).EditPatron(ctx, db.EditPatronParams{
 			ID:       patronId,
 			FullName: fullName,
 			Barcode:  dbBarcode,
 		})
 		return nil, err
 	})
+
 	if err != nil {
 		return wrapDatabaseError(err)
 	}
 	return nil
 }
 
-func (s PatronService) ListPatrons(c *gin.Context, fullName *string, limit int32, offset int32) ([]db.VwLibraryPatron, error) {
-	patrons, err := WithinTx(s.libService, nil, func(tx pgx.Tx) (*[]db.VwLibraryPatron, error) {
-		var (
-			dbPatronList []db.VwLibraryPatron
-			err          error
-		)
-		if fullName == nil {
-			dbPatronList, err = s.libService.queries.WithTx(tx).ListPatrons(c.Request.Context(), db.ListPatronsParams{
-				Limit:  limit,
-				Offset: offset,
-			})
+func (s PatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+	var (
+		dbPatronList []db.VwLibraryPatron
+		err          error
+	)
+
+	if fullName == nil {
+		params := db.ListPatronsParams{
+			Limit:  limit,
+			Offset: offset,
+		}
+		if optTx != nil {
+			dbPatronList, err = s.libService.queries.WithTx(optTx).ListPatrons(ctx, params)
 		} else {
-			dbPatronList, err = s.libService.queries.WithTx(tx).SearchPatrons(c.Request.Context(), db.SearchPatronsParams{
-				FullName: "%" + *fullName + "%",
-				Limit:    999,
-				Offset:   0,
-			})
+			dbPatronList, err = s.libService.queries.ListPatrons(ctx, params)
 		}
-		if err != nil {
-			return nil, err
+	} else {
+		params := db.SearchPatronsParams{
+			FullName: "%" + *fullName + "%",
+			Limit:    limit,
+			Offset:   offset,
 		}
-		return &dbPatronList, nil
-	})
-	if err != nil || patrons == nil {
-		return []db.VwLibraryPatron{}, wrapDatabaseError(err)
+		if optTx != nil {
+			dbPatronList, err = s.libService.queries.WithTx(optTx).SearchPatrons(ctx, params)
+		} else {
+			dbPatronList, err = s.libService.queries.SearchPatrons(ctx, params)
+		}
 	}
-	return *patrons, nil
+
+	if err != nil {
+		return dbPatronList, wrapDatabaseError(err)
+	}
+	return dbPatronList, nil
 }
