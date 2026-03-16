@@ -126,14 +126,18 @@ func TestConversionUtils(t *testing.T) {
 	})
 
 	t.Run("Should correctly convert PlayToWinGameOverview with winner", func(t *testing.T) {
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
+		ptwGroupID := uuid.New()
 		gameID := uuid.New()
 		winnerID := uuid.New()
 
 		dbGame := db.VwPlayToWinGameOverview{
-			PlayToWinID:    pgtype.UUID{Bytes: playToWinID, Valid: true},
+			PtwGameID:      pgtype.UUID{Bytes: ptwGameId, Valid: true},
 			GameID:         pgtype.UUID{Bytes: gameID, Valid: true},
+			PtwGroupID:     pgtype.UUID{Bytes: ptwGroupID, Valid: true},
 			GameTitle:      "Heat",
+			SanitizedTitle: "",
+			CreatedAt:      pgtype.Timestamp{},
 			WinnerID:       pgtype.UUID{Bytes: winnerID, Valid: true},
 			WinnerName:     pgtype.Text{String: "Alice", Valid: true},
 			WinnerUniqueID: pgtype.Text{String: "alice123", Valid: true},
@@ -141,7 +145,7 @@ func TestConversionUtils(t *testing.T) {
 
 		game := FromPlayToWinGameOverview(dbGame)
 
-		assert.Equal(t, playToWinID, game.PlayToWinId)
+		assert.Equal(t, ptwGameId, game.PlayToWinId)
 		assert.Equal(t, gameID, game.GameId)
 		assert.Equal(t, "Heat", game.Title)
 		assert.NotNil(t, game.Winner)
@@ -151,40 +155,44 @@ func TestConversionUtils(t *testing.T) {
 	})
 
 	t.Run("Should correctly convert PlayToWinGameOverview without winner", func(t *testing.T) {
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
+		ptwGroupID := uuid.New()
 		gameID := uuid.New()
 
 		dbGame := db.VwPlayToWinGameOverview{
-			PlayToWinID: playToWinIDToPg(playToWinID),
-			GameID:      playToWinIDToPg(gameID),
-			GameTitle:   "Azul",
-			WinnerID:    pgtype.UUID{Valid: false},
+			PtwGameID:  ptwGameIdToPg(ptwGameId),
+			GameID:     ptwGameIdToPg(gameID),
+			PtwGroupID: ptwGameIdToPg(ptwGroupID),
+			GameTitle:  "Azul",
+			WinnerID:   pgtype.UUID{Valid: false},
 		}
 
 		game := FromPlayToWinGameOverview(dbGame)
 
-		assert.Equal(t, playToWinID, game.PlayToWinId)
+		assert.Equal(t, ptwGameId, game.PlayToWinId)
 		assert.Equal(t, gameID, game.GameId)
 		assert.Equal(t, "Azul", game.Title)
 		assert.Nil(t, game.Winner)
 	})
 
 	t.Run("Should correctly convert PlayToWinGameList", func(t *testing.T) {
-		playToWinID := uuid.New()
+		ptwGameId := uuid.New()
+		ptwGroupID := uuid.New()
 		gameID := uuid.New()
 
 		dbGames := []db.VwPlayToWinGameOverview{
 			{
-				PlayToWinID: playToWinIDToPg(playToWinID),
-				GameID:      playToWinIDToPg(gameID),
-				GameTitle:   "Azul",
+				PtwGameID:  ptwGameIdToPg(ptwGameId),
+				PtwGroupID: ptwGameIdToPg(ptwGroupID),
+				GameID:     ptwGameIdToPg(gameID),
+				GameTitle:  "Azul",
 			},
 		}
 
 		games := FromPlayToWinGameList(dbGames)
 
 		assert.Len(t, games.Games, 1)
-		assert.Equal(t, playToWinID, games.Games[0].PlayToWinId)
+		assert.Equal(t, ptwGameId, games.Games[0].PlayToWinId)
 		assert.Equal(t, gameID, games.Games[0].GameId)
 		assert.Equal(t, "Azul", games.Games[0].Title)
 		assert.Nil(t, games.Games[0].Winner)
@@ -228,6 +236,6 @@ func TestErrorUtils(t *testing.T) {
 }
 
 // Helper to keep pgtype.UUID test setup compact.
-func playToWinIDToPg(id uuid.UUID) pgtype.UUID {
+func ptwGameIdToPg(id uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: id, Valid: true}
 }

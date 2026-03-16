@@ -261,7 +261,7 @@ func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
 	// update the game entry
 	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
 		ID:             uuidToPgTypeUUID(gameId),
-		Title:          jsonObject.Title,
+		DisplayTitle:   stringToPgText(&jsonObject.Title),
 		SanitizedTitle: SanitizeTitle(jsonObject.Title),
 		Barcode:        stringToPgText(jsonObject.Barcode),
 	})

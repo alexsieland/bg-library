@@ -14,6 +14,7 @@ import (
 type PlayToWinEntryDeletionType string
 
 const (
+	PlayToWinEntryDeletionTypeWon              PlayToWinEntryDeletionType = "won"
 	PlayToWinEntryDeletionTypeFailedToClaim    PlayToWinEntryDeletionType = "failed_to_claim"
 	PlayToWinEntryDeletionTypeFoulPlay         PlayToWinEntryDeletionType = "foul_play"
 	PlayToWinEntryDeletionTypeDuplicateEntrant PlayToWinEntryDeletionType = "duplicate_entrant"
@@ -188,6 +189,7 @@ func (ns NullTransactionEventType) Value() (driver.Value, error) {
 type Game struct {
 	ID             pgtype.UUID
 	Title          string
+	DisplayTitle   pgtype.Text
 	SanitizedTitle string
 	CreatedAt      pgtype.Timestamp
 	DeletedAt      pgtype.Timestamp
@@ -204,8 +206,8 @@ type Patron struct {
 
 type PlayToWinEntry struct {
 	ID                    pgtype.UUID
-	SessionID             pgtype.UUID
-	PlayToWinID           pgtype.UUID
+	PtwSessionID          pgtype.UUID
+	PtwGroupID            pgtype.UUID
 	EntrantName           string
 	EntrantUniqueID       string
 	CreatedAt             pgtype.Timestamp
@@ -217,6 +219,7 @@ type PlayToWinEntry struct {
 type PlayToWinGame struct {
 	ID                    pgtype.UUID
 	GameID                pgtype.UUID
+	PtwGroupID            pgtype.UUID
 	WinnerID              pgtype.UUID
 	CreatedAt             pgtype.Timestamp
 	DeletedAt             pgtype.Timestamp
@@ -224,9 +227,16 @@ type PlayToWinGame struct {
 	DeletionReasonComment pgtype.Text
 }
 
+type PlayToWinGroup struct {
+	ID        pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamp
+	DeletedAt pgtype.Timestamp
+}
+
 type PlayToWinSession struct {
 	ID                    pgtype.UUID
-	PlayToWinID           pgtype.UUID
+	PtwGroupID            pgtype.UUID
 	PlaytimeMinutes       pgtype.Int4
 	CreatedAt             pgtype.Timestamp
 	DeletedAt             pgtype.Timestamp
@@ -254,7 +264,7 @@ type TransactionEvent struct {
 
 type VwDeletedPlayToWinEntry struct {
 	ID                    pgtype.UUID
-	SessionID             pgtype.UUID
+	PtwSessionID          pgtype.UUID
 	DeletedAt             pgtype.Timestamp
 	DeletionReason        NullPlayToWinEntryDeletionType
 	DeletionReasonComment pgtype.Text
@@ -270,7 +280,7 @@ type VwDeletedPlayToWinGame struct {
 
 type VwDeletedPlayToWinSession struct {
 	ID                    pgtype.UUID
-	PlayToWinID           pgtype.UUID
+	PtwGroupID            pgtype.UUID
 	DeletedAt             pgtype.Timestamp
 	DeletionReason        NullPlayToWinSessionDeletionType
 	DeletionReasonComment pgtype.Text
@@ -285,11 +295,12 @@ type VwGameStatus struct {
 	TransactionID     pgtype.UUID
 	CheckoutTimestamp pgtype.Timestamp
 	CheckinTimestamp  pgtype.Timestamp
-	PlayToWinGameID   pgtype.UUID
+	PtwGameID         pgtype.UUID
 }
 
 type VwLibraryGame struct {
 	ID              pgtype.UUID
+	DisplayTitle    string
 	Title           string
 	SanitizedTitle  string
 	Barcode         pgtype.Text
@@ -318,8 +329,8 @@ type VwLibraryTransactionEvent struct {
 
 type VwPlayToWinEntry struct {
 	ID              pgtype.UUID
-	SessionID       pgtype.UUID
-	PlayToWinID     pgtype.UUID
+	PtwSessionID    pgtype.UUID
+	PtwGroupID      pgtype.UUID
 	EntrantName     string
 	EntrantUniqueID string
 	CreatedAt       pgtype.Timestamp
@@ -327,8 +338,8 @@ type VwPlayToWinEntry struct {
 
 type VwPlayToWinEntryEvent struct {
 	EntryID            pgtype.UUID
-	SessionID          pgtype.UUID
-	PlayToWinID        pgtype.UUID
+	PtwSessionID       pgtype.UUID
+	PtwGroupID         pgtype.UUID
 	EntrantName        string
 	EntrantUniqueID    string
 	DeletionReason     NullPlayToWinEntryDeletionType
@@ -339,15 +350,18 @@ type VwPlayToWinEntryEvent struct {
 }
 
 type VwPlayToWinGame struct {
-	ID        pgtype.UUID
-	GameID    pgtype.UUID
-	CreatedAt pgtype.Timestamp
-	WinnerID  pgtype.UUID
+	ID         pgtype.UUID
+	GameID     pgtype.UUID
+	PtwGroupID pgtype.UUID
+	GroupName  pgtype.Text
+	CreatedAt  pgtype.Timestamp
+	WinnerID   pgtype.UUID
 }
 
 type VwPlayToWinGameOverview struct {
-	PlayToWinID    pgtype.UUID
+	PtwGameID      pgtype.UUID
 	GameID         pgtype.UUID
+	PtwGroupID     pgtype.UUID
 	GameTitle      string
 	SanitizedTitle string
 	CreatedAt      pgtype.Timestamp
@@ -356,9 +370,15 @@ type VwPlayToWinGameOverview struct {
 	WinnerUniqueID pgtype.Text
 }
 
+type VwPlayToWinGroup struct {
+	ID        pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamp
+}
+
 type VwPlayToWinSession struct {
 	ID              pgtype.UUID
-	PlayToWinID     pgtype.UUID
+	PtwGroupID      pgtype.UUID
 	PlaytimeMinutes pgtype.Int4
 	CreatedAt       pgtype.Timestamp
 }

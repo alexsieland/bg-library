@@ -52,7 +52,7 @@ func dbGameStatusToOpenAPIGame(dbGameStatus db.VwGameStatus) Game {
 	return Game{
 		GameId:      pgUUIDToUUID(dbGameStatus.GameID),
 		Title:       dbGameStatus.GameTitle,
-		IsPlayToWin: dbGameStatus.PlayToWinGameID.Valid,
+		IsPlayToWin: dbGameStatus.PtwGameID.Valid,
 	}
 }
 
@@ -156,7 +156,7 @@ func FromPlayToWinGameOverview(dbPTWGame db.VwPlayToWinGameOverview) PlayToWinGa
 
 	game := PlayToWinGame{
 		GameId:      pgUUIDToUUID(dbPTWGame.GameID),
-		PlayToWinId: pgUUIDToUUID(dbPTWGame.PlayToWinID),
+		PlayToWinId: pgUUIDToUUID(dbPTWGame.PtwGameID),
 		Title:       dbPTWGame.GameTitle,
 		Winner:      winner,
 	}

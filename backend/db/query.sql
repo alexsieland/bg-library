@@ -27,7 +27,7 @@ RETURNING *;
 
 -- name: EditGame :exec
 UPDATE games
-SET title = $2,
+SET display_title = $2,
     sanitized_title = $3,
     barcode = $4
 WHERE id = $1;
@@ -134,41 +134,67 @@ LIMIT $2 OFFSET $3;
 -- name: GetPlayToWinGame :one
 SELECT *
 FROM vw_play_to_win_game_overview
-WHERE play_to_win_id = $1;
+WHERE ptw_game_id = $1;
+
+-- name: GetPlayToWinGroup :one
+SELECT *
+FROM vw_play_to_win_groups
+WHERE id = $1;
+
+-- name: GetPlayToWinGroupByName :one
+SELECT *
+FROM vw_play_to_win_groups
+WHERE name ILIKE $1;
+
+-- name: CreatePlayToWinGroup :one
+INSERT INTO play_to_win_groups (name) VALUES ($1)
+RETURNING *;
 
 -- name: GetPlayToWinSessions :many
 SELECT
-    id AS session_id,
-    play_to_win_id,
+    id AS ptw_session_id,
+    ptw_group_id,
     playtime_minutes,
     created_at
 FROM vw_play_to_win_sessions
-WHERE play_to_win_id = $1;
+WHERE ptw_group_id = $1;
 
--- name: GetPlayToWinEntries :many
+-- name: GetPlayToWinEntriesByGroupId :many
 SELECT
-    id AS entry_id,
-    session_id,
-    play_to_win_id,
+    id AS ptw_entry_id,
+    ptw_session_id,
+    ptw_group_id,
     entrant_name,
     entrant_unique_id,
     created_at
 FROM vw_play_to_win_entries
-WHERE play_to_win_id = $1;
+WHERE ptw_group_id = $1;
+
+-- name: GetPlayToWinEntriesByPlayToWinGameId :many
+SELECT
+    e.id AS ptw_entry_id,
+    ptw_session_id,
+    e.ptw_group_id,
+    entrant_name,
+    entrant_unique_id,
+    e.created_at
+FROM vw_play_to_win_entries e
+LEFT JOIN play_to_win_games g ON e.ptw_group_id = g.ptw_group_id
+WHERE g.id = $1;
 
 -- name: CreatePlayToWinGame :one
-INSERT INTO play_to_win_games (game_id) VALUES ($1)
+INSERT INTO play_to_win_games (game_id, ptw_group_id) VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreatePlayToWinSession :one
-INSERT INTO play_to_win_sessions (play_to_win_id, playtime_minutes) VALUES ($1, $2)
+INSERT INTO play_to_win_sessions (ptw_group_id, playtime_minutes) VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreatePlayToWinEntry :one
-INSERT INTO play_to_win_entries (session_id, play_to_win_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
+INSERT INTO play_to_win_entries (ptw_session_id, ptw_group_id, entrant_name, entrant_unique_id) VALUES ($1, $2, $3, $4)
 RETURNING *;
 
--- name: UpdatePlayToWinEntry :exec
+-- name: UpdatePlayToWinWinner :exec
 UPDATE play_to_win_games
 SET winner_id = $2
 WHERE id = $1;
@@ -194,6 +220,13 @@ SET deleted_at = NULL,
     deletion_reason = NULL,
     deletion_reason_comment = NULL
 WHERE deleted_at IS NOT NULL AND id = $1;
+
+-- name: RestorePlayToWinGameByLibraryGameId :exec
+UPDATE play_to_win_games
+SET deleted_at = NULL,
+    deletion_reason = NULL,
+    deletion_reason_comment = NULL
+WHERE deleted_at IS NOT NULL AND game_id = $1;
 
 -- name: DeletePlayToWinSession :exec
 UPDATE play_to_win_sessions

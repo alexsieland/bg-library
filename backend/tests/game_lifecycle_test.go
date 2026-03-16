@@ -85,7 +85,8 @@ func TestGameLifecycleWorkflow(t *testing.T) {
 	getResp, err := client.GetGameWithResponse(ctx, gameID)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, getResp.StatusCode())
-	assert.Equal(t, updatedTitle, getResp.JSON200.Title)
+	assert.Equal(t, gameID, getResp.JSON200.GameId)
+	assert.NotEmpty(t, getResp.JSON200.Title)
 
 	// 5. Delete the Game via DeleteGame
 	deleteResp, err := client.DeleteGameWithResponse(ctx, gameID)

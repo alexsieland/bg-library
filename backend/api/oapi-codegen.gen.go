@@ -518,8 +518,8 @@ type ClientInterface interface {
 	// ListTransactionEvents request
 	ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetPlayToWinSessionEntries request
-	GetPlayToWinSessionEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetPlayToWinGameEntries request
+	GetPlayToWinGameEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemovePlayToWinGameByGameIdWithBody request with any body
 	RemovePlayToWinGameByGameIdWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -848,8 +848,8 @@ func (c *Client) ListTransactionEvents(ctx context.Context, params *ListTransact
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetPlayToWinSessionEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetPlayToWinSessionEntriesRequest(c.Server, playToWinId)
+func (c *Client) GetPlayToWinGameEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPlayToWinGameEntriesRequest(c.Server, playToWinId)
 	if err != nil {
 		return nil, err
 	}
@@ -1774,8 +1774,8 @@ func NewListTransactionEventsRequest(server string, params *ListTransactionEvent
 	return req, nil
 }
 
-// NewGetPlayToWinSessionEntriesRequest generates requests for GetPlayToWinSessionEntries
-func NewGetPlayToWinSessionEntriesRequest(server string, playToWinId openapi_types.UUID) (*http.Request, error) {
+// NewGetPlayToWinGameEntriesRequest generates requests for GetPlayToWinGameEntries
+func NewGetPlayToWinGameEntriesRequest(server string, playToWinId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2334,8 +2334,8 @@ type ClientWithResponsesInterface interface {
 	// ListTransactionEventsWithResponse request
 	ListTransactionEventsWithResponse(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*ListTransactionEventsResponse, error)
 
-	// GetPlayToWinSessionEntriesWithResponse request
-	GetPlayToWinSessionEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinSessionEntriesResponse, error)
+	// GetPlayToWinGameEntriesWithResponse request
+	GetPlayToWinGameEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinGameEntriesResponse, error)
 
 	// RemovePlayToWinGameByGameIdWithBodyWithResponse request with any body
 	RemovePlayToWinGameByGameIdWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameByGameIdResponse, error)
@@ -2763,7 +2763,7 @@ func (r ListTransactionEventsResponse) StatusCode() int {
 	return 0
 }
 
-type GetPlayToWinSessionEntriesResponse struct {
+type GetPlayToWinGameEntriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PlayToWinEntryList
@@ -2771,7 +2771,7 @@ type GetPlayToWinSessionEntriesResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetPlayToWinSessionEntriesResponse) Status() string {
+func (r GetPlayToWinGameEntriesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -2779,7 +2779,7 @@ func (r GetPlayToWinSessionEntriesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetPlayToWinSessionEntriesResponse) StatusCode() int {
+func (r GetPlayToWinGameEntriesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3217,13 +3217,13 @@ func (c *ClientWithResponses) ListTransactionEventsWithResponse(ctx context.Cont
 	return ParseListTransactionEventsResponse(rsp)
 }
 
-// GetPlayToWinSessionEntriesWithResponse request returning *GetPlayToWinSessionEntriesResponse
-func (c *ClientWithResponses) GetPlayToWinSessionEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinSessionEntriesResponse, error) {
-	rsp, err := c.GetPlayToWinSessionEntries(ctx, playToWinId, reqEditors...)
+// GetPlayToWinGameEntriesWithResponse request returning *GetPlayToWinGameEntriesResponse
+func (c *ClientWithResponses) GetPlayToWinGameEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinGameEntriesResponse, error) {
+	rsp, err := c.GetPlayToWinGameEntries(ctx, playToWinId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetPlayToWinSessionEntriesResponse(rsp)
+	return ParseGetPlayToWinGameEntriesResponse(rsp)
 }
 
 // RemovePlayToWinGameByGameIdWithBodyWithResponse request with arbitrary body returning *RemovePlayToWinGameByGameIdResponse
@@ -3881,15 +3881,15 @@ func ParseListTransactionEventsResponse(rsp *http.Response) (*ListTransactionEve
 	return response, nil
 }
 
-// ParseGetPlayToWinSessionEntriesResponse parses an HTTP response from a GetPlayToWinSessionEntriesWithResponse call
-func ParseGetPlayToWinSessionEntriesResponse(rsp *http.Response) (*GetPlayToWinSessionEntriesResponse, error) {
+// ParseGetPlayToWinGameEntriesResponse parses an HTTP response from a GetPlayToWinGameEntriesWithResponse call
+func ParseGetPlayToWinGameEntriesResponse(rsp *http.Response) (*GetPlayToWinGameEntriesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetPlayToWinSessionEntriesResponse{
+	response := &GetPlayToWinGameEntriesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -4240,26 +4240,26 @@ type ServerInterface interface {
 	ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams)
 	// Get all play to win entries for a play to win game
 	// (GET /api/v1/ptw/entries/playToWinId/{playToWinId})
-	GetPlayToWinSessionEntries(c *gin.Context, playToWinId openapi_types.UUID)
+	GetPlayToWinGameEntries(c *gin.Context, playToWinId openapi_types.UUID)
 	// Mark a library game as not play to win
 	// (DELETE /api/v1/ptw/game/gameId/{gameId})
 	RemovePlayToWinGameByGameId(c *gin.Context, gameId openapi_types.UUID)
 	// Mark a library game as play to win
 	// (POST /api/v1/ptw/game/gameId/{gameId})
 	AddPlayToWinGameByGameId(c *gin.Context, gameId openapi_types.UUID)
-
+	// Delete a play to win game
 	// (DELETE /api/v1/ptw/game/ptwId/{ptwId})
 	DeletePlayToWinGame(c *gin.Context, ptwId openapi_types.UUID)
-
+	// Get a play to win game
 	// (GET /api/v1/ptw/game/ptwId/{ptwId})
 	GetPlayToWinGame(c *gin.Context, ptwId openapi_types.UUID)
-
+	// Update a play to win game
 	// (PUT /api/v1/ptw/game/ptwId/{ptwId})
 	UpdatePlayToWinGame(c *gin.Context, ptwId openapi_types.UUID)
 	// List play to win games
 	// (GET /api/v1/ptw/games)
 	ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams)
-
+	// Draw a random winner for a specific play to win game
 	// (POST /api/v1/ptw/raffle/ptwId/{ptwId})
 	DrawPlayToWinRaffle(c *gin.Context, ptwId openapi_types.UUID)
 	// Reset the play to win raffle
@@ -4682,8 +4682,8 @@ func (siw *ServerInterfaceWrapper) ListTransactionEvents(c *gin.Context) {
 	siw.Handler.ListTransactionEvents(c, params)
 }
 
-// GetPlayToWinSessionEntries operation middleware
-func (siw *ServerInterfaceWrapper) GetPlayToWinSessionEntries(c *gin.Context) {
+// GetPlayToWinGameEntries operation middleware
+func (siw *ServerInterfaceWrapper) GetPlayToWinGameEntries(c *gin.Context) {
 
 	var err error
 
@@ -4703,7 +4703,7 @@ func (siw *ServerInterfaceWrapper) GetPlayToWinSessionEntries(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetPlayToWinSessionEntries(c, playToWinId)
+	siw.Handler.GetPlayToWinGameEntries(c, playToWinId)
 }
 
 // RemovePlayToWinGameByGameId operation middleware
@@ -4975,7 +4975,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/library/patrons", wrapper.ListPatrons)
 	router.POST(options.BaseURL+"/api/v1/library/patrons", wrapper.BulkAddPatrons)
 	router.GET(options.BaseURL+"/api/v1/library/transactions", wrapper.ListTransactionEvents)
-	router.GET(options.BaseURL+"/api/v1/ptw/entries/playToWinId/:playToWinId", wrapper.GetPlayToWinSessionEntries)
+	router.GET(options.BaseURL+"/api/v1/ptw/entries/playToWinId/:playToWinId", wrapper.GetPlayToWinGameEntries)
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.RemovePlayToWinGameByGameId)
 	router.POST(options.BaseURL+"/api/v1/ptw/game/gameId/:gameId", wrapper.AddPlayToWinGameByGameId)
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.DeletePlayToWinGame)

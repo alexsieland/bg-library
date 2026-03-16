@@ -614,7 +614,7 @@ paths:
     get:
       tags:
         - ptw
-      operationId: getPlayToWinSessionEntries
+      operationId: getPlayToWinGameEntries
       parameters:
         - in: path
           name: playToWinId
@@ -681,6 +681,7 @@ paths:
       tags:
         - ptw
       operationId: getPlayToWinGame
+      summary: Get a play to win game
       parameters:
         - in: path
           name: ptwId
@@ -707,6 +708,7 @@ paths:
       tags:
         - ptw
       operationId: updatePlayToWinGame
+      summary: Update a play to win game
       parameters:
         - in: path
           name: ptwId
@@ -735,6 +737,7 @@ paths:
       tags:
         - ptw
       operationId: deletePlayToWinGame
+      summary: Delete a play to win game
       parameters:
         - in: path
           name: ptwId
@@ -775,6 +778,7 @@ paths:
       tags:
         - ptw
       operationId: drawPlayToWinRaffle
+      summary: Draw a random winner for a specific play to win game
       parameters:
         - in: path
           name: ptwId
@@ -792,7 +796,9 @@ paths:
                 $ref: '#/components/schemas/PlayToWinEntry'
         '404':
           description: Play to win game not found
-    description: Draw a random winner for a specific play to win game
+    description: |
+      Draw a random winner for a specific play to win game.
+      The play to win game winner will be stored in the database as well as being returned in the response.
 
 components:
   schemas:
