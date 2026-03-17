@@ -1,4 +1,4 @@
-package api
+package internal
 
 import (
 	"github.com/alexsieland/bg-library/db"
@@ -27,7 +27,7 @@ func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
 	}
 }
 
-func playToWinGameDeletionReason(deletionReason *string, errorDetails *ErrorDetails) db.NullPlayToWinGameDeletionType {
+func playToWinGameDeletionReason(deletionReason *string) (db.NullPlayToWinGameDeletionType, error) {
 	nullableReason := db.NullPlayToWinGameDeletionType{Valid: false}
 	if deletionReason != nil {
 		reason := db.PlayToWinGameDeletionType(*deletionReason)
@@ -38,9 +38,9 @@ func playToWinGameDeletionReason(deletionReason *string, errorDetails *ErrorDeta
 				Valid:                     true,
 			}
 		default:
-			errorDetails.AddErrorDetail("deletionReason", "Must be one of: claimed, mistake, other")
+			return db.NullPlayToWinGameDeletionType{}, ErrInvalidInput
 		}
 	}
 
-	return nullableReason
+	return nullableReason, nil
 }

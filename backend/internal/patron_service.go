@@ -31,10 +31,11 @@ func (s PatronService) InsertPatron(ctx context.Context, name string, barcode *s
 		return &dbPatron, err
 	})
 
-	if err != nil || patron == nil {
-		return db.Patron{}, wrapDatabaseError(err)
-	}
-	return *patron, nil
+	//if err != nil || patron == nil {
+	//	return db.Patron{}, wrapDatabaseError(err)
+	//}
+	//return *patron, nil
+	return wrapErrorOrReturn(patron, db.Patron{}, err)
 }
 
 func (s PatronService) DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error {
@@ -101,34 +102,37 @@ func (s PatronService) UpdatePatron(ctx context.Context, patronId pgtype.UUID, f
 	return nil
 }
 
-func (s PatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
-	var (
-		dbPatronList []db.VwLibraryPatron
-		err          error
-	)
-
-	if fullName == nil {
-		params := db.ListPatronsParams{
-			Limit:  limit,
-			Offset: offset,
-		}
-		if optTx != nil {
-			dbPatronList, err = s.LibraryService.queries.WithTx(optTx).ListPatrons(ctx, params)
-		} else {
-			dbPatronList, err = s.LibraryService.queries.ListPatrons(ctx, params)
-		}
-	} else {
-		params := db.SearchPatronsParams{
-			FullName: "%" + *fullName + "%",
-			Limit:    limit,
-			Offset:   offset,
-		}
-		if optTx != nil {
-			dbPatronList, err = s.LibraryService.queries.WithTx(optTx).SearchPatrons(ctx, params)
-		} else {
-			dbPatronList, err = s.LibraryService.queries.SearchPatrons(ctx, params)
-		}
+func (s PatronService) listPatrons(ctx context.Context, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+	params := db.ListPatronsParams{
+		Limit:  limit,
+		Offset: offset,
 	}
+
+	if optTx != nil {
+		return s.LibraryService.queries.WithTx(optTx).ListPatrons(ctx, params)
+	}
+	return s.LibraryService.queries.ListPatrons(ctx, params)
+}
+
+func (s PatronService) searchPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+	if fullName == nil || *fullName == "" {
+		return s.listPatrons(ctx, limit, offset, optTx)
+	}
+
+	params := db.SearchPatronsParams{
+		FullName: GenerateDBRegexString(*fullName),
+		Limit:    limit,
+		Offset:   offset,
+	}
+
+	if optTx != nil {
+		return s.LibraryService.queries.WithTx(optTx).SearchPatrons(ctx, params)
+	}
+	return s.LibraryService.queries.SearchPatrons(ctx, params)
+}
+
+func (s PatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+	dbPatronList, err := s.searchPatrons(ctx, fullName, limit, offset, optTx)
 
 	if err != nil {
 		return dbPatronList, wrapDatabaseError(err)

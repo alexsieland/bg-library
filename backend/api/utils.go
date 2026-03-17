@@ -1,14 +1,12 @@
 package api
 
 import (
-	"strings"
 	"time"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
-	"golang.org/x/text/unicode/norm"
 )
 
 //Conversion Utils
@@ -161,17 +159,6 @@ func FromPlayToWinGameOverview(dbPTWGame db.VwPlayToWinGameOverview) PlayToWinGa
 		Winner:      winner,
 	}
 	return game
-}
-
-func SanitizeTitle(title string) string {
-	t := norm.NFD.String(strings.ToLower(title))
-	var result strings.Builder
-	for _, r := range t {
-		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == ' ' || r == ':' || r == '-' {
-			result.WriteRune(r)
-		}
-	}
-	return result.String()
 }
 
 // Error Utils
