@@ -7,18 +7,34 @@ import (
 	"io"
 	"log"
 
+	"github.com/alexsieland/bg-library/db"
 	"github.com/alexsieland/bg-library/internal"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
 )
 
+type patronService interface {
+	InsertPatron(ctx context.Context, name string, barcode *string, optTx pgx.Tx) (db.Patron, error)
+	DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error
+	GetPatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryPatron, error)
+	GetPatronByBarcode(ctx context.Context, patronBarcode string, optTx pgx.Tx) (db.VwLibraryPatron, error)
+	UpdatePatron(ctx context.Context, patronId pgtype.UUID, fullName string, barcode *string, optTx pgx.Tx) error
+	ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error)
+}
+
 type PatronApi struct {
-	service *internal.PatronService
+	service patronService
+	beginTx func(ctx context.Context) (pgx.Tx, error)
 }
 
 func NewPatronApi(libService *internal.LibraryService) *PatronApi {
+	service := internal.NewPatronService(libService)
 	return &PatronApi{
-		service: internal.NewPatronService(libService),
+		service: service,
+		beginTx: func(ctx context.Context) (pgx.Tx, error) {
+			return libService.Database.BeginTx(ctx, pgx.TxOptions{})
+		},
 	}
 }
 
@@ -46,7 +62,7 @@ func (api *PatronApi) BulkAddPatrons(ctx context.Context, requestBody io.ReadClo
 	csvReader := csv.NewReader(decodedReader)
 
 	// Start a db transaction
-	tx, err := api.service.LibraryService.Database.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := api.beginTx(ctx)
 	if err != nil {
 		log.Printf("Error creating transaction: %v", err)
 		return BulkAddResponse{}, err
@@ -65,16 +81,16 @@ func (api *PatronApi) BulkAddPatrons(ctx context.Context, requestBody io.ReadClo
 	firstRow := true
 	for {
 		record, err := csvReader.Read()
-		if firstRow {
-			firstRow = false
-			continue
-		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			log.Printf("Error reading CSV: %v", err)
 			return BulkAddResponse{}, err
+		}
+		if firstRow {
+			firstRow = false
+			continue
 		}
 		if len(record) == 0 {
 			continue
