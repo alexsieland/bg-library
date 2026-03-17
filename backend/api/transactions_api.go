@@ -41,13 +41,20 @@ func (api TransactionApi) CheckInGame(ctx context.Context, params CheckInGamePar
 	return nil
 }
 
-func (api TransactionApi) CheckOutGame(ctx context.Context, request CheckOutGameJSONRequestBody) error {
-	_, err := api.service.CheckOutGame(ctx, uuidToPgTypeUUID(request.GameId), uuidToPgTypeUUID(request.PatronId), nil)
+func (api TransactionApi) CheckOutGame(ctx context.Context, request CheckOutGameJSONRequestBody) (LibraryTransaction, error) {
+	response, err := api.service.CheckOutGame(ctx, uuidToPgTypeUUID(request.GameId), uuidToPgTypeUUID(request.PatronId), nil)
 	if err != nil {
 		log.Printf("Error checking out game: %v", err)
-		return err
+		return LibraryTransaction{}, err
 	}
-	return nil
+
+	transaction := LibraryTransaction{
+		GameId:    pgUUIDToUUID(response.GameID),
+		Id:        pgUUIDToUUID(response.ID),
+		PatronId:  pgUUIDToUUID(response.PatronID),
+		Timestamp: response.CheckoutTimestamp.Time,
+	}
+	return transaction, nil
 }
 
 func (api TransactionApi) ListTransactionEvents(ctx context.Context, params ListTransactionEventsParams) (TransactionEventList, error) {
