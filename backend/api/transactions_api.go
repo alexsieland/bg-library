@@ -23,6 +23,7 @@ type TransactionApi struct {
 
 func NewTransactionApi(libService *internal.LibraryService) *TransactionApi {
 	service := internal.NewTransactionService(libService)
+	service.SetGameService(internal.NewGameService(libService))
 	return &TransactionApi{
 		service: service,
 		beginTx: func(ctx context.Context) (pgx.Tx, error) {

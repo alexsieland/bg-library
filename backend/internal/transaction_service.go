@@ -10,18 +10,30 @@ import (
 
 type TransactionService struct {
 	libraryService *LibraryService
+	gameService    *GameService
 }
 
 func NewTransactionService(libService *LibraryService) *TransactionService {
-	return &TransactionService{libraryService: libService}
+	return &TransactionService{
+		libraryService: libService,
+	}
+}
+
+func (s *TransactionService) SetGameService(gameService *GameService) {
+	s.gameService = gameService
 }
 
 func (s TransactionService) CheckOutGame(ctx context.Context, gameId pgtype.UUID, patronId pgtype.UUID, optTx pgx.Tx) (db.Transaction, error) {
+	if s.gameService == nil {
+		panic("gameService must be set before calling CheckOutGame")
+	}
+
+	gameStatus, err := s.gameService.GetGameStatus(ctx, gameId, optTx)
+	if err != nil {
+		return db.Transaction{}, err
+	}
+
 	transaction, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.Transaction, error) {
-		gameStatus, err := s.libraryService.queries.WithTx(tx).GetGameStatus(ctx, gameId)
-		if err != nil {
-			return nil, err
-		}
 
 		if !gameStatus.CheckinTimestamp.Valid && gameStatus.PatronID.Valid {
 			if patronId == gameStatus.PatronID {
