@@ -3,20 +3,17 @@ package api
 import (
 	"context"
 	"log"
-	"net/http"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/alexsieland/bg-library/internal"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type transactionService interface {
-	CheckOutGame(ctx context.Context, gameId pgtype.UUID, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryTransaction, error)
+	CheckOutGame(ctx context.Context, gameId pgtype.UUID, patronId pgtype.UUID, optTx pgx.Tx) (db.Transaction, error)
 	CheckInGame(ctx context.Context, transactionId pgtype.UUID, optTx pgx.Tx) error
-	GetGameStatus(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryGameStatus, error)
-	SearchTransactionEvents(ctx context.Context, params db.SearchTransactionEventsParams, optTx pgx.Tx) ([]db.VwLibraryTransactionEvent, error)
+	ListTransactionEvents(ctx context.Context, sanitizedTitle *string, patronFullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.SearchTransactionEventsRow, error)
 }
 
 type TransactionApi struct {
@@ -52,20 +49,38 @@ func (api TransactionApi) CheckOutGame(ctx context.Context, request CheckOutGame
 	return nil
 }
 
-func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
-	dbArgs, errorDetails := getSearchTransactionEventsParams(params)
-	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+func (api TransactionApi) ListTransactionEvents(ctx context.Context, params ListTransactionEventsParams) (TransactionEventList, error) {
+	var (
+		errorDetails ErrorDetails
+		limit        int32 = 100
+		offset       int32 = 0
+		events       []TransactionEvent
+	)
+	if params.GameTitle != nil {
+		errorDetails.ValidateStringLength("gameTitle", *params.GameTitle, 1, 100)
 	}
-	transactions, err := s.queries.SearchTransactionEvents(c.Request.Context(), dbArgs)
-	if err != nil {
-		log.Printf("Error listing transactions: %v", err)
-		internalError(c, err)
-		return
+	if params.PatronName != nil {
+		errorDetails.ValidateStringLength("patronName", *params.PatronName, 1, 100)
+	}
+	if params.Limit != nil {
+		errorDetails.ValidateIntMin("limit", *params.Limit, 1)
+		errorDetails.ValidateIntMax("limit", *params.Limit, 100)
+		limit = *params.Limit
+	}
+	if params.Offset != nil {
+		errorDetails.ValidateIntMin("offset", *params.Offset, 0)
+		offset = *params.Offset
+	}
+	if !errorDetails.Empty() {
+		return TransactionEventList{}, errorDetails
 	}
 
-	var events []TransactionEvent
+	transactions, err := api.service.ListTransactionEvents(ctx, params.GameTitle, params.PatronName, limit, offset, nil)
+	if err != nil {
+		log.Printf("Error listing transaction events: %v", err)
+		return TransactionEventList{}, err
+	}
+
 	for _, transaction := range transactions {
 		game := FromGame(db.Game{ID: transaction.GameID, Title: transaction.GameTitle}, transaction.PlayToWinGameID.Valid)
 		patron := FromPatron(db.Patron{ID: transaction.PatronID, FullName: transaction.PatronFullName})
@@ -79,42 +94,5 @@ func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEven
 		})
 	}
 
-	c.JSON(http.StatusOK, TransactionEventList{Transactions: events})
-}
-
-func getSearchTransactionEventsParams(params ListTransactionEventsParams) (db.SearchTransactionEventsParams, ErrorDetails) {
-	var errorDetails ErrorDetails
-	sanitizedTitle := pgtype.Text{String: "", Valid: true}
-	if params.GameTitle != nil {
-		errorDetails.ValidateStringLength("gameTitle", *params.GameTitle, 1, 100)
-		sanitizedTitle = pgtype.Text{
-			String: SanitizeTitle(*params.GameTitle),
-			Valid:  true,
-		}
-	}
-	patronFullName := ""
-	if params.PatronName != nil {
-		errorDetails.ValidateStringLength("patronName", *params.PatronName, 1, 100)
-		patronFullName = *params.PatronName
-	}
-	var limit int32 = 100
-	if params.Limit != nil {
-		errorDetails.ValidateIntMin("limit", *params.Limit, 1)
-		errorDetails.ValidateIntMax("limit", *params.Limit, 100)
-		limit = int32(*params.Limit)
-	}
-	var offset int32 = 0
-	if params.Offset != nil {
-		errorDetails.ValidateIntMin("offset", *params.Offset, 0)
-		offset = int32(*params.Offset)
-	}
-	if !errorDetails.Empty() {
-		return db.SearchTransactionEventsParams{}, errorDetails
-	}
-	return db.SearchTransactionEventsParams{
-		SanitizedTitle: sanitizedTitle,
-		PatronFullName: patronFullName,
-		Limit:          limit,
-		Offset:         offset,
-	}, errorDetails
+	return TransactionEventList{Transactions: events}, nil
 }

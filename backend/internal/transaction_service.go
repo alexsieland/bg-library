@@ -67,12 +67,32 @@ func (s TransactionService) CheckInGame(ctx context.Context, transactionId pgtyp
 	return nil
 }
 
-func (s TransactionService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryGameStatus, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s TransactionService) SearchTransactionEvents(ctx context.Context, params db.SearchTransactionEventsParams, optTx pgx.Tx) ([]db.VwLibraryTransactionEvent, error) {
-	//TODO implement me
-	panic("implement me")
+func (s TransactionService) ListTransactionEvents(ctx context.Context, sanitizedTitle *string, patronFullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.SearchTransactionEventsRow, error) {
+	var (
+		transactions []db.SearchTransactionEventsRow
+		err          error
+	)
+	title := pgtype.Text{String: "", Valid: true}
+	if sanitizedTitle != nil {
+		title = pgtype.Text{String: *sanitizedTitle, Valid: true}
+	}
+	name := ""
+	if patronFullName != nil {
+		name = *patronFullName
+	}
+	params := db.SearchTransactionEventsParams{
+		SanitizedTitle: title,
+		PatronFullName: name,
+		Limit:          limit,
+		Offset:         offset,
+	}
+	if optTx == nil {
+		transactions, err = s.libraryService.queries.SearchTransactionEvents(ctx, params)
+	} else {
+		transactions, err = s.libraryService.queries.WithTx(optTx).SearchTransactionEvents(ctx, params)
+	}
+	if err != nil {
+		return nil, wrapDatabaseError(err)
+	}
+	return transactions, nil
 }
