@@ -27,9 +27,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 
 	t.Run("Should return error when GetGameStatus fails", func(t *testing.T) {
 		// setup lib service with mocked DB returning an error for GetGameStatus
-		lib, mockDB := setupTestLibraryService()
-		svc := NewTransactionService(lib)
-		svc.SetGameService(NewGameService(lib))
+		svc, mockDB := setupTestTransactionService()
 
 		gameId := uuid.New()
 		mockRow := new(MockRow)
@@ -43,12 +41,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 	})
 
 	t.Run("Should return existing transaction when already checked out by same patron", func(t *testing.T) {
-		lib, mockDB := setupTestLibraryService()
-		ctx := context.Background()
-		mockTx := MockWithinTx(t)
-
-		svc := NewTransactionService(lib)
-		svc.SetGameService(NewGameService(lib))
+		svc, ctx, mockTx, mockDB := setupTransactionServiceWithMockTx(t)
 
 		gameId := uuid.New()
 		patronId := uuid.New()
@@ -68,6 +61,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 
 		mockRow := new(MockRow)
 		MockVwGameStatusScan(mockRow, status, nil)
+
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{status.GameID}).Return(mockRow).Once()
 
 		// WithinTx should commit when fn returns without error
@@ -82,12 +76,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 	})
 
 	t.Run("Should return conflict when already checked out by different patron", func(t *testing.T) {
-		lib, mockDB := setupTestLibraryService()
-		ctx := context.Background()
-		mockTx := MockWithinTx(t)
-
-		svc := NewTransactionService(lib)
-		svc.SetGameService(NewGameService(lib))
+		svc, ctx, mockTx, mockDB := setupTransactionServiceWithMockTx(t)
 
 		gameId := uuid.New()
 		currentPatron := uuid.New()
@@ -119,12 +108,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 	})
 
 	t.Run("Should perform normal checkout when game is available", func(t *testing.T) {
-		lib, mockDB := setupTestLibraryService()
-		ctx := context.Background()
-		mockTx := MockWithinTx(t)
-
-		svc := NewTransactionService(lib)
-		svc.SetGameService(NewGameService(lib))
+		svc, ctx, mockTx, mockDB := setupTransactionServiceWithMockTx(t)
 
 		gameId := uuid.New()
 		patronId := uuid.New()
@@ -302,4 +286,20 @@ func MockSearchTransactionEventsRows(rows *MockRows, items []db.SearchTransactio
 
 	rows.On("Close").Return().Once()
 	rows.On("Err").Return(err).Once()
+}
+
+// Setup helpers to mirror patrons_service_test.go style
+func setupTestTransactionService() (TransactionService, *MockDatabase) {
+	libService, mockDB := setupTestLibraryService()
+	svc := TransactionService{libraryService: libService}
+	svc.SetGameService(NewGameService(libService))
+	return svc, mockDB
+}
+
+func setupTransactionServiceWithMockTx(t *testing.T) (TransactionService, context.Context, *MockTx, *MockDatabase) {
+	t.Helper()
+	ctx := t.Context()
+	svc, mockDB := setupTestTransactionService()
+	mockTx := MockWithinTx(t)
+	return svc, ctx, mockTx, mockDB
 }
