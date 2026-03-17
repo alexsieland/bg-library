@@ -1,71 +1,33 @@
 package api
 
 import (
-	"context"
-	"errors"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/alexsieland/bg-library/db"
+	"github.com/alexsieland/bg-library/internal"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/oapi-codegen/runtime/types"
 )
 
-type DB interface {
-	Connect() error
-	Close()
-	Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error)
-	Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error)
-	QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row
-	BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error)
-}
-
 type Server struct {
-	Database DB
-	queries  *db.Queries
+	LibService *internal.LibraryService
+	PatronApi  *PatronApi
 }
-
-var errValidation = errors.New("Validation error")
 
 func NewServer() Server {
 	database := db.NewLibraryDatabase()
+	var libService = internal.NewLibraryService(database)
+
 	return Server{
-		Database: database,
-		queries:  db.New(database),
+		LibService: libService,
+		PatronApi:  NewPatronApi(libService),
 	}
-}
-
-func internalError(c *gin.Context, err error) {
-	c.AbortWithStatusJSON(http.StatusInternalServerError, NewInternalError(err))
-}
-
-func notFound(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusNotFound, NewErrorResponse(NOTFOUND, "Resource not found"))
-}
-
-func malformedJson(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponse(MALFORMEDREQUEST, "JSON body is malformed"))
-}
-
-func validationError(c *gin.Context, errorDetails ErrorDetails) {
-	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponseWithDetails(VALIDATIONERROR, "Validation error", errorDetails.Details))
-}
-
-func conflict(c *gin.Context, message string) {
-	c.AbortWithStatusJSON(http.StatusConflict, NewErrorResponse(CONFLICT, message))
 }
 
 func (s Server) GetHealth(c *gin.Context) {
-	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
-	if err != nil {
-		log.Printf("Error checking database health: %v", err)
-		c.JSON(http.StatusServiceUnavailable, NewErrorResponse(SERVICEUNAVAILABLE, "Database is unavailable"))
-		return
-	}
 	c.Status(http.StatusOK)
 }
 
@@ -84,7 +46,7 @@ func RegisterSwagger(r *gin.Engine) {
 			return
 		}
 
-		// Get the server URL from environment variable, default to http://localhost:8080
+		// Get the server URL from the environment variable, default to http://localhost:8080
 		serverURL := os.Getenv("API_URL")
 		if serverURL == "" {
 			serverURL = "http://localhost:8080"
@@ -108,4 +70,185 @@ func RegisterSwagger(r *gin.Engine) {
 			c.JSON(http.StatusInternalServerError, NewInternalError(err))
 		}
 	})
+}
+
+// Patron API
+
+func (s Server) AddPatron(c *gin.Context) {
+	var request AddPatronJSONRequestBody
+	extractRequestBody[AddPatronJSONRequestBody](c, request)
+	if !c.IsAborted() {
+		patron, err := s.PatronApi.AddPatron(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusOK, patron)
+	}
+}
+
+func (s Server) GetPatron(c *gin.Context, patronId types.UUID) {
+	patron, err := s.PatronApi.GetPatron(c.Request.Context(), patronId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, patron)
+}
+
+func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
+	patron, err := s.PatronApi.GetPatronByBarcode(c.Request.Context(), patronBarcode)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, patron)
+}
+
+func (s Server) DeletePatron(c *gin.Context, patronId types.UUID) {
+	err := s.PatronApi.DeletePatron(c.Request.Context(), patronId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
+	var request UpdatePatronJSONRequestBody
+	extractRequestBody[UpdatePatronJSONRequestBody](c, request)
+	if !c.IsAborted() {
+		err := s.PatronApi.UpdatePatron(c.Request.Context(), patronId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
+	patronList, err := s.PatronApi.ListPatrons(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, patronList)
+}
+
+func (s Server) BulkAddPatrons(c *gin.Context) {
+	bulkAddResponse, err := s.PatronApi.BulkAddPatrons(c.Request.Context(), c.Request.Body)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, bulkAddResponse)
+}
+
+// Transaction API
+
+func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) CheckOutGame(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Game API
+
+func (s Server) AddGame(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) BulkAddGames(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Play To Win API
+
+func (s Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) AddPlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) AddPlayToWinSession(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Play To Win Raffle API
+
+func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s Server) ResetPlayToWinRaffle(c *gin.Context) {
+	//TODO implement me
+	panic("implement me")
 }

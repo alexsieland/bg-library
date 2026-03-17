@@ -1,12 +1,12 @@
-package api
+package internal
 
 import (
 	"context"
 
 	"github.com/alexsieland/bg-library/db"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -128,16 +128,6 @@ func (m *MockTx) Conn() *pgx.Conn {
 	return args.Get(0).(*pgx.Conn)
 }
 
-func setupTestServer() (Server, *MockDatabase) {
-	gin.SetMode(gin.TestMode)
-	mockDB := new(MockDatabase)
-	server := Server{
-		Database: mockDB,
-		queries:  db.New(mockDB),
-	}
-	return server, mockDB
-}
-
 // MockRow is a mock of the pgx.Row interface
 type MockRow struct {
 	mock.Mock
@@ -195,4 +185,54 @@ func (m *MockRows) RawValues() [][]byte {
 func (m *MockRows) Conn() *pgx.Conn {
 	args := m.Called()
 	return args.Get(0).(*pgx.Conn)
+}
+
+func MockRowScanError(row *MockRow, argCount int, err error) {
+	scanArgs := make([]any, argCount)
+	for i := range scanArgs {
+		scanArgs[i] = mock.Anything
+	}
+	row.On("Scan", scanArgs...).Return(err)
+}
+
+func MockPatronScan(row *MockRow, patron db.Patron, err error) {
+	row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		*args.Get(0).(*pgtype.UUID) = patron.ID
+		*args.Get(1).(*string) = patron.FullName
+		*args.Get(2).(*pgtype.Timestamp) = patron.CreatedAt
+		*args.Get(3).(*pgtype.Timestamp) = patron.DeletedAt
+		*args.Get(4).(*pgtype.Text) = patron.Barcode
+	}).Return(err)
+}
+
+func MockVwLibraryPatronScan(row *MockRow, patron db.VwLibraryPatron, err error) {
+	row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		*args.Get(0).(*pgtype.UUID) = patron.ID
+		*args.Get(1).(*string) = patron.FullName
+		*args.Get(2).(*pgtype.Text) = patron.Barcode
+		*args.Get(3).(*pgtype.Timestamp) = patron.CreatedAt
+	}).Return(err)
+}
+
+func MockVwLibraryPatronRows(rows *MockRows, patrons []db.VwLibraryPatron, err error) {
+	for range patrons {
+		rows.On("Next").Return(true).Once()
+	}
+	rows.On("Next").Return(false).Once()
+
+	if len(patrons) > 0 {
+		scanIndex := 0
+		rows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			patron := patrons[scanIndex]
+			scanIndex++
+
+			*args.Get(0).(*pgtype.UUID) = patron.ID
+			*args.Get(1).(*string) = patron.FullName
+			*args.Get(2).(*pgtype.Text) = patron.Barcode
+			*args.Get(3).(*pgtype.Timestamp) = patron.CreatedAt
+		}).Return(nil).Times(len(patrons))
+	}
+
+	rows.On("Close").Return().Once()
+	rows.On("Err").Return(err).Once()
 }

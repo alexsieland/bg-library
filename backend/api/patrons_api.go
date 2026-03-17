@@ -1,84 +1,77 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/csv"
-	"errors"
 	"io"
 	"log"
-	"net/http"
 
 	"github.com/alexsieland/bg-library/db"
-	"github.com/gin-gonic/gin"
+	"github.com/alexsieland/bg-library/internal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
 )
 
-func (s Server) AddPatron(c *gin.Context) {
-	var jsonObject AddPatronJSONRequestBody
-	err := c.ShouldBindBodyWithJSON(&jsonObject)
-	if err != nil {
-		malformedJson(c)
-		return
-	}
+type patronService interface {
+	InsertPatron(ctx context.Context, name string, barcode *string, optTx pgx.Tx) (db.Patron, error)
+	DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error
+	GetPatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryPatron, error)
+	GetPatronByBarcode(ctx context.Context, patronBarcode string, optTx pgx.Tx) (db.VwLibraryPatron, error)
+	UpdatePatron(ctx context.Context, patronId pgtype.UUID, fullName string, barcode *string, optTx pgx.Tx) error
+	ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error)
+}
 
+type PatronApi struct {
+	service patronService
+	beginTx func(ctx context.Context) (pgx.Tx, error)
+}
+
+func NewPatronApi(libService *internal.LibraryService) *PatronApi {
+	service := internal.NewPatronService(libService)
+	return &PatronApi{
+		service: service,
+		beginTx: func(ctx context.Context) (pgx.Tx, error) {
+			return libService.Database.BeginTx(ctx, pgx.TxOptions{})
+		},
+	}
+}
+
+func (api *PatronApi) AddPatron(ctx context.Context, request AddPatronJSONRequestBody) (Patron, error) {
 	var errorDetails ErrorDetails
-	dbPatron, err := s.insertPatron(c, jsonObject.Name, jsonObject.Barcode, &errorDetails, nil)
-	if errors.Is(err, errValidation) {
-		validationError(c, errorDetails)
-		return
+	errorDetails.ValidateStringLength("name", request.Name, 1, 100)
+	if request.Barcode != nil {
+		errorDetails.ValidateStringLength("barcode", *request.Barcode, 1, 48)
 	}
-	if err != nil {
-		log.Printf("Error creating patron: %v", err)
-		internalError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusCreated, FromPatron(dbPatron))
-}
-
-func (s Server) insertPatron(c *gin.Context, name string, barcode *string, errorDetails *ErrorDetails, tx *pgx.Tx) (db.Patron, error) {
-	errorDetails.ValidateStringLength("name", name, 1, 100)
-	if barcode != nil {
-		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
-	}
-
 	if !errorDetails.Empty() {
-		return db.Patron{}, errValidation
+		return Patron{}, errorDetails
 	}
 
-	dbBarcode := pgtype.Text{Valid: false}
-	if barcode != nil {
-		dbBarcode = pgtype.Text{String: *barcode, Valid: true}
-	}
-	createPatronParams := db.CreatePatronParams{
-		FullName: name,
-		Barcode:  dbBarcode,
+	dbPatron, err := api.service.InsertPatron(ctx, request.Name, request.Barcode, nil)
+	if err != nil {
+		log.Printf("Error adding patron: %v", err)
+		return Patron{}, err
 	}
 
-	if tx != nil {
-		return s.queries.WithTx(*tx).CreatePatron(c.Request.Context(), createPatronParams)
-	}
-	return s.queries.CreatePatron(c.Request.Context(), createPatronParams)
+	return FromPatron(dbPatron), nil
 }
 
-func (s Server) BulkAddPatrons(c *gin.Context) {
-	decodedReader := base64.NewDecoder(base64.StdEncoding, c.Request.Body)
+func (api *PatronApi) BulkAddPatrons(ctx context.Context, requestBody io.ReadCloser) (BulkAddResponse, error) {
+	decodedReader := base64.NewDecoder(base64.StdEncoding, requestBody)
 	csvReader := csv.NewReader(decodedReader)
 
 	// Start a db transaction
-	tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
+	tx, err := api.beginTx(ctx)
 	if err != nil {
 		log.Printf("Error creating transaction: %v", err)
-		internalError(c, err)
-		return
+		return BulkAddResponse{}, err
 	}
 
 	//defer rollback if there is an error
 	defer func() {
 		if tx != nil {
-			_ = tx.Rollback(c.Request.Context())
+			_ = tx.Rollback(ctx)
 		}
 	}()
 
@@ -88,23 +81,24 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 	firstRow := true
 	for {
 		record, err := csvReader.Read()
-		if firstRow {
-			firstRow = false
-			continue
-		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			log.Printf("Error reading CSV: %v", err)
-			internalError(c, err)
-			return
+			return BulkAddResponse{}, err
+		}
+		if firstRow {
+			firstRow = false
+			continue
 		}
 		if len(record) == 0 {
 			continue
 		}
 
+		// Validate each row
 		name := record[0]
+		errorDetails.ValidateStringLength("name", name, 1, 100)
 
 		var barcode *string
 		if len(record) > 1 && record[1] != "" {
@@ -112,150 +106,105 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 			errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 		}
 
-		_, err = s.insertPatron(c, name, barcode, &errorDetails, &tx)
-		if errors.Is(err, errValidation) {
+		// If there have been any validation errors, check remaining records for validation errors but skip database inserts
+		if !errorDetails.Empty() {
 			continue
 		}
+
+		// If there are no validation errors, attempt to insert patron into database
+		_, err = api.service.InsertPatron(ctx, name, barcode, tx)
 		if err != nil {
 			log.Printf("Error adding patron: %v", err)
-			internalError(c, err)
-			return
+			return BulkAddResponse{}, err
 		}
 		recordCount++
 	}
 
-	//If there are any validation errors, rollback the transaction
 	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+		return BulkAddResponse{}, errorDetails
 	}
 
 	//If there are no validation errors, commit the transaction
-	err = tx.Commit(c.Request.Context())
+	err = tx.Commit(ctx)
 	if err != nil {
 		log.Printf("Error committing transaction: %v", err)
-		internalError(c, err)
+		return BulkAddResponse{}, err
 	}
-	tx = nil // Prevent deferred rollback after a successful commit
 
-	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
+	tx = nil // Prevent deferred rollback after a successful commit
+	return BulkAddResponse{Imported: recordCount}, nil
 }
 
-func (s Server) DeletePatron(c *gin.Context, patronId types.UUID) {
-	err := s.queries.DeletePatron(c.Request.Context(), uuidToPgTypeUUID(patronId))
+func (api *PatronApi) DeletePatron(ctx context.Context, patronId types.UUID) error {
+	err := api.service.DeletePatron(ctx, uuidToPgTypeUUID(patronId), nil)
 	if err != nil {
 		log.Printf("Error deleting patron: %v", err)
-		internalError(c, err)
-		return
+		return err
 	}
-
-	c.JSON(http.StatusNoContent, nil)
+	return nil
 }
 
-func (s Server) GetPatron(c *gin.Context, patronId types.UUID) {
-	dbPatron, err := s.queries.GetPatron(c.Request.Context(), uuidToPgTypeUUID(patronId))
+func (api *PatronApi) GetPatron(ctx context.Context, patronId types.UUID) (Patron, error) {
+	dbPatron, err := api.service.GetPatron(ctx, uuidToPgTypeUUID(patronId), nil)
 	if err != nil {
-		if isNotFound(err) {
-			notFound(c)
-			return
-		}
 		log.Printf("Error getting patron: %v", err)
-		internalError(c, err)
-		return
+		return Patron{}, err
 	}
-
-	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
+	return FromVwLibraryPatron(dbPatron), nil
 }
 
-func (s Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
+func (api *PatronApi) GetPatronByBarcode(ctx context.Context, patronBarcode string) (Patron, error) {
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("patronBarcode", patronBarcode, 1, 48)
 	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+		return Patron{}, errorDetails
 	}
-	var barcode = pgtype.Text{String: patronBarcode, Valid: true}
-	dbPatron, err := s.queries.GetPatronByBarcode(c.Request.Context(), barcode)
+	dbPatron, err := api.service.GetPatronByBarcode(ctx, patronBarcode, nil)
 	if err != nil {
-		if isNotFound(err) {
-			notFound(c)
-			return
-		}
 		log.Printf("Error getting patron: %v", err)
-		internalError(c, err)
-		return
+		return Patron{}, err
 	}
-	c.JSON(http.StatusOK, FromVwLibraryPatron(dbPatron))
+	return FromVwLibraryPatron(dbPatron), nil
 }
 
-func (s Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
-	var jsonObject UpdatePatronJSONRequestBody
-	err := c.ShouldBindBodyWithJSON(&jsonObject)
-	if err != nil {
-		malformedJson(c)
-		return
-	}
-
+func (api *PatronApi) UpdatePatron(ctx context.Context, patronId types.UUID, request UpdatePatronJSONRequestBody) error {
 	var errorDetails ErrorDetails
-	errorDetails.ValidateStringLength("name", jsonObject.Name, 1, 100)
+	errorDetails.ValidateStringLength("name", request.Name, 1, 100)
+	if request.Barcode != nil {
+		errorDetails.ValidateStringLength("barcode", *request.Barcode, 1, 48)
+	}
 	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+		return errorDetails
 	}
 
-	dbBarcode := pgtype.Text{Valid: false}
-	if jsonObject.Barcode != nil {
-		dbBarcode = pgtype.Text{String: *jsonObject.Barcode, Valid: true}
-	}
-
-	err = s.queries.EditPatron(c.Request.Context(), db.EditPatronParams{
-		ID:       uuidToPgTypeUUID(patronId),
-		FullName: jsonObject.Name,
-		Barcode:  dbBarcode,
-	})
+	err := api.service.UpdatePatron(ctx, uuidToPgTypeUUID(patronId), request.Name, request.Barcode, nil)
 	if err != nil {
-		if isNotFound(err) {
-			notFound(c)
-			return
-		}
 		log.Printf("Error updating patron: %v", err)
-		internalError(c, err)
-		return
+		return err
 	}
-	c.JSON(http.StatusNoContent, nil)
+
+	return nil
 }
 
-func (s Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
-	var dbPatronList []db.VwLibraryPatron
-	if params.Name == nil {
-		var err error
-		dbPatronList, err = s.queries.ListPatrons(c.Request.Context(), db.ListPatronsParams{
-			Limit:  999,
-			Offset: 0,
-		})
-		if err != nil {
-			log.Printf("Error listing patrons: %v", err)
-			internalError(c, err)
-			return
-		}
-	} else {
-		name := *params.Name
-		var err error
-		dbPatronList, err = s.queries.SearchPatrons(c.Request.Context(), db.SearchPatronsParams{
-			FullName: "%" + name + "%",
-			Limit:    999,
-			Offset:   0,
-		})
-		if err != nil {
-			log.Printf("Error searching patrons: %v", err)
-			internalError(c, err)
-			return
-		}
+func (api *PatronApi) ListPatrons(ctx context.Context, params ListPatronsParams) (PatronList, error) {
+	var errorDetails ErrorDetails
+	if params.Name != nil {
+		errorDetails.ValidateStringLength("name", *params.Name, 1, 100)
+	}
+	if !errorDetails.Empty() {
+		return PatronList{}, errorDetails
+	}
+
+	dbPatronList, err := api.service.ListPatrons(ctx, params.Name, 999, 0, nil)
+	if err != nil {
+		log.Printf("Error listing patrons: %v", err)
+		return PatronList{}, err
 	}
 
 	patronList := make([]Patron, len(dbPatronList))
 	for i, dbPatron := range dbPatronList {
 		patronList[i] = FromVwLibraryPatron(dbPatron)
 	}
-	c.JSON(http.StatusOK, PatronList{Patrons: patronList})
+
+	return PatronList{Patrons: patronList}, nil
 }
