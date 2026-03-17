@@ -18,7 +18,7 @@ func NewPlayToWinService(libService *LibraryService) *PlayToWinService {
 
 // InsertPlayToWinGroup inserts a new play to win group into the database.
 // This call is idempotent. If the play to win group already exists, the existing play to win group will be returned.
-func (s PlayToWinService) InsertPlayToWinGroup(ctx context.Context, groupName string, optTx pgx.Tx) (db.VwPlayToWinGroup, error) {
+func (s *PlayToWinService) InsertPlayToWinGroup(ctx context.Context, groupName string, optTx pgx.Tx) (db.VwPlayToWinGroup, error) {
 	ptwGroup, err := WithinTx(s.LibraryService, ctx, optTx, func(tx pgx.Tx) (*db.VwPlayToWinGroup, error) {
 		cpTx, err := tx.Begin(ctx)
 		if err != nil {
@@ -55,19 +55,21 @@ func (s PlayToWinService) InsertPlayToWinGroup(ctx context.Context, groupName st
 // InsertPlayToWin inserts a new play to win into the database.
 // This call is idempotent. If the play to win already exists, it will be ignored.
 // If the play to win was deleted, it will be restored.
-func (s PlayToWinService) InsertPlayToWin(ctx context.Context, gameId pgtype.UUID, ptwGroupId pgtype.UUID, optTx pgx.Tx) error {
+func (s *PlayToWinService) InsertPlayToWin(ctx context.Context, gameId pgtype.UUID, ptwGroupId pgtype.UUID, optTx pgx.Tx) error {
 
 	params := db.CreatePlayToWinGameParams{
 		GameID:     pgtype.UUID{},
 		PtwGroupID: pgtype.UUID{},
 	}
 
+	// params currently unused while feature is incomplete; keep to avoid refactor churn
+	_ = params
 	return nil
 }
 
 // DeletePlayToWin deletes a play to win from the database.
 // This call is idempotent. If the play to win does not exist, it will be ignored.
-func (s PlayToWinService) DeletePlayToWin(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
+func (s *PlayToWinService) DeletePlayToWin(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
 	dbDeletionReason, err := playToWinGameDeletionReason(deletionReason)
 	if err != nil {
 		return err

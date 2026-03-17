@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/alexsieland/bg-library/db"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,13 +17,6 @@ func int32ToPgInt4(i *int32) pgtype.Int4 {
 		return pgtype.Int4{}
 	}
 	return pgtype.Int4{Int32: *i, Valid: true}
-}
-
-func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{
-		Bytes: uuid,
-		Valid: true,
-	}
 }
 
 func playToWinGameDeletionReason(deletionReason *string) (db.NullPlayToWinGameDeletionType, error) {

@@ -23,7 +23,7 @@ func (s *TransactionService) SetGameService(gameService *GameService) {
 	s.gameService = gameService
 }
 
-func (s TransactionService) CheckOutGame(ctx context.Context, gameId pgtype.UUID, patronId pgtype.UUID, optTx pgx.Tx) (db.Transaction, error) {
+func (s *TransactionService) CheckOutGame(ctx context.Context, gameId pgtype.UUID, patronId pgtype.UUID, optTx pgx.Tx) (db.Transaction, error) {
 	if s.gameService == nil {
 		panic("gameService must be set before calling CheckOutGame")
 	}
@@ -61,13 +61,10 @@ func (s TransactionService) CheckOutGame(ctx context.Context, gameId pgtype.UUID
 		return &transaction, nil
 	})
 
-	if err != nil {
-		return db.Transaction{}, wrapDatabaseError(err)
-	}
-	return *transaction, nil
+	return wrapErrorOrReturn(transaction, db.Transaction{}, err)
 }
 
-func (s TransactionService) CheckInGame(ctx context.Context, transactionId pgtype.UUID, optTx pgx.Tx) error {
+func (s *TransactionService) CheckInGame(ctx context.Context, transactionId pgtype.UUID, optTx pgx.Tx) error {
 	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.Patron, error) {
 		err := s.libraryService.queries.WithTx(tx).CheckInGame(ctx, transactionId)
 		return nil, err
@@ -79,7 +76,7 @@ func (s TransactionService) CheckInGame(ctx context.Context, transactionId pgtyp
 	return nil
 }
 
-func (s TransactionService) ListTransactionEvents(ctx context.Context, sanitizedTitle *string, patronFullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.SearchTransactionEventsRow, error) {
+func (s *TransactionService) ListTransactionEvents(ctx context.Context, sanitizedTitle *string, patronFullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.SearchTransactionEventsRow, error) {
 	var (
 		transactions []db.SearchTransactionEventsRow
 		err          error

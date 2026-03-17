@@ -21,7 +21,7 @@ func (s *GameService) SetPlayToWinService(ptwService *PlayToWinService) {
 	s.ptwService = ptwService
 }
 
-func (s GameService) listGames(ctx context.Context, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
+func (s *GameService) listGames(ctx context.Context, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
 	params := db.ListGamesParams{Limit: limit, Offset: offset}
 
 	if optTx == nil {
@@ -30,7 +30,7 @@ func (s GameService) listGames(ctx context.Context, limit int32, offset int32, o
 	return s.libraryService.queries.WithTx(optTx).ListGames(ctx, params)
 }
 
-func (s GameService) searchGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
+func (s *GameService) searchGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
 	if gameTitle == nil || *gameTitle == "" {
 		return s.listGames(ctx, limit, offset, optTx)
 	}
@@ -52,7 +52,7 @@ func (s GameService) searchGames(ctx context.Context, gameTitle *string, limit i
 	return s.libraryService.queries.WithTx(optTx).SearchGames(ctx, params)
 }
 
-func (s GameService) ListGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
+func (s *GameService) ListGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
 	var (
 		games []db.VwLibraryGame
 		err   error
@@ -70,7 +70,7 @@ func (s GameService) ListGames(ctx context.Context, gameTitle *string, limit int
 	return games, nil
 }
 
-func (s GameService) GetGamesByBarcode(ctx context.Context, barcode string, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
+func (s *GameService) GetGamesByBarcode(ctx context.Context, barcode string, optTx pgx.Tx) ([]db.VwLibraryGame, error) {
 	var (
 		games []db.VwLibraryGame
 		err   error
@@ -82,13 +82,10 @@ func (s GameService) GetGamesByBarcode(ctx context.Context, barcode string, optT
 		games, err = s.libraryService.queries.WithTx(optTx).GetGameByBarcode(ctx, stringToPgText(&barcode))
 	}
 
-	if err != nil {
-		return nil, wrapDatabaseError(err)
-	}
-	return games, nil
+	return wrapErrorOrReturn(&games, []db.VwLibraryGame{}, err)
 }
 
-func (s GameService) GetGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryGame, error) {
+func (s *GameService) GetGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryGame, error) {
 	var (
 		game db.VwLibraryGame
 		err  error
@@ -100,13 +97,10 @@ func (s GameService) GetGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.
 		game, err = s.libraryService.queries.WithTx(optTx).GetGame(ctx, gameId)
 	}
 
-	if err != nil {
-		return db.VwLibraryGame{}, wrapDatabaseError(err)
-	}
-	return game, nil
+	return wrapErrorOrReturn(&game, db.VwLibraryGame{}, err)
 }
 
-func (s GameService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwGameStatus, error) {
+func (s *GameService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwGameStatus, error) {
 	var (
 		gameStatus db.VwGameStatus
 		err        error
@@ -121,10 +115,10 @@ func (s GameService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, optT
 	if err != nil {
 		return db.VwGameStatus{}, wrapDatabaseError(err)
 	}
-	return wrapErrorOrReturn(gameStatus, db.VwGameStatus{}, nil)
+	return wrapErrorOrReturn(&gameStatus, db.VwGameStatus{}, nil)
 }
 
-func (s GameService) InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.Game, error) {
+func (s *GameService) InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.Game, error) {
 	createGameParams := db.CreateGameParams{
 		Title:          title,
 		SanitizedTitle: SanitizeTitle(title),
@@ -132,7 +126,7 @@ func (s GameService) InsertGame(ctx context.Context, title string, barcode *stri
 	}
 
 	game, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.Game, error) {
-		game, err := s.libraryService.queries.WithTx(tx).CreateGame(ctx, createGameParams)
+		created, err := s.libraryService.queries.WithTx(tx).CreateGame(ctx, createGameParams)
 		if err != nil {
 			return nil, err
 		}
@@ -141,10 +135,8 @@ func (s GameService) InsertGame(ctx context.Context, title string, barcode *stri
 
 		}
 
-		return game, nil
+		return &created, nil
 	})
-	if err != nil {
-		return db.Game{}, wrapDatabaseError(err)
-	}
-	return *game, nil
+
+	return wrapErrorOrReturn(game, db.Game{}, err)
 }

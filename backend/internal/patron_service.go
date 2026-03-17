@@ -16,7 +16,7 @@ func NewPatronService(libService *LibraryService) *PatronService {
 	return &PatronService{LibraryService: libService}
 }
 
-func (s PatronService) InsertPatron(ctx context.Context, name string, barcode *string, optTx pgx.Tx) (db.Patron, error) {
+func (s *PatronService) InsertPatron(ctx context.Context, name string, barcode *string, optTx pgx.Tx) (db.Patron, error) {
 	patron, err := WithinTx(s.LibraryService, ctx, optTx, func(tx pgx.Tx) (*db.Patron, error) {
 		dbBarcode := pgtype.Text{Valid: false}
 		if barcode != nil {
@@ -31,14 +31,10 @@ func (s PatronService) InsertPatron(ctx context.Context, name string, barcode *s
 		return &dbPatron, err
 	})
 
-	//if err != nil || patron == nil {
-	//	return db.Patron{}, wrapDatabaseError(err)
-	//}
-	//return *patron, nil
 	return wrapErrorOrReturn(patron, db.Patron{}, err)
 }
 
-func (s PatronService) DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error {
+func (s *PatronService) DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error {
 	_, err := WithinTx(s.LibraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		err := s.LibraryService.queries.WithTx(tx).DeletePatron(ctx, patronId)
 		return nil, err
@@ -47,7 +43,7 @@ func (s PatronService) DeletePatron(ctx context.Context, patronId pgtype.UUID, o
 	return wrapDatabaseError(err)
 }
 
-func (s PatronService) GetPatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryPatron, error) {
+func (s *PatronService) GetPatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryPatron, error) {
 	patron, err := WithinTx(s.LibraryService, ctx, optTx, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
 		dbPatron, err := s.LibraryService.queries.WithTx(tx).GetPatron(ctx, patronId)
 		if err != nil {
@@ -56,13 +52,10 @@ func (s PatronService) GetPatron(ctx context.Context, patronId pgtype.UUID, optT
 		return &dbPatron, nil
 	})
 
-	if err != nil || patron == nil {
-		return db.VwLibraryPatron{}, wrapDatabaseError(err)
-	}
-	return *patron, nil
+	return wrapErrorOrReturn(patron, db.VwLibraryPatron{}, err)
 }
 
-func (s PatronService) GetPatronByBarcode(ctx context.Context, patronBarcode string, optTx pgx.Tx) (db.VwLibraryPatron, error) {
+func (s *PatronService) GetPatronByBarcode(ctx context.Context, patronBarcode string, optTx pgx.Tx) (db.VwLibraryPatron, error) {
 	var (
 		dbPatron db.VwLibraryPatron
 		err      error
@@ -81,7 +74,7 @@ func (s PatronService) GetPatronByBarcode(ctx context.Context, patronBarcode str
 	return dbPatron, nil
 }
 
-func (s PatronService) UpdatePatron(ctx context.Context, patronId pgtype.UUID, fullName string, barcode *string, optTx pgx.Tx) error {
+func (s *PatronService) UpdatePatron(ctx context.Context, patronId pgtype.UUID, fullName string, barcode *string, optTx pgx.Tx) error {
 	_, err := WithinTx(s.LibraryService, ctx, optTx, func(tx pgx.Tx) (*db.VwLibraryPatron, error) {
 		dbBarcode := pgtype.Text{Valid: false}
 		if barcode != nil {
@@ -96,13 +89,10 @@ func (s PatronService) UpdatePatron(ctx context.Context, patronId pgtype.UUID, f
 		return nil, err
 	})
 
-	if err != nil {
-		return wrapDatabaseError(err)
-	}
-	return nil
+	return wrapDatabaseError(err)
 }
 
-func (s PatronService) listPatrons(ctx context.Context, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+func (s *PatronService) listPatrons(ctx context.Context, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
 	params := db.ListPatronsParams{
 		Limit:  limit,
 		Offset: offset,
@@ -114,7 +104,7 @@ func (s PatronService) listPatrons(ctx context.Context, limit int32, offset int3
 	return s.LibraryService.queries.ListPatrons(ctx, params)
 }
 
-func (s PatronService) searchPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+func (s *PatronService) searchPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
 	if fullName == nil || *fullName == "" {
 		return s.listPatrons(ctx, limit, offset, optTx)
 	}
@@ -131,11 +121,8 @@ func (s PatronService) searchPatrons(ctx context.Context, fullName *string, limi
 	return s.LibraryService.queries.SearchPatrons(ctx, params)
 }
 
-func (s PatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+func (s *PatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
 	dbPatronList, err := s.searchPatrons(ctx, fullName, limit, offset, optTx)
 
-	if err != nil {
-		return dbPatronList, wrapDatabaseError(err)
-	}
-	return dbPatronList, nil
+	return wrapErrorOrReturn(&dbPatronList, []db.VwLibraryPatron{}, err)
 }

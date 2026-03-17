@@ -15,6 +15,13 @@ func pgUUIDToUUID(pgUUID pgtype.UUID) uuid.UUID {
 	return pgUUID.Bytes
 }
 
+func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{
+		Bytes: uuid,
+		Valid: true,
+	}
+}
+
 func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 	var checkedOutAt *time.Time
 	if dbGameStatus.CheckoutTimestamp.Valid {
