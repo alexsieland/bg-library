@@ -551,14 +551,34 @@ func (q *Queries) GetPlayToWinEntriesByPlayToWinGameId(ctx context.Context, id p
 	return items, nil
 }
 
-const getPlayToWinGame = `-- name: GetPlayToWinGame :one
+const getPlayToWinGameByLibraryGameId = `-- name: GetPlayToWinGameByLibraryGameId :one
+SELECT id, game_id, ptw_group_id, group_name, created_at, winner_id
+FROM vw_play_to_win_games
+WHERE game_id = $1
+`
+
+func (q *Queries) GetPlayToWinGameByLibraryGameId(ctx context.Context, gameID pgtype.UUID) (VwPlayToWinGame, error) {
+	row := q.db.QueryRow(ctx, getPlayToWinGameByLibraryGameId, gameID)
+	var i VwPlayToWinGame
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.PtwGroupID,
+		&i.GroupName,
+		&i.CreatedAt,
+		&i.WinnerID,
+	)
+	return i, err
+}
+
+const getPlayToWinGameOverview = `-- name: GetPlayToWinGameOverview :one
 SELECT ptw_game_id, game_id, ptw_group_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
 FROM vw_play_to_win_game_overview
 WHERE ptw_game_id = $1
 `
 
-func (q *Queries) GetPlayToWinGame(ctx context.Context, ptwGameID pgtype.UUID) (VwPlayToWinGameOverview, error) {
-	row := q.db.QueryRow(ctx, getPlayToWinGame, ptwGameID)
+func (q *Queries) GetPlayToWinGameOverview(ctx context.Context, ptwGameID pgtype.UUID) (VwPlayToWinGameOverview, error) {
+	row := q.db.QueryRow(ctx, getPlayToWinGameOverview, ptwGameID)
 	var i VwPlayToWinGameOverview
 	err := row.Scan(
 		&i.PtwGameID,
@@ -804,21 +824,19 @@ func (q *Queries) ListPatrons(ctx context.Context, arg ListPatronsParams) ([]VwL
 	return items, nil
 }
 
-const listPlayToWinGames = `-- name: ListPlayToWinGames :many
+const listPlayToWinGameOverviews = `-- name: ListPlayToWinGameOverviews :many
 SELECT ptw_game_id, game_id, ptw_group_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
 FROM vw_play_to_win_game_overview
-WHERE sanitized_title ILIKE $1
-LIMIT $2 OFFSET $3
+LIMIT $1 OFFSET $2
 `
 
-type ListPlayToWinGamesParams struct {
-	SanitizedTitle string
-	Limit          int32
-	Offset         int32
+type ListPlayToWinGameOverviewsParams struct {
+	Limit  int32
+	Offset int32
 }
 
-func (q *Queries) ListPlayToWinGames(ctx context.Context, arg ListPlayToWinGamesParams) ([]VwPlayToWinGameOverview, error) {
-	rows, err := q.db.Query(ctx, listPlayToWinGames, arg.SanitizedTitle, arg.Limit, arg.Offset)
+func (q *Queries) ListPlayToWinGameOverviews(ctx context.Context, arg ListPlayToWinGameOverviewsParams) ([]VwPlayToWinGameOverview, error) {
+	rows, err := q.db.Query(ctx, listPlayToWinGameOverviews, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -1068,6 +1086,49 @@ func (q *Queries) SearchPatrons(ctx context.Context, arg SearchPatronsParams) ([
 			&i.FullName,
 			&i.Barcode,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchPlayToWinGameOverviews = `-- name: SearchPlayToWinGameOverviews :many
+SELECT ptw_game_id, game_id, ptw_group_id, game_title, sanitized_title, created_at, winner_id, winner_name, winner_unique_id
+FROM vw_play_to_win_game_overview
+WHERE sanitized_title ILIKE $1
+LIMIT $2 OFFSET $3
+`
+
+type SearchPlayToWinGameOverviewsParams struct {
+	SanitizedTitle string
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) SearchPlayToWinGameOverviews(ctx context.Context, arg SearchPlayToWinGameOverviewsParams) ([]VwPlayToWinGameOverview, error) {
+	rows, err := q.db.Query(ctx, searchPlayToWinGameOverviews, arg.SanitizedTitle, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VwPlayToWinGameOverview
+	for rows.Next() {
+		var i VwPlayToWinGameOverview
+		if err := rows.Scan(
+			&i.PtwGameID,
+			&i.GameID,
+			&i.PtwGroupID,
+			&i.GameTitle,
+			&i.SanitizedTitle,
+			&i.CreatedAt,
+			&i.WinnerID,
+			&i.WinnerName,
+			&i.WinnerUniqueID,
 		); err != nil {
 			return nil, err
 		}
