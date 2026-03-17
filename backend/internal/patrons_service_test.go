@@ -18,7 +18,7 @@ func TestPatronServiceInsertPatron(t *testing.T) {
 	t.Run("Should insert patron when no transaction is provided", func(t *testing.T) {
 		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 
-		expectedPatron := testPatron(uuid.New(), "Jane Doe", nil)
+		expectedPatron := makePatron(uuid.New(), "Jane Doe", nil)
 		mockRow := new(MockRow)
 		MockPatronScan(mockRow, expectedPatron, nil)
 
@@ -56,7 +56,7 @@ func TestPatronServiceInsertPatron(t *testing.T) {
 		providedTx := new(MockTx)
 		barcode := "P-1002"
 
-		expectedPatron := testPatron(uuid.New(), "Alex Doe", &barcode)
+		expectedPatron := makePatron(uuid.New(), "Alex Doe", &barcode)
 		mockRow := new(MockRow)
 		MockPatronScan(mockRow, expectedPatron, nil)
 
@@ -103,7 +103,7 @@ func TestPatronServiceGetPatron(t *testing.T) {
 	t.Run("Should return patron when no transaction is provided", func(t *testing.T) {
 		service, ctx, mockTx := setupPatronServiceWithMockTx(t)
 		barcode := "P-2001"
-		expectedPatron := testLibraryPatron(uuid.New(), "Jordan Doe", &barcode)
+		expectedPatron := makeLibraryPatron(uuid.New(), "Jordan Doe", &barcode)
 		mockRow := new(MockRow)
 
 		MockVwLibraryPatronScan(mockRow, expectedPatron, nil)
@@ -140,7 +140,7 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 	t.Run("Should return patron from the database when no transaction is provided", func(t *testing.T) {
 		service, _, mockDB := setupPatronServiceWithDB(t)
 		barcode := "P-3001"
-		expectedPatron := testLibraryPatron(uuid.New(), "Morgan Doe", &barcode)
+		expectedPatron := makeLibraryPatron(uuid.New(), "Morgan Doe", &barcode)
 		mockRow := new(MockRow)
 
 		MockVwLibraryPatronScan(mockRow, expectedPatron, nil)
@@ -158,7 +158,7 @@ func TestPatronServiceGetPatronByBarcode(t *testing.T) {
 		service, _, _ := setupPatronServiceWithDB(t)
 		providedTx := new(MockTx)
 		barcode := "P-3002"
-		expectedPatron := testLibraryPatron(uuid.New(), "Taylor Doe", &barcode)
+		expectedPatron := makeLibraryPatron(uuid.New(), "Taylor Doe", &barcode)
 		mockRow := new(MockRow)
 
 		MockVwLibraryPatronScan(mockRow, expectedPatron, nil)
@@ -237,8 +237,8 @@ func TestPatronServiceListPatrons(t *testing.T) {
 		service, ctx, mockDB := setupPatronServiceWithDB(t)
 		barcode := "P-5001"
 		expectedPatrons := []db.VwLibraryPatron{
-			testLibraryPatron(uuid.New(), "Casey Doe", &barcode),
-			testLibraryPatron(uuid.New(), "Logan Doe", nil),
+			makeLibraryPatron(uuid.New(), "Casey Doe", &barcode),
+			makeLibraryPatron(uuid.New(), "Logan Doe", nil),
 		}
 		mockRows := new(MockRows)
 
@@ -257,7 +257,7 @@ func TestPatronServiceListPatrons(t *testing.T) {
 		service, _, _ := setupPatronServiceWithDB(t)
 		providedTx := new(MockTx)
 		searchName := "Doe"
-		expectedPatrons := []db.VwLibraryPatron{testLibraryPatron(uuid.New(), "Jamie Doe", nil)}
+		expectedPatrons := []db.VwLibraryPatron{makeLibraryPatron(uuid.New(), "Jamie Doe", nil)}
 		mockRows := new(MockRows)
 
 		MockVwLibraryPatronRows(mockRows, expectedPatrons, nil)
@@ -303,26 +303,26 @@ func setupPatronServiceWithDB(t *testing.T) (PatronService, context.Context, *Mo
 	return service, ctx, mockDB
 }
 
-func testPatron(id uuid.UUID, fullName string, barcode *string) db.Patron {
+func makePatron(id uuid.UUID, fullName string, barcode *string) db.Patron {
 	return db.Patron{
 		ID:        pgtype.UUID{Bytes: id, Valid: true},
 		FullName:  fullName,
 		CreatedAt: pgtype.Timestamp{Valid: true},
 		DeletedAt: pgtype.Timestamp{Valid: false},
-		Barcode:   testBarcode(barcode),
+		Barcode:   makeBarcode(barcode),
 	}
 }
 
-func testLibraryPatron(id uuid.UUID, fullName string, barcode *string) db.VwLibraryPatron {
+func makeLibraryPatron(id uuid.UUID, fullName string, barcode *string) db.VwLibraryPatron {
 	return db.VwLibraryPatron{
 		ID:        pgtype.UUID{Bytes: id, Valid: true},
 		FullName:  fullName,
-		Barcode:   testBarcode(barcode),
+		Barcode:   makeBarcode(barcode),
 		CreatedAt: pgtype.Timestamp{Valid: true},
 	}
 }
 
-func testBarcode(barcode *string) pgtype.Text {
+func makeBarcode(barcode *string) pgtype.Text {
 	if barcode == nil {
 		return pgtype.Text{Valid: false}
 	}

@@ -48,16 +48,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 		txId := uuid.New()
 		now := time.Now().UTC()
 
-		status := db.VwGameStatus{
-			GameID:            pgtype.UUID{Bytes: gameId, Valid: true},
-			GameTitle:         "Catan",
-			PatronID:          pgtype.UUID{Bytes: patronId, Valid: true},
-			PatronFullName:    pgtype.Text{String: "Alice", Valid: true},
-			TransactionID:     pgtype.UUID{Bytes: txId, Valid: true},
-			CheckoutTimestamp: pgtype.Timestamp{Time: now, Valid: true},
-			CheckinTimestamp:  pgtype.Timestamp{Valid: false},
-			PtwGameID:         pgtype.UUID{Valid: false},
-		}
+		status := makeVwGameStatus(gameId, &patronId, &txId, true, now)
 
 		mockRow := new(MockRow)
 		MockVwGameStatusScan(mockRow, status, nil)
@@ -82,16 +73,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 		currentPatron := uuid.New()
 		requestingPatron := uuid.New()
 
-		status := db.VwGameStatus{
-			GameID:            pgtype.UUID{Bytes: gameId, Valid: true},
-			GameTitle:         "Catan",
-			PatronID:          pgtype.UUID{Bytes: currentPatron, Valid: true},
-			PatronFullName:    pgtype.Text{String: "Alice", Valid: true},
-			TransactionID:     pgtype.UUID{Bytes: uuid.New(), Valid: true},
-			CheckoutTimestamp: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
-			CheckinTimestamp:  pgtype.Timestamp{Valid: false},
-			PtwGameID:         pgtype.UUID{Valid: false},
-		}
+		status := makeVwGameStatus(gameId, &currentPatron, nil, true, time.Now().UTC())
 
 		mockRow := new(MockRow)
 		MockVwGameStatusScan(mockRow, status, nil)
@@ -116,13 +98,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 		now := time.Now().UTC()
 
 		// Game status: not checked out
-		status := db.VwGameStatus{
-			GameID:           pgtype.UUID{Bytes: gameId, Valid: true},
-			GameTitle:        "Catan",
-			PatronID:         pgtype.UUID{Valid: false},
-			CheckinTimestamp: pgtype.Timestamp{Valid: true},
-			PtwGameID:        pgtype.UUID{Valid: false},
-		}
+		status := makeVwGameStatus(gameId, nil, nil, false, time.Time{})
 
 		mockStatusRow := new(MockRow)
 		MockVwGameStatusScan(mockStatusRow, status, nil)
@@ -130,12 +106,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 
 		// For CheckOutGame query, return a transaction row
 		mockTxRow := new(MockRow)
-		dbTx := db.Transaction{
-			ID:                pgtype.UUID{Bytes: txId, Valid: true},
-			GameID:            pgtype.UUID{Bytes: gameId, Valid: true},
-			PatronID:          pgtype.UUID{Bytes: patronId, Valid: true},
-			CheckoutTimestamp: pgtype.Timestamp{Time: now, Valid: true},
-		}
+		dbTx := makeTransaction(txId, gameId, patronId, now)
 		MockTransactionScan(mockTxRow, dbTx, nil)
 		// queries.CheckOutGame uses QueryRow with (gameId, patronId)
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{dbTx.GameID, pgtype.UUID{Bytes: patronId, Valid: true}}).Return(mockTxRow).Once()
@@ -302,4 +273,39 @@ func setupTransactionServiceWithMockTx(t *testing.T) (TransactionService, contex
 	svc, mockDB := setupTestTransactionService()
 	mockTx := MockWithinTx(t)
 	return svc, ctx, mockTx, mockDB
+}
+
+// makeVwGameStatus builds a db.VwGameStatus for test convenience.
+// If patronID or txID is nil we mark those fields invalid.
+func makeVwGameStatus(gameID uuid.UUID, patronID *uuid.UUID, txID *uuid.UUID, checkedOut bool, checkoutTime time.Time) db.VwGameStatus {
+	status := db.VwGameStatus{
+		GameID:            pgtype.UUID{Bytes: gameID, Valid: true},
+		GameTitle:         "Test Game",
+		SanitizedTitle:    "test game",
+		PatronFullName:    pgtype.Text{Valid: false},
+		CheckoutTimestamp: pgtype.Timestamp{Valid: false},
+		CheckinTimestamp:  pgtype.Timestamp{Valid: true},
+		PtwGameID:         pgtype.UUID{Valid: false},
+	}
+	if patronID != nil {
+		status.PatronID = pgtype.UUID{Bytes: *patronID, Valid: true}
+		status.PatronFullName = pgtype.Text{String: "Patron", Valid: true}
+	}
+	if txID != nil {
+		status.TransactionID = pgtype.UUID{Bytes: *txID, Valid: true}
+	}
+	if checkedOut {
+		status.CheckoutTimestamp = pgtype.Timestamp{Time: checkoutTime, Valid: true}
+		status.CheckinTimestamp = pgtype.Timestamp{Valid: false}
+	}
+	return status
+}
+
+func makeTransaction(id uuid.UUID, gameID uuid.UUID, patronID uuid.UUID, checkoutTime time.Time) db.Transaction {
+	return db.Transaction{
+		ID:                pgtype.UUID{Bytes: id, Valid: true},
+		GameID:            pgtype.UUID{Bytes: gameID, Valid: true},
+		PatronID:          pgtype.UUID{Bytes: patronID, Valid: true},
+		CheckoutTimestamp: pgtype.Timestamp{Time: checkoutTime, Valid: true},
+	}
 }
