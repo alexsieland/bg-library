@@ -13,8 +13,9 @@ import (
 )
 
 type Server struct {
-	LibService *internal.LibraryService
-	PatronApi  *PatronApi
+	LibService     *internal.LibraryService
+	PatronApi      *PatronApi
+	TransactionApi *TransactionApi
 }
 
 func NewServer() Server {
@@ -22,8 +23,9 @@ func NewServer() Server {
 	var libService = internal.NewLibraryService(database)
 
 	return Server{
-		LibService: libService,
-		PatronApi:  NewPatronApi(libService),
+		LibService:     libService,
+		PatronApi:      NewPatronApi(libService),
+		TransactionApi: NewTransactionApi(libService),
 	}
 }
 
@@ -148,18 +150,34 @@ func (s Server) BulkAddPatrons(c *gin.Context) {
 // Transaction API
 
 func (s Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
-	//TODO implement me
-	panic("implement me")
+	err := s.TransactionApi.CheckInGame(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) CheckOutGame(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	var request CheckOutGameJSONRequestBody
+	extractRequestBody[CheckOutGameJSONRequestBody](c, request)
+	if !c.IsAborted() {
+		transaction, err := s.TransactionApi.CheckOutGame(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, transaction)
+	}
 }
 
 func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
-	//TODO implement me
-	panic("implement me")
+	transactionEvents, err := s.TransactionApi.ListTransactionEvents(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, transactionEvents)
 }
 
 // Game API

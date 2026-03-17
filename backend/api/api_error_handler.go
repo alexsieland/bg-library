@@ -43,15 +43,19 @@ func handleError(c *gin.Context, err error) {
 	if err == nil {
 		return
 	}
-	if errors.Is(err, (internal.ErrNotFound)) {
+	if errors.Is(err, internal.ErrNotFound) {
 		notFound(c)
 		return
 	}
-	if errors.Is(err, (internal.ErrAlreadyExists)) {
+	if errors.Is(err, internal.ErrAlreadyExists) {
 		conflict(c, "Resource already exists")
 		return
 	}
-	if errors.Is(err, (internal.ErrInvalidInput)) {
+	if errors.Is(err, internal.ErrCheckOutConflict) {
+		conflict(c, "Game already checked out by another patron")
+		return
+	}
+	if errors.Is(err, internal.ErrInvalidInput) {
 		badRequest(c, "Invalid input")
 	}
 	var errorDetails ErrorDetails
