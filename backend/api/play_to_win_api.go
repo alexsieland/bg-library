@@ -3,10 +3,10 @@ package api
 import (
 	"context"
 	"log"
+	"math/rand/v2"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/alexsieland/bg-library/internal"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
@@ -27,8 +27,9 @@ type playToWinService interface {
 	UpdatePlayToWinGameWinner(ctx context.Context, ptwGameId pgtype.UUID, entryId pgtype.UUID, optTx pgx.Tx) error
 	InsertPlayToWinGroup(ctx context.Context, groupName string, optTx pgx.Tx) (db.VwPlayToWinGroup, error)
 	InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error)
-	DeletePlayToWinGameByPlayToWinId(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error
-	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error
+	DeletePlayToWinGameByPlayToWinId(ctx context.Context, ptwGameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
+	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
+	DeletePlayToWinEntry(ctx context.Context, entryId pgtype.UUID, deletionReason db.NullPlayToWinEntryDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
 	ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error
 	ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error
 }
@@ -55,7 +56,7 @@ type ptwEntry struct {
 	EntrantUniqueId string `json:"entrantUniqueId"`
 }
 
-func (api *PlayToWinApi) RecordPlayToWinSession(ctx context.Context, request CreatePlayToWinSessionRequest, optTx pgx.Tx) (PlayToWinSession, error) {
+func (api *PlayToWinApi) RecordPlayToWinSession(ctx context.Context, request CreatePlayToWinSessionRequest) (PlayToWinSession, error) {
 	//Validate request body fields
 	var errorDetails ErrorDetails
 	if request.PlaytimeMinutes != nil {
@@ -179,13 +180,8 @@ func (api *PlayToWinApi) AddPlayToWinGameByGameId(ctx context.Context, gameId ty
 func (api *PlayToWinApi) RemovePlayToWinGameByGameId(c context.Context, gameId types.UUID, request RemovePlayToWinGameRequest) error {
 	var errorDetails ErrorDetails
 
-	validEnums := []string{
-		string(db.PlayToWinGameDeletionTypeClaimed),
-		string(db.PlayToWinGameDeletionTypeClaimed),
-		string(db.PlayToWinGameDeletionTypeClaimed),
-	}
 	removalReason := string(request.RemovalReason)
-	errorDetails.ValidateEnum("removalReason", removalReason, validEnums)
+	dbRemovalReason := errorDetails.playToWinGameDeletionReason(&removalReason)
 
 	if request.RemovalComment != nil {
 		errorDetails.ValidateStringLength("removalComment", *request.RemovalComment, 0, 500)
@@ -195,7 +191,7 @@ func (api *PlayToWinApi) RemovePlayToWinGameByGameId(c context.Context, gameId t
 		return errorDetails
 	}
 
-	return api.service.DeletePlayToWinGameByLibraryGameId(c, uuidToPgTypeUUID(gameId), &removalReason, request.RemovalComment, nil)
+	return api.service.DeletePlayToWinGameByLibraryGameId(c, uuidToPgTypeUUID(gameId), dbRemovalReason, request.RemovalComment, nil)
 }
 
 func (api *PlayToWinApi) GetPlayToWinGameEntries(ctx context.Context, ptwGameId types.UUID) (PlayToWinEntryList, error) {
@@ -224,7 +220,7 @@ func (api *PlayToWinApi) GetPlayToWinGameOverview(ctx context.Context, ptwId typ
 	return ptwGame, nil
 }
 
-func (api *PlayToWinApi) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) (PlayToWinGameList, error) {
+func (api *PlayToWinApi) ListPlayToWinGames(ctx context.Context, params ListPlayToWinGamesParams) (PlayToWinGameList, error) {
 	var (
 		limit        int32 = 100
 		offset       int32 = 0
@@ -249,7 +245,7 @@ func (api *PlayToWinApi) ListPlayToWinGames(c *gin.Context, params ListPlayToWin
 	}
 
 	// Get play to win games based on query params
-	dbPTWGames, err := api.service.ListPlayToWinGameOverviews(c.Request.Context(), params.Title, limit, offset, nil)
+	dbPTWGames, err := api.service.ListPlayToWinGameOverviews(ctx, params.Title, limit, offset, nil)
 	if err != nil {
 		return PlayToWinGameList{}, err
 	}
@@ -273,155 +269,62 @@ func (api *PlayToWinApi) UpdatePlayToWinGame(ctx context.Context, ptwId types.UU
 }
 
 func (api *PlayToWinApi) DeletePlayToWinGame(ctx context.Context, ptwId types.UUID, request RemovePlayToWinGameRequest) error {
-	//// Get request body
-	//var request RemovePlayToWinGameRequest
-	//err := c.ShouldBindBodyWithJSON(&request)
-	//if err != nil {
-	//	malformedJson(c)
-	//	return
-	//}
-	//
-	//// Check that the game exists
-	//ptwGame, err := s.queries.GetPlayToWinGame(c.Request.Context(), uuidToPgTypeUUID(ptwId))
-	//if err != nil {
-	//	if isNotFound(err) {
-	//		// Since delete deletes, if the game is not found we can pretend it was deleted and return 204
-	//		c.JSON(http.StatusNoContent, nil)
-	//		return
-	//	}
-	//	log.Printf("Error getting play to win game: %v", err)
-	//	internalError(c, err)
-	//}
-	//
-	//// Validate request body fields and convert to db types
-	//var errorDetails ErrorDetails
-	//if request.RemovalComment != nil {
-	//	errorDetails.ValidateStringLength("deletionComment", *request.RemovalComment, 0, 500)
-	//}
-	//var deletionReason *string
-	//if request.RemovalReason != "" {
-	//	reason := string(request.RemovalReason)
-	//	deletionReason = &reason
-	//}
-	//
-	//reason := playToWinGameDeletionReason(deletionReason, &errorDetails)
-	//if !errorDetails.Empty() {
-	//	validationError(c, errorDetails)
-	//	return
-	//}
-	//
-	//deleteParams := db.DeletePlayToWinGameByPlayToWinIdParams{
-	//	ID:                    uuidToPgTypeUUID(ptwId),
-	//	DeletionReason:        reason,
-	//	DeletionReasonComment: stringToPgText(request.RemovalComment),
-	//}
-	//
-	//// Start transaction
-	//tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
-	//if err != nil {
-	//	log.Printf("Error creating play to win session: %v", err)
-	//	internalError(c, err)
-	//	return
-	//}
-	//defer func() {
-	//	if tx != nil {
-	//		_ = tx.Rollback(c.Request.Context())
-	//	}
-	//}()
-	//
-	//// Soft delete the play to win game
-	//err = s.queries.WithTx(tx).DeletePlayToWinGameByPlayToWinId(c.Request.Context(), deleteParams)
-	//if err != nil {
-	//	log.Printf("Error deleting play to win game: %v", err)
-	//	internalError(c, err)
-	//	return
-	//}
-	//
-	//// If the deletion was a claimed prize, also delete the play to win entry to prevent it from showing up in the duplicate game raffle results
-	//if deleteParams.DeletionReason.Valid &&
-	//	deleteParams.DeletionReason.PlayToWinGameDeletionType == db.PlayToWinGameDeletionTypeClaimed {
-	//
-	//	// If claimed prize, soft delete the play to win entry so that entry is not available for potential duplicate game raffles
-	//	if ptwGame.WinnerID.Valid {
-	//		deleteEntryReason := db.NullPlayToWinEntryDeletionType{
-	//			PlayToWinEntryDeletionType: db.PlayToWinEntryDeletionTypeWon,
-	//			Valid:                      true,
-	//		}
-	//		deleteEntryParams := db.DeletePlayToWinEntryParams{
-	//			ID:                    ptwGame.WinnerID,
-	//			DeletionReason:        deleteEntryReason,
-	//			DeletionReasonComment: pgtype.Text{Valid: false},
-	//		}
-	//		err = s.queries.WithTx(tx).DeletePlayToWinEntry(c.Request.Context(), deleteEntryParams)
-	//		if err != nil {
-	//			log.Printf("Error deleting play to win entry: %v", err)
-	//			internalError(c, err)
-	//			return
-	//		}
-	//	}
-	//
-	//	// If claimed prize, soft delete the library game because it is no longer available for check out
-	//	err = s.queries.WithTx(tx).DeleteGame(c.Request.Context(), ptwGame.GameID)
-	//	if err != nil {
-	//		log.Printf("Error deleting play to win entry: %v", err)
-	//		internalError(c, err)
-	//		return
-	//	}
-	//}
-	//
-	//// Commit transaction
-	//err = tx.Commit(c.Request.Context())
-	//if err != nil {
-	//	log.Printf("Error committing transaction: %v", err)
-	//	internalError(c, err)
-	//	return
-	//}
-	//
-	//// Set tx to nil to prevent deferred rollback and return 204
-	//tx = nil
-	//c.JSON(http.StatusNoContent, nil)
-	panic("not implemented")
+	var errorDetails ErrorDetails
+	removalReason := string(request.RemovalReason)
+	dbRemovalReason := errorDetails.playToWinGameDeletionReason(&removalReason)
+
+	if request.RemovalComment != nil {
+		errorDetails.ValidateStringLength("removalComment", *request.RemovalComment, 0, 500)
+	}
+	if !errorDetails.Empty() {
+		return errorDetails
+	}
+
+	err := api.service.DeletePlayToWinGameByPlayToWinId(ctx, uuidToPgTypeUUID(ptwId), dbRemovalReason, request.RemovalComment, nil)
+	if err != nil {
+		log.Printf("Error deleting play to win game: %v", err)
+	}
+	return err
 }
 
-func (api *PlayToWinApi) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
-	//entries, err := s.queries.GetPlayToWinEntriesByPlayToWinGameId(c.Request.Context(), uuidToPgTypeUUID(ptwId))
-	//if err != nil {
-	//	log.Printf("Error getting play to win entries: %v", err)
-	//	internalError(c, err)
-	//	return
-	//}
-	//
-	//if len(entries) == 0 {
-	//	notFound(c)
-	//	return
-	//}
-	//
-	//selectedPos := 0
-	//if len(entries) > 1 {
-	//	selectedPos = rand.IntN(len(entries))
-	//}
-	//selectedEntry := entries[selectedPos]
-	//
-	//updateParams := db.UpdatePlayToWinWinnerParams{
-	//	ID:       uuidToPgTypeUUID(ptwId),
-	//	WinnerID: selectedEntry.PtwEntryID,
-	//}
-	//
-	//err = s.queries.UpdatePlayToWinWinner(c.Request.Context(), updateParams)
-	//if err != nil {
-	//	log.Printf("Error updating play to win entry: %v", err)
-	//	internalError(c, err)
-	//	return
-	//}
-	//
-	//winner := PlayToWinEntry{
-	//	EntrantName:     selectedEntry.EntrantName,
-	//	EntrantUniqueId: selectedEntry.EntrantUniqueID,
-	//	EntryId:         pgUUIDToUUID(selectedEntry.PtwEntryID),
-	//}
-	//
-	//c.JSON(http.StatusOK, winner)
-	panic("not implemented")
+func (api *PlayToWinApi) ClaimPlayToWinGame(ctx context.Context, ptwId types.UUID) error {
+	err := api.service.ClaimPlayToWinGame(ctx, uuidToPgTypeUUID(ptwId), nil)
+	if err != nil {
+		log.Printf("Error claiming play to win game: %v", err)
+	}
+	return err
+}
+
+func (api *PlayToWinApi) DrawPlayToWinRaffle(ctx context.Context, ptwId types.UUID) (PlayToWinEntry, error) {
+	dbPtwId := uuidToPgTypeUUID(ptwId)
+	entries, err := api.service.GetPlayToWinGameEntriesByPlayToWinGameId(ctx, dbPtwId, nil)
+	if err != nil {
+		log.Printf("Error getting play to win entries: %v", err)
+		return PlayToWinEntry{}, err
+	}
+
+	if len(entries) == 0 {
+		return PlayToWinEntry{}, internal.ErrNotFound
+	}
+
+	selectedPos := 0
+	if len(entries) > 1 {
+		selectedPos = rand.IntN(len(entries))
+	}
+	selectedEntry := entries[selectedPos]
+
+	err = api.service.UpdatePlayToWinGameWinner(ctx, dbPtwId, selectedEntry.ID, nil)
+	if err != nil {
+		log.Printf("Error updating play to win entry: %v", err)
+		return PlayToWinEntry{}, err
+	}
+
+	winner := PlayToWinEntry{
+		EntrantName:     selectedEntry.EntrantName,
+		EntrantUniqueId: selectedEntry.EntrantUniqueID,
+		EntryId:         pgUUIDToUUID(selectedEntry.ID),
+	}
+	return winner, nil
 }
 
 func (api *PlayToWinApi) ResetPlayToWinRaffle(ctx context.Context) error {

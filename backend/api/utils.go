@@ -109,8 +109,9 @@ func FromPatron(dbPatron db.Patron) Patron {
 
 func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
 	game := Game{
-		GameId: pgUUIDToUUID(dbGame.ID),
-		Title:  dbGame.Title,
+		GameId:      pgUUIDToUUID(dbGame.ID),
+		Title:       dbGame.Title,
+		IsPlayToWin: dbGame.PlayToWinGameID.Valid,
 	}
 	if dbGame.Barcode.Valid {
 		game.Barcode = &dbGame.Barcode.String
@@ -133,18 +134,6 @@ func FromTransaction(dbTransaction db.Transaction) LibraryTransaction {
 		PatronId:  pgUUIDToUUID(dbTransaction.PatronID),
 		Timestamp: dbTransaction.CheckoutTimestamp.Time,
 	}
-}
-
-func FromGame(dbGame db.Game, isPlayToWin bool) Game {
-	game := Game{
-		GameId:      pgUUIDToUUID(dbGame.ID),
-		Title:       dbGame.Title,
-		IsPlayToWin: isPlayToWin,
-	}
-	if dbGame.Barcode.Valid {
-		game.Barcode = &dbGame.Barcode.String
-	}
-	return game
 }
 
 func FromPlayToWinGameList(dbPTWGames []db.VwPlayToWinGameOverview) PlayToWinGameList {

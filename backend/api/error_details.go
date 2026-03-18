@@ -1,6 +1,10 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/alexsieland/bg-library/db"
+)
 
 type ErrorDetails struct {
 	Details []ErrorDetail
@@ -46,4 +50,46 @@ func (e *ErrorDetails) ValidateEnum(fieldName string, value string, allowedValue
 		}
 	}
 	e.AddErrorDetail(fieldName, fmt.Sprintf("Value must be one of: %v", allowedValues))
+}
+
+func (e *ErrorDetails) playToWinGameDeletionReason(deletionReason *string) db.NullPlayToWinGameDeletionType {
+	nullableReason := db.NullPlayToWinGameDeletionType{Valid: false}
+	if deletionReason != nil {
+		reason := db.PlayToWinGameDeletionType(*deletionReason)
+		switch reason {
+		case db.PlayToWinGameDeletionTypeClaimed, db.PlayToWinGameDeletionTypeMistake, db.PlayToWinGameDeletionTypeOther:
+			nullableReason = db.NullPlayToWinGameDeletionType{
+				PlayToWinGameDeletionType: reason,
+				Valid:                     true,
+			}
+		default:
+			e.AddErrorDetail("deletionReason", "Invalid play to win game deletion reason")
+			return db.NullPlayToWinGameDeletionType{}
+		}
+	}
+
+	return nullableReason
+}
+
+func (e *ErrorDetails) playToWinEntryDeletionReason(deletionReason *string) db.NullPlayToWinEntryDeletionType {
+	nullableReason := db.NullPlayToWinEntryDeletionType{Valid: false}
+	if deletionReason != nil {
+		reason := db.PlayToWinEntryDeletionType(*deletionReason)
+		switch reason {
+		case db.PlayToWinEntryDeletionTypeDuplicateEntrant,
+			db.PlayToWinEntryDeletionTypeFoulPlay,
+			db.PlayToWinEntryDeletionTypeWon,
+			db.PlayToWinEntryDeletionTypeFailedToClaim,
+			db.PlayToWinEntryDeletionTypeOther:
+			nullableReason = db.NullPlayToWinEntryDeletionType{
+				PlayToWinEntryDeletionType: reason,
+				Valid:                      true,
+			}
+		default:
+			e.AddErrorDetail("deletionReason", "Invalid play to win entry deletion reason")
+			return db.NullPlayToWinEntryDeletionType{}
+		}
+	}
+
+	return nullableReason
 }

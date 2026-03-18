@@ -16,6 +16,8 @@ type Server struct {
 	LibService     *internal.LibraryService
 	PatronApi      *PatronApi
 	TransactionApi *TransactionApi
+	GameApi        *GameApi
+	PlayToWinApi   *PlayToWinApi
 }
 
 func NewServer() Server {
@@ -26,6 +28,8 @@ func NewServer() Server {
 		LibService:     libService,
 		PatronApi:      NewPatronApi(libService),
 		TransactionApi: NewTransactionApi(libService),
+		GameApi:        NewGamesApi(libService),
+		PlayToWinApi:   NewPlayToWinApi(libService),
 	}
 }
 
@@ -183,90 +187,181 @@ func (s Server) ListTransactionEvents(c *gin.Context, params ListTransactionEven
 // Game API
 
 func (s Server) AddGame(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	var request AddGameJSONRequestBody
+	extractRequestBody[AddGameJSONRequestBody](c, request)
+	if !c.IsAborted() {
+		game, err := s.GameApi.AddGame(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, game)
+	}
 }
 
 func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
-	//TODO implement me
-	panic("implement me")
+	game, err := s.GameApi.GetGameByBarcode(c.Request.Context(), gameBarcode)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, game)
 }
 
 func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	err := s.GameApi.DeleteGame(c.Request.Context(), gameId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	game, err := s.GameApi.GetGame(c.Request.Context(), gameId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, game)
 }
 
 func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	var request UpdateGameJSONRequestBody
+	extractRequestBody[UpdateGameJSONRequestBody](c, request)
+	if !c.IsAborted() {
+		err := s.GameApi.UpdateGame(c.Request.Context(), gameId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
 }
 
 func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
-	//TODO implement me
-	panic("implement me")
+	gameStatusList, err := s.GameApi.ListGames(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, gameStatusList)
 }
 
 func (s Server) BulkAddGames(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	bulkAddResponse, err := s.GameApi.BulkAddGames(c.Request.Context(), c.Request.Body)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, bulkAddResponse)
 }
 
 // Play To Win API
 
 func (s Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	ptwEntries, err := s.PlayToWinApi.GetPlayToWinGameEntries(c.Request.Context(), playToWinId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwEntries)
 }
 
 func (s Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	var request RemovePlayToWinGameRequest
+	extractRequestBody[RemovePlayToWinGameRequest](c, request)
+	if c.IsAborted() {
+		err := s.PlayToWinApi.RemovePlayToWinGameByGameId(c.Request.Context(), gameId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
 }
 
 func (s Server) AddPlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	_, err := s.PlayToWinApi.AddPlayToWinGameByGameId(c.Request.Context(), gameId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	var request RemovePlayToWinGameRequest
+	extractRequestBody[RemovePlayToWinGameRequest](c, request)
+	if c.IsAborted() {
+		err := s.PlayToWinApi.DeletePlayToWinGame(c.Request.Context(), ptwId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+	}
 }
 
 func (s Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	ptwGame, err := s.PlayToWinApi.GetPlayToWinGameOverview(c.Request.Context(), ptwId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwGame)
 }
 
 func (s Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	var request UpdatePlayToWinGameJSONRequestBody
+	extractRequestBody[UpdatePlayToWinGameJSONRequestBody](c, request)
+	if c.IsAborted() {
+		err := s.PlayToWinApi.UpdatePlayToWinGame(c.Request.Context(), ptwId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
 }
 
 func (s Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) {
-	//TODO implement me
-	panic("implement me")
+	ptwGames, err := s.PlayToWinApi.ListPlayToWinGames(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwGames)
 }
 
 func (s Server) AddPlayToWinSession(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	var request AddPlayToWinSessionJSONRequestBody
+	extractRequestBody[AddPlayToWinSessionJSONRequestBody](c, request)
+	if c.IsAborted() {
+		ptwSession, err := s.PlayToWinApi.RecordPlayToWinSession(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, ptwSession)
+	}
 }
 
 // Play To Win Raffle API
 
 func (s Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
-	//TODO implement me
-	panic("implement me")
+	ptwEntry, err := s.PlayToWinApi.DrawPlayToWinRaffle(c.Request.Context(), ptwId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwEntry)
 }
 
 func (s Server) ResetPlayToWinRaffle(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	err := s.PlayToWinApi.ResetPlayToWinRaffle(c.Request.Context())
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

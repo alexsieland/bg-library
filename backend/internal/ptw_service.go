@@ -330,18 +330,14 @@ func (s *PlayToWinService) InsertPlayToWinGame(ctx context.Context, gameId pgtyp
 
 // DeletePlayToWinGameByPlayToWinId deletes a play to win from the database.
 // This call is idempotent. If the play to win does not exist, it will be ignored.
-func (s *PlayToWinService) DeletePlayToWinGameByPlayToWinId(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
-	dbDeletionReason, err := playToWinGameDeletionReason(deletionReason)
-	if err != nil {
-		return err
-	}
+func (s *PlayToWinService) DeletePlayToWinGameByPlayToWinId(ctx context.Context, ptwGameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error {
 	params := db.DeletePlayToWinGameByPlayToWinIdParams{
 		ID:                    ptwGameId,
-		DeletionReason:        dbDeletionReason,
+		DeletionReason:        deletionReason,
 		DeletionReasonComment: stringToPgText(deletionReasonComment),
 	}
 
-	_, err = WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		err := s.libraryService.queries.WithTx(tx).DeletePlayToWinGameByPlayToWinId(ctx, params)
 		return nil, err
 	})
@@ -351,19 +347,45 @@ func (s *PlayToWinService) DeletePlayToWinGameByPlayToWinId(ctx context.Context,
 
 // DeletePlayToWinGameByLibraryGameId deletes a play to win from the database.
 // This call is idempotent. If the play to win does not exist, it will be ignored.
-func (s *PlayToWinService) DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
-	dbDeletionReason, err := playToWinGameDeletionReason(deletionReason)
-	if err != nil {
-		return err
-	}
+func (s *PlayToWinService) DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error {
 	params := db.DeletePlayToWinGameParams{
 		GameID:                gameId,
-		DeletionReason:        dbDeletionReason,
+		DeletionReason:        deletionReason,
 		DeletionReasonComment: stringToPgText(deletionReasonComment),
 	}
 
-	_, err = WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		err := s.libraryService.queries.WithTx(tx).DeletePlayToWinGame(ctx, params)
+		return nil, err
+	})
+
+	return wrapDatabaseError(err)
+}
+
+func (s *PlayToWinService) DeletePlayToWinSession(ctx context.Context, sessionId pgtype.UUID, deletionReason db.NullPlayToWinSessionDeletionType, deletionReasonComment *string, optTx pgx.Tx) error {
+	params := db.DeletePlayToWinSessionParams{
+		ID:                    sessionId,
+		DeletionReason:        deletionReason,
+		DeletionReasonComment: stringToPgText(deletionReasonComment),
+	}
+
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).DeletePlayToWinSession(ctx, params)
+		return nil, err
+	})
+
+	return wrapDatabaseError(err)
+}
+
+func (s *PlayToWinService) DeletePlayToWinEntry(ctx context.Context, entryId pgtype.UUID, deletionReason db.NullPlayToWinEntryDeletionType, deletionReasonComment *string, optTx pgx.Tx) error {
+	params := db.DeletePlayToWinEntryParams{
+		ID:                    entryId,
+		DeletionReason:        deletionReason,
+		DeletionReasonComment: stringToPgText(deletionReasonComment),
+	}
+
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).DeletePlayToWinEntry(ctx, params)
 		return nil, err
 	})
 
@@ -386,13 +408,30 @@ func (s *PlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx 
 // If any of the above steps fail, the transaction will be rolled back.
 func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error {
 	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
-		//TODO delete the play to game with deletion reason "claimed"
+		gameDeletionReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeClaimed,
+			Valid:                     true,
+		}
+		err := s.DeletePlayToWinGameByPlayToWinId(ctx, ptwGameId, gameDeletionReason, nil, tx)
+		if err != nil {
+			return nil, err
+		}
 
-		//TODO delete the entry with deletion reason "won"
+		entryDeletionReason := db.NullPlayToWinEntryDeletionType{
+			PlayToWinEntryDeletionType: db.PlayToWinEntryDeletionTypeWon,
+			Valid:                      true,
+		}
+		err = s.DeletePlayToWinEntry(ctx, ptwGameId, entryDeletionReason, nil, tx)
+		if err != nil {
+			return nil, err
+		}
 
-		//TODO delete the library game (doesn't take a deletion reason)
+		err = s.gameService.DeleteGame(ctx, ptwGameId, tx)
+		if err != nil {
+			return nil, err
+		}
 
-		panic("not implemented")
+		return nil, nil
 	})
 
 	return wrapDatabaseError(err)
