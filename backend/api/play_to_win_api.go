@@ -35,20 +35,15 @@ type playToWinService interface {
 }
 
 type PlayToWinApi struct {
-	service playToWinService
-	beginTx func(ctx context.Context) (pgx.Tx, error)
+	libraryService *internal.LibraryService
+	service        playToWinService
 }
 
-func NewPlayToWinApi(libService *internal.LibraryService) *PlayToWinApi {
-	service := internal.NewPlayToWinService(libService)
-	service.SetGameService(internal.NewGameService(libService))
+func NewPlayToWinApi(libService *internal.LibraryService, ptwSrv *internal.PlayToWinService) *PlayToWinApi {
 	return &PlayToWinApi{
-		service: service,
-		beginTx: func(ctx context.Context) (pgx.Tx, error) {
-			return libService.Database.BeginTx(ctx, pgx.TxOptions{})
-		},
+		libraryService: libService,
+		service:        ptwSrv,
 	}
-
 }
 
 type ptwEntry struct {
@@ -82,7 +77,7 @@ func (api *PlayToWinApi) RecordPlayToWinSession(ctx context.Context, request Cre
 		return PlayToWinSession{}, err
 	}
 
-	tx, err := api.beginTx(ctx)
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
 		log.Printf("Error beginning transaction: %v", err)
 		return PlayToWinSession{}, err
@@ -131,7 +126,7 @@ func (api *PlayToWinApi) RecordPlayToWinSession(ctx context.Context, request Cre
 }
 
 func (api *PlayToWinApi) AddPlayToWinGameByGameId(ctx context.Context, gameId types.UUID) (PlayToWinGame, error) {
-	tx, err := api.beginTx(ctx)
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
 		log.Printf("Error beginning transaction: %v", err)
 		return PlayToWinGame{}, err

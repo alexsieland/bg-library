@@ -275,6 +275,10 @@ func (s *PlayToWinService) InsertPlayToWinGroup(ctx context.Context, groupName s
 // This call is idempotent. If the play to win already exists, it will be ignored.
 // If the play to win was deleted, it will be restored.
 func (s *PlayToWinService) InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
+	if s.gameService == nil {
+		panic("gameService must be set before calling InsertPlayToWinGame")
+	}
+
 	game, err := s.gameService.GetGame(ctx, gameId, optTx)
 	if err != nil {
 		return db.VwPlayToWinGame{}, wrapDatabaseError(err)
@@ -407,6 +411,10 @@ func (s *PlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx 
 // Finally, deletes the library game
 // If any of the above steps fail, the transaction will be rolled back.
 func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error {
+	if s.gameService == nil {
+		panic("gameService must be set before calling ClaimPlayToWinGame")
+	}
+
 	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		gameDeletionReason := db.NullPlayToWinGameDeletionType{
 			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeClaimed,

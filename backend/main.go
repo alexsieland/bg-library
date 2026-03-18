@@ -13,11 +13,11 @@ func main() {
 	// create a type that satisfies the `api.ServerInterface`, which contains an implementation of every operation from the generated code
 
 	server := api.NewServer()
-	err := server.LibService.Database.Connect()
+	err := server.LibService.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer server.LibService.Database.Close()
+	defer server.LibService.Stop()
 
 	r := gin.Default()
 
@@ -43,7 +43,7 @@ func main() {
 	})
 
 	api.RegisterSwagger(r)
-	api.RegisterHandlers(r, server)
+	api.RegisterHandlers(r, &server)
 
 	// And we serve HTTP until the world ends.
 

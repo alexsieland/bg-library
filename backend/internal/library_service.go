@@ -8,13 +8,13 @@ import (
 )
 
 type LibraryService struct {
-	Database db.DB
+	database db.DB
 	queries  *db.Queries
 }
 
 func NewLibraryService(database db.DB) *LibraryService {
 	return &LibraryService{
-		Database: database,
+		database: database,
 		queries:  db.New(database),
 	}
 }
@@ -29,7 +29,7 @@ var withinTxImpl func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn f
 	if optTx != nil {
 		tx = optTx
 	} else {
-		tx, err = s.Database.BeginTx(ctx, pgx.TxOptions{})
+		tx, err = s.database.BeginTx(ctx, pgx.TxOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -72,4 +72,16 @@ func WithinTx[T any](s *LibraryService, ctx context.Context, optTx pgx.Tx, fn fu
 		return nil, nil
 	}
 	return out.(*T), nil
+}
+
+func (s *LibraryService) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	return s.database.BeginTx(ctx, pgx.TxOptions{})
+}
+
+func (s *LibraryService) Start() error {
+	return s.database.Connect()
+}
+
+func (s *LibraryService) Stop() {
+	s.database.Close()
 }

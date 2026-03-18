@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func extractRequestBody[T any](c *gin.Context, request T) {
+func extractRequestBody[T any](c *gin.Context, request *T) {
 	err := c.ShouldBindBodyWithJSON(&request)
 	if err != nil {
 		malformedJson(c)

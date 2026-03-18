@@ -180,6 +180,10 @@ func (s *GameService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, opt
 }
 
 func (s *GameService) InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.VwLibraryGame, error) {
+	if s.ptwService == nil {
+		panic("ptwService must be set before calling InsertGame")
+	}
+
 	createGameParams := db.CreateGameParams{
 		Title:          title,
 		SanitizedTitle: SanitizeTitle(title),
@@ -194,7 +198,7 @@ func (s *GameService) InsertGame(ctx context.Context, title string, barcode *str
 
 		var ptwGame db.VwPlayToWinGame
 		if isPlayToWin {
-			ptwGame, err = s.ptwService.InsertPlayToWinGame(ctx, newGame.ID, optTx)
+			ptwGame, err = s.ptwService.InsertPlayToWinGame(ctx, newGame.ID, tx)
 			if err != nil {
 				return nil, err
 			}
@@ -233,6 +237,10 @@ func (s *GameService) UpdateGame(ctx context.Context, gameId pgtype.UUID, title 
 }
 
 func (s *GameService) SetIsPlayToWin(ctx context.Context, gameId pgtype.UUID, isPlayToWin bool, optTx pgx.Tx) error {
+	if s.ptwService == nil {
+		panic("ptwService must be set before calling SetIsPlayToWin")
+	}
+
 	gameStatus, err := s.GetGameStatus(ctx, gameId, optTx)
 	if err != nil {
 		return err

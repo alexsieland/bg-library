@@ -29,22 +29,18 @@ type gameService interface {
 }
 
 type GameApi struct {
-	service gameService
-	beginTx func(ctx context.Context) (pgx.Tx, error)
+	libraryService *internal.LibraryService
+	service        gameService
 }
 
-func NewGamesApi(libService *internal.LibraryService) *GameApi {
-	service := internal.NewGameService(libService)
-	service.SetPlayToWinService(internal.NewPlayToWinService(libService))
+func NewGamesApi(libService *internal.LibraryService, gameSrv *internal.GameService) *GameApi {
 	return &GameApi{
-		service: service,
-		beginTx: func(ctx context.Context) (pgx.Tx, error) {
-			return libService.Database.BeginTx(ctx, pgx.TxOptions{})
-		},
+		libraryService: libService,
+		service:        gameSrv,
 	}
 }
 
-func (api *GameApi) AddGame(ctx context.Context, request AddGameJSONRequestBody) (Game, error) {
+func (api *GameApi) AddGame(ctx context.Context, request CreateGameRequest) (Game, error) {
 	var errorDetails ErrorDetails
 	isPlayToWin := false
 	if request.IsPlayToWin != nil {
@@ -74,7 +70,7 @@ func (api *GameApi) BulkAddGames(ctx context.Context, requestBody io.ReadCloser)
 	csvReader := csv.NewReader(decodedReader)
 
 	// Start a db transaction
-	tx, err := api.beginTx(ctx)
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
 		log.Printf("Error beginning transaction: %v", err)
 		return BulkAddResponse{}, err
@@ -180,7 +176,7 @@ func (api *GameApi) GetGameByBarcode(ctx context.Context, gameBarcode string) (G
 	return FromVwLibraryGames(dbGames), nil
 }
 
-func (api *GameApi) UpdateGame(ctx context.Context, gameId uuid.UUID, request UpdateGameJSONRequestBody) error {
+func (api *GameApi) UpdateGame(ctx context.Context, gameId uuid.UUID, request CreateGameRequest) error {
 	// validate field values
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("title", request.Title, 1, 100)
@@ -192,7 +188,7 @@ func (api *GameApi) UpdateGame(ctx context.Context, gameId uuid.UUID, request Up
 	}
 
 	// Start a db transaction
-	tx, err := api.beginTx(ctx)
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
 		log.Printf("Error beginning transaction: %v", err)
 		return err
@@ -241,7 +237,7 @@ func (api *GameApi) ListGames(ctx context.Context, params ListGamesParams) (Game
 	if params.Title != nil {
 		errorDetails.ValidateStringLength("title", *params.Title, 1, 100)
 	}
-	if errorDetails.Empty() {
+	if !errorDetails.Empty() {
 		return GameStatusList{}, errorDetails
 	}
 

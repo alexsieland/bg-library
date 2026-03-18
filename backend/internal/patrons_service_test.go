@@ -287,7 +287,7 @@ func TestPatronServiceListPatrons(t *testing.T) {
 
 func setupTestPatronService() (PatronService, *MockDatabase) {
 	libService, mockDB := setupTestLibraryService()
-	return PatronService{LibraryService: libService}, mockDB
+	return PatronService{libraryService: libService}, mockDB
 }
 
 func setupPatronServiceWithMockTx(t *testing.T) (PatronService, context.Context, *MockTx) {
