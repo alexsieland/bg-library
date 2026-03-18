@@ -151,6 +151,12 @@ SELECT *
 FROM vw_play_to_win_groups
 WHERE id = $1;
 
+-- name: GetPlayToWinGroupByPlayToWinGameId :one
+SELECT gr.*
+FROM vw_play_to_win_groups AS gr
+LEFT JOIN play_to_win_games AS ga ON gr.id = ga.ptw_group_id
+WHERE ga.id = $1;
+
 -- name: GetPlayToWinGroupByName :one
 SELECT *
 FROM vw_play_to_win_groups
@@ -160,34 +166,18 @@ WHERE name ILIKE $1;
 INSERT INTO play_to_win_groups (name) VALUES ($1)
 RETURNING *;
 
--- name: GetPlayToWinSessions :many
-SELECT
-    id AS ptw_session_id,
-    ptw_group_id,
-    playtime_minutes,
-    created_at
+-- name: GetPlayToWinSessionsByGroupId :many
+SELECT *
 FROM vw_play_to_win_sessions
 WHERE ptw_group_id = $1;
 
 -- name: GetPlayToWinEntriesByGroupId :many
-SELECT
-    id AS ptw_entry_id,
-    ptw_session_id,
-    ptw_group_id,
-    entrant_name,
-    entrant_unique_id,
-    created_at
+SELECT *
 FROM vw_play_to_win_entries
 WHERE ptw_group_id = $1;
 
 -- name: GetPlayToWinEntriesByPlayToWinGameId :many
-SELECT
-    e.id AS ptw_entry_id,
-    ptw_session_id,
-    e.ptw_group_id,
-    entrant_name,
-    entrant_unique_id,
-    e.created_at
+SELECT e.*
 FROM vw_play_to_win_entries e
 LEFT JOIN play_to_win_games g ON e.ptw_group_id = g.ptw_group_id
 WHERE g.id = $1;

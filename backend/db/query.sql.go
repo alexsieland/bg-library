@@ -455,37 +455,22 @@ func (q *Queries) GetPatronByBarcode(ctx context.Context, barcode pgtype.Text) (
 }
 
 const getPlayToWinEntriesByGroupId = `-- name: GetPlayToWinEntriesByGroupId :many
-SELECT
-    id AS ptw_entry_id,
-    ptw_session_id,
-    ptw_group_id,
-    entrant_name,
-    entrant_unique_id,
-    created_at
+SELECT id, ptw_session_id, ptw_group_id, entrant_name, entrant_unique_id, created_at
 FROM vw_play_to_win_entries
 WHERE ptw_group_id = $1
 `
 
-type GetPlayToWinEntriesByGroupIdRow struct {
-	PtwEntryID      pgtype.UUID
-	PtwSessionID    pgtype.UUID
-	PtwGroupID      pgtype.UUID
-	EntrantName     string
-	EntrantUniqueID string
-	CreatedAt       pgtype.Timestamp
-}
-
-func (q *Queries) GetPlayToWinEntriesByGroupId(ctx context.Context, ptwGroupID pgtype.UUID) ([]GetPlayToWinEntriesByGroupIdRow, error) {
+func (q *Queries) GetPlayToWinEntriesByGroupId(ctx context.Context, ptwGroupID pgtype.UUID) ([]VwPlayToWinEntry, error) {
 	rows, err := q.db.Query(ctx, getPlayToWinEntriesByGroupId, ptwGroupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPlayToWinEntriesByGroupIdRow
+	var items []VwPlayToWinEntry
 	for rows.Next() {
-		var i GetPlayToWinEntriesByGroupIdRow
+		var i VwPlayToWinEntry
 		if err := rows.Scan(
-			&i.PtwEntryID,
+			&i.ID,
 			&i.PtwSessionID,
 			&i.PtwGroupID,
 			&i.EntrantName,
@@ -503,38 +488,23 @@ func (q *Queries) GetPlayToWinEntriesByGroupId(ctx context.Context, ptwGroupID p
 }
 
 const getPlayToWinEntriesByPlayToWinGameId = `-- name: GetPlayToWinEntriesByPlayToWinGameId :many
-SELECT
-    e.id AS ptw_entry_id,
-    ptw_session_id,
-    e.ptw_group_id,
-    entrant_name,
-    entrant_unique_id,
-    e.created_at
+SELECT e.id, e.ptw_session_id, e.ptw_group_id, e.entrant_name, e.entrant_unique_id, e.created_at
 FROM vw_play_to_win_entries e
 LEFT JOIN play_to_win_games g ON e.ptw_group_id = g.ptw_group_id
 WHERE g.id = $1
 `
 
-type GetPlayToWinEntriesByPlayToWinGameIdRow struct {
-	PtwEntryID      pgtype.UUID
-	PtwSessionID    pgtype.UUID
-	PtwGroupID      pgtype.UUID
-	EntrantName     string
-	EntrantUniqueID string
-	CreatedAt       pgtype.Timestamp
-}
-
-func (q *Queries) GetPlayToWinEntriesByPlayToWinGameId(ctx context.Context, id pgtype.UUID) ([]GetPlayToWinEntriesByPlayToWinGameIdRow, error) {
+func (q *Queries) GetPlayToWinEntriesByPlayToWinGameId(ctx context.Context, id pgtype.UUID) ([]VwPlayToWinEntry, error) {
 	rows, err := q.db.Query(ctx, getPlayToWinEntriesByPlayToWinGameId, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPlayToWinEntriesByPlayToWinGameIdRow
+	var items []VwPlayToWinEntry
 	for rows.Next() {
-		var i GetPlayToWinEntriesByPlayToWinGameIdRow
+		var i VwPlayToWinEntry
 		if err := rows.Scan(
-			&i.PtwEntryID,
+			&i.ID,
 			&i.PtwSessionID,
 			&i.PtwGroupID,
 			&i.EntrantName,
@@ -620,34 +590,37 @@ func (q *Queries) GetPlayToWinGroupByName(ctx context.Context, name string) (VwP
 	return i, err
 }
 
-const getPlayToWinSessions = `-- name: GetPlayToWinSessions :many
-SELECT
-    id AS ptw_session_id,
-    ptw_group_id,
-    playtime_minutes,
-    created_at
+const getPlayToWinGroupByPlayToWinGameId = `-- name: GetPlayToWinGroupByPlayToWinGameId :one
+SELECT gr.id, gr.name, gr.created_at
+FROM vw_play_to_win_groups AS gr
+LEFT JOIN play_to_win_games AS ga ON gr.id = ga.ptw_group_id
+WHERE ga.id = $1
+`
+
+func (q *Queries) GetPlayToWinGroupByPlayToWinGameId(ctx context.Context, id pgtype.UUID) (VwPlayToWinGroup, error) {
+	row := q.db.QueryRow(ctx, getPlayToWinGroupByPlayToWinGameId, id)
+	var i VwPlayToWinGroup
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const getPlayToWinSessionsByGroupId = `-- name: GetPlayToWinSessionsByGroupId :many
+SELECT id, ptw_group_id, playtime_minutes, created_at
 FROM vw_play_to_win_sessions
 WHERE ptw_group_id = $1
 `
 
-type GetPlayToWinSessionsRow struct {
-	PtwSessionID    pgtype.UUID
-	PtwGroupID      pgtype.UUID
-	PlaytimeMinutes pgtype.Int4
-	CreatedAt       pgtype.Timestamp
-}
-
-func (q *Queries) GetPlayToWinSessions(ctx context.Context, ptwGroupID pgtype.UUID) ([]GetPlayToWinSessionsRow, error) {
-	rows, err := q.db.Query(ctx, getPlayToWinSessions, ptwGroupID)
+func (q *Queries) GetPlayToWinSessionsByGroupId(ctx context.Context, ptwGroupID pgtype.UUID) ([]VwPlayToWinSession, error) {
+	rows, err := q.db.Query(ctx, getPlayToWinSessionsByGroupId, ptwGroupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPlayToWinSessionsRow
+	var items []VwPlayToWinSession
 	for rows.Next() {
-		var i GetPlayToWinSessionsRow
+		var i VwPlayToWinSession
 		if err := rows.Scan(
-			&i.PtwSessionID,
+			&i.ID,
 			&i.PtwGroupID,
 			&i.PlaytimeMinutes,
 			&i.CreatedAt,

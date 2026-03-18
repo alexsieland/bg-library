@@ -35,10 +35,7 @@ func (s *GameService) searchGames(ctx context.Context, gameTitle *string, limit 
 		return s.listGames(ctx, limit, offset, optTx)
 	}
 
-	sanitizedTitle := ""
-	if gameTitle != nil && *gameTitle != "" {
-		sanitizedTitle = SanitizeTitle(*gameTitle)
-	}
+	sanitizedTitle := SanitizeTitle(*gameTitle)
 
 	params := db.SearchGamesParams{
 		SanitizedTitle: GenerateDBRegexString(sanitizedTitle),
@@ -118,25 +115,64 @@ func (s *GameService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, opt
 	return wrapErrorOrReturn(&gameStatus, db.VwGameStatus{}, nil)
 }
 
-func (s *GameService) InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.Game, error) {
+func (s *GameService) InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.VwLibraryGame, error) {
 	createGameParams := db.CreateGameParams{
 		Title:          title,
 		SanitizedTitle: SanitizeTitle(title),
 		Barcode:        stringToPgText(barcode),
 	}
 
-	game, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.Game, error) {
-		created, err := s.libraryService.queries.WithTx(tx).CreateGame(ctx, createGameParams)
+	game, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.VwLibraryGame, error) {
+		newGame, err := s.libraryService.queries.WithTx(tx).CreateGame(ctx, createGameParams)
 		if err != nil {
 			return nil, err
 		}
 
+		var ptwGame db.VwPlayToWinGame
 		if isPlayToWin {
-
+			ptwGame, err = s.ptwService.InsertPlayToWinGame(ctx, newGame.ID, optTx)
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		return &created, nil
+		libraryGame := db.VwLibraryGame{
+			ID:              newGame.ID,
+			DisplayTitle:    newGame.Title,
+			Title:           newGame.Title,
+			SanitizedTitle:  newGame.SanitizedTitle,
+			Barcode:         newGame.Barcode,
+			PlayToWinGameID: ptwGame.ID,
+			CreatedAt:       newGame.CreatedAt,
+		}
+
+		return &libraryGame, nil
 	})
 
-	return wrapErrorOrReturn(game, db.Game{}, err)
+	return wrapErrorOrReturn(game, db.VwLibraryGame{}, err)
+}
+
+func (s *GameService) UpdateGame(ctx context.Context, gameId pgtype.UUID, title string, barcode *string, optTx pgx.Tx) error {
+	params := db.EditGameParams{
+		ID:             gameId,
+		DisplayTitle:   stringToPgText(&title),
+		SanitizedTitle: SanitizeTitle(title),
+		Barcode:        stringToPgText(barcode),
+	}
+
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).EditGame(ctx, params)
+		return nil, err
+	})
+
+	return wrapDatabaseError(err)
+}
+
+func (s *GameService) DeleteGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) error {
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).DeleteGame(ctx, gameId)
+		return nil, err
+	})
+
+	return wrapDatabaseError(err)
 }

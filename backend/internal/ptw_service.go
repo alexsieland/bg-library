@@ -21,6 +21,29 @@ func (s *PlayToWinService) SetPlayToWinService(gameService *GameService) {
 	s.gameService = gameService
 }
 
+type RecordPlayToWinSessionParams struct {
+	PtwGameId       pgtype.UUID
+	PlaytimeMinutes *int32
+	Entries         []RecordPlayToWinEntryParams
+}
+
+type RecordPlayToWinEntryParams struct {
+	EntrantName     string
+	EntrantUniqueID string
+}
+
+type PlayToWinSessionRecord struct {
+	PtwSessionId    pgtype.UUID
+	PlaytimeMinutes pgtype.Int4
+	Entries         []PlayToWinEntryRecord
+}
+
+type PlayToWinEntryRecord struct {
+	EntryId         pgtype.UUID
+	EntrantName     string
+	EntrantUniqueID string
+}
+
 func (s *PlayToWinService) GetPlayToWinGameByLibraryGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
 	var (
 		ptwGame db.VwPlayToWinGame
@@ -35,16 +58,30 @@ func (s *PlayToWinService) GetPlayToWinGameByLibraryGame(ctx context.Context, ga
 	return wrapErrorOrReturn(&ptwGame, db.VwPlayToWinGame{}, err)
 }
 
-func (s *PlayToWinService) GetPlayToWinGroup(ctx context.Context, groupId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGroup, error) {
+func (s *PlayToWinService) GetPlayToWinGroup(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGroup, error) {
 	var (
 		ptwGroup db.VwPlayToWinGroup
 		err      error
 	)
 
 	if optTx == nil {
-		ptwGroup, err = s.libraryService.queries.GetPlayToWinGroup(ctx, groupId)
+		ptwGroup, err = s.libraryService.queries.GetPlayToWinGroup(ctx, ptwGroupId)
 	} else {
-		ptwGroup, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinGroup(ctx, groupId)
+		ptwGroup, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinGroup(ctx, ptwGroupId)
+	}
+	return wrapErrorOrReturn(&ptwGroup, db.VwPlayToWinGroup{}, err)
+}
+
+func (s *PlayToWinService) GetPlayToWinGroupByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGroup, error) {
+	var (
+		ptwGroup db.VwPlayToWinGroup
+		err      error
+	)
+
+	if optTx == nil {
+		ptwGroup, err = s.libraryService.queries.GetPlayToWinGroupByPlayToWinGameId(ctx, ptwGameId)
+	} else {
+		ptwGroup, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinGroupByPlayToWinGameId(ctx, ptwGameId)
 	}
 	return wrapErrorOrReturn(&ptwGroup, db.VwPlayToWinGroup{}, err)
 }
@@ -77,10 +114,7 @@ func (s *PlayToWinService) searchPlayToWinGameOverview(ctx context.Context, game
 		return s.listPlayToWinGameOverviews(ctx, limit, offset, optTx)
 	}
 
-	sanitizedTitle := ""
-	if gameTitle != nil && *gameTitle != "" {
-		sanitizedTitle = SanitizeTitle(*gameTitle)
-	}
+	sanitizedTitle := SanitizeTitle(*gameTitle)
 
 	params := db.SearchPlayToWinGameOverviewsParams{
 		SanitizedTitle: GenerateDBRegexString(sanitizedTitle),
@@ -97,6 +131,165 @@ func (s *PlayToWinService) searchPlayToWinGameOverview(ctx context.Context, game
 func (s *PlayToWinService) ListPlayToWinGameOverviews(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwPlayToWinGameOverview, error) {
 	ptwGameOverviews, err := s.searchPlayToWinGameOverview(ctx, gameTitle, limit, offset, optTx)
 	return wrapErrorOrReturn(&ptwGameOverviews, []db.VwPlayToWinGameOverview{}, err)
+}
+
+func (s *PlayToWinService) GetPlayToWinGameEntriesByGroupId(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error) {
+	var (
+		entries []db.VwPlayToWinEntry
+		err     error
+	)
+
+	if optTx == nil {
+		entries, err = s.libraryService.queries.GetPlayToWinEntriesByGroupId(ctx, ptwGroupId)
+	} else {
+		entries, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinEntriesByGroupId(ctx, ptwGroupId)
+	}
+
+	return wrapErrorOrReturn(&entries, []db.VwPlayToWinEntry{}, err)
+}
+
+func (s *PlayToWinService) GetPlayToWinGameEntriesByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error) {
+	var (
+		entries []db.VwPlayToWinEntry
+		err     error
+	)
+
+	if optTx == nil {
+		entries, err = s.libraryService.queries.GetPlayToWinEntriesByPlayToWinGameId(ctx, ptwGameId)
+	} else {
+		entries, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinEntriesByPlayToWinGameId(ctx, ptwGameId)
+	}
+
+	return wrapErrorOrReturn(&entries, []db.VwPlayToWinEntry{}, err)
+}
+
+func (s *PlayToWinService) ListPlayToWinSessionsByGroupId(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinSession, error) {
+	var (
+		ptwSession []db.VwPlayToWinSession
+		err        error
+	)
+
+	if optTx == nil {
+		ptwSession, err = s.libraryService.queries.GetPlayToWinSessionsByGroupId(ctx, ptwGroupId)
+	} else {
+		ptwSession, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinSessionsByGroupId(ctx, ptwGroupId)
+	}
+
+	return wrapErrorOrReturn(&ptwSession, []db.VwPlayToWinSession{}, err)
+}
+
+func (s *PlayToWinService) ListPlayToWinEntriesByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error) {
+	var (
+		ptwEntries []db.VwPlayToWinEntry
+		err        error
+	)
+
+	if optTx == nil {
+		ptwEntries, err = s.libraryService.queries.GetPlayToWinEntriesByPlayToWinGameId(ctx, ptwGameId)
+	} else {
+		ptwEntries, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinEntriesByPlayToWinGameId(ctx, ptwGameId)
+	}
+
+	return wrapErrorOrReturn(&ptwEntries, []db.VwPlayToWinEntry{}, err)
+}
+
+func (s *PlayToWinService) ListPlayToWinEntriesByGroupId(ctx context.Context, groupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error) {
+	var (
+		ptwEntries []db.VwPlayToWinEntry
+		err        error
+	)
+
+	if optTx == nil {
+		ptwEntries, err = s.libraryService.queries.GetPlayToWinEntriesByGroupId(ctx, groupId)
+	} else {
+		ptwEntries, err = s.libraryService.queries.WithTx(optTx).GetPlayToWinEntriesByGroupId(ctx, groupId)
+	}
+
+	return wrapErrorOrReturn(&ptwEntries, []db.VwPlayToWinEntry{}, err)
+}
+
+func (s *PlayToWinService) insertPlayToWinSession(ctx context.Context, ptwGroupId pgtype.UUID, playtimeMinutes *int32, optTx pgx.Tx) (db.PlayToWinSession, error) {
+	params := db.CreatePlayToWinSessionParams{
+		PtwGroupID:      ptwGroupId,
+		PlaytimeMinutes: int32ToPgInt4(playtimeMinutes),
+	}
+
+	ptwSession, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.PlayToWinSession, error) {
+		ptwSession, err := s.libraryService.queries.WithTx(optTx).CreatePlayToWinSession(ctx, params)
+		return &ptwSession, err
+	})
+
+	if err != nil {
+		return db.PlayToWinSession{}, err
+	}
+	return *ptwSession, err
+}
+
+func (s *PlayToWinService) insertPlayToWinEntry(ctx context.Context, ptwSessionId pgtype.UUID, ptwGroupId pgtype.UUID, entrantName string, entrantUniqueID string, optTx pgx.Tx) (db.PlayToWinEntry, error) {
+	params := db.CreatePlayToWinEntryParams{
+		PtwSessionID:    ptwSessionId,
+		PtwGroupID:      ptwGroupId,
+		EntrantName:     entrantName,
+		EntrantUniqueID: entrantUniqueID,
+	}
+	ptwEntry, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.PlayToWinEntry, error) {
+		ptwEntry, err := s.libraryService.queries.WithTx(optTx).CreatePlayToWinEntry(ctx, params)
+		return &ptwEntry, err
+	})
+
+	if err != nil {
+		return db.PlayToWinEntry{}, err
+	}
+	return *ptwEntry, err
+}
+
+func (s *PlayToWinService) RecordPlayToWinSession(ctx context.Context, params RecordPlayToWinSessionParams, optTx pgx.Tx) (PlayToWinSessionRecord, error) {
+	ptwGroup, err := s.GetPlayToWinGroupByPlayToWinGameId(ctx, params.PtwGameId, nil)
+	if err != nil {
+		return PlayToWinSessionRecord{}, err
+	}
+
+	record, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*PlayToWinSessionRecord, error) {
+		session, err := s.insertPlayToWinSession(ctx, ptwGroup.ID, params.PlaytimeMinutes, tx)
+		if err != nil {
+			return nil, err
+		}
+
+		var entries []PlayToWinEntryRecord
+		for _, entryParams := range params.Entries {
+			entry, err := s.insertPlayToWinEntry(ctx, session.ID, ptwGroup.ID, entryParams.EntrantName, entryParams.EntrantUniqueID, tx)
+			if err != nil {
+				return nil, err
+			}
+			entries = append(entries, PlayToWinEntryRecord{
+				EntryId:         entry.ID,
+				EntrantName:     entry.EntrantName,
+				EntrantUniqueID: entry.EntrantUniqueID,
+			})
+		}
+
+		return &PlayToWinSessionRecord{
+			PtwSessionId:    session.ID,
+			PlaytimeMinutes: session.PlaytimeMinutes,
+			Entries:         entries,
+		}, nil
+	})
+
+	return wrapErrorOrReturn(record, PlayToWinSessionRecord{}, err)
+}
+
+func (s *PlayToWinService) UpdatePlayToWinGameWinner(ctx context.Context, ptwGameId pgtype.UUID, entryId pgtype.UUID, optTx pgx.Tx) error {
+	params := db.UpdatePlayToWinWinnerParams{
+		ID:       ptwGameId,
+		WinnerID: entryId,
+	}
+
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).UpdatePlayToWinWinner(ctx, params)
+		return nil, err
+	})
+
+	return wrapDatabaseError(err)
 }
 
 // InsertPlayToWinGroup inserts a new play to win group into the database.
@@ -142,10 +335,10 @@ func (s *PlayToWinService) InsertPlayToWinGroup(ctx context.Context, groupName s
 	return wrapErrorOrReturn(ptwGroup, db.VwPlayToWinGroup{}, err)
 }
 
-// InsertPlayToWin inserts a new play to win into the database.
+// InsertPlayToWinGame inserts a new play to win into the database.
 // This call is idempotent. If the play to win already exists, it will be ignored.
 // If the play to win was deleted, it will be restored.
-func (s *PlayToWinService) InsertPlayToWin(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
+func (s *PlayToWinService) InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
 	game, err := s.gameService.GetGame(ctx, gameId, optTx)
 	if err != nil {
 		return db.VwPlayToWinGame{}, wrapDatabaseError(err)
@@ -199,9 +392,9 @@ func (s *PlayToWinService) InsertPlayToWin(ctx context.Context, gameId pgtype.UU
 	return wrapErrorOrReturn(ptwGame, db.VwPlayToWinGame{}, err)
 }
 
-// DeletePlayToWin deletes a play to win from the database.
+// DeletePlayToWinGameByPlayToWinId deletes a play to win from the database.
 // This call is idempotent. If the play to win does not exist, it will be ignored.
-func (s *PlayToWinService) DeletePlayToWin(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
+func (s *PlayToWinService) DeletePlayToWinGameByPlayToWinId(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
 	dbDeletionReason, err := playToWinGameDeletionReason(deletionReason)
 	if err != nil {
 		return err
@@ -214,6 +407,27 @@ func (s *PlayToWinService) DeletePlayToWin(ctx context.Context, ptwGameId pgtype
 
 	_, err = WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		err := s.libraryService.queries.WithTx(tx).DeletePlayToWinGameByPlayToWinId(ctx, params)
+		return nil, err
+	})
+
+	return wrapDatabaseError(err)
+}
+
+// DeletePlayToWinGameByLibraryGameId deletes a play to win from the database.
+// This call is idempotent. If the play to win does not exist, it will be ignored.
+func (s *PlayToWinService) DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error {
+	dbDeletionReason, err := playToWinGameDeletionReason(deletionReason)
+	if err != nil {
+		return err
+	}
+	params := db.DeletePlayToWinGameParams{
+		GameID:                gameId,
+		DeletionReason:        dbDeletionReason,
+		DeletionReasonComment: stringToPgText(deletionReasonComment),
+	}
+
+	_, err = WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).DeletePlayToWinGame(ctx, params)
 		return nil, err
 	})
 
