@@ -370,6 +370,7 @@ func (s *PlayToWinService) DeletePlayToWinGameByLibraryGameId(ctx context.Contex
 	return wrapDatabaseError(err)
 }
 
+// ResetPlayToWinGameWinners resets the winners of all won, but unclaimed play to win games.
 func (s *PlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error {
 	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		err := s.libraryService.queries.WithTx(tx).ResetPlayToWinGameWinners(ctx)
@@ -378,6 +379,11 @@ func (s *PlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx 
 	return wrapDatabaseError(err)
 }
 
+// ClaimPlayToWinGame claims a play to win game.
+// First deletes the play to win game with deletion reason "claimed"
+// Then deletes the entry with deletion reason "won"
+// Finally, deletes the library game
+// If any of the above steps fail, the transaction will be rolled back.
 func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error {
 	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		//TODO delete the play to game with deletion reason "claimed"
