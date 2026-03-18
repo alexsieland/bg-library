@@ -29,6 +29,7 @@ type playToWinService interface {
 	InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error)
 	DeletePlayToWinGameByPlayToWinId(ctx context.Context, ptwGameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error
 	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason *string, deletionReasonComment *string, optTx pgx.Tx) error
+	ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error
 	ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error
 }
 

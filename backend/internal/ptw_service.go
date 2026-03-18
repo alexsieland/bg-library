@@ -377,3 +377,17 @@ func (s *PlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx 
 	})
 	return wrapDatabaseError(err)
 }
+
+func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error {
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		//TODO delete the play to game with deletion reason "claimed"
+
+		//TODO delete the entry with deletion reason "won"
+
+		//TODO delete the library game (doesn't take a deletion reason)
+
+		panic("not implemented")
+	})
+
+	return wrapDatabaseError(err)
+}
