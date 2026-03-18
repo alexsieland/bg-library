@@ -64,7 +64,7 @@ func (api *PatronApi) BulkAddPatrons(ctx context.Context, requestBody io.ReadClo
 	// Start a db transaction
 	tx, err := api.beginTx(ctx)
 	if err != nil {
-		log.Printf("Error creating transaction: %v", err)
+		log.Printf("Error beginning transaction: %v", err)
 		return BulkAddResponse{}, err
 	}
 

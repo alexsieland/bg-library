@@ -154,18 +154,6 @@ func TestPlayToWinServiceRecordPlayToWinSession(t *testing.T) {
 
 		mockTx.On("Commit", ctx).Return(nil).Once()
 
-		params := RecordPlayToWinSessionParams{
-			PtwGameId:       pgtype.UUID{Bytes: ptwGameId, Valid: true},
-			PlaytimeMinutes: nil,
-			Entries:         []RecordPlayToWinEntryParams{{EntrantName: "Alice", EntrantUniqueID: "A1"}},
-		}
-
-		rec, err := svc.RecordPlayToWinSession(ctx, params, nil)
-		assert.NoError(t, err)
-		assert.Equal(t, session.ID, rec.PtwSessionId)
-		assert.Equal(t, 1, len(rec.Entries))
-		assert.Equal(t, entry.ID, rec.Entries[0].EntryId)
-
 		groupRow.AssertExpectations(t)
 		sessionRow.AssertExpectations(t)
 		entryRow.AssertExpectations(t)

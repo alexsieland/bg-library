@@ -17,31 +17,8 @@ func NewPlayToWinService(libService *LibraryService) *PlayToWinService {
 	return &PlayToWinService{libraryService: libService}
 }
 
-func (s *PlayToWinService) SetPlayToWinService(gameService *GameService) {
+func (s *PlayToWinService) SetGameService(gameService *GameService) {
 	s.gameService = gameService
-}
-
-type RecordPlayToWinSessionParams struct {
-	PtwGameId       pgtype.UUID
-	PlaytimeMinutes *int32
-	Entries         []RecordPlayToWinEntryParams
-}
-
-type RecordPlayToWinEntryParams struct {
-	EntrantName     string
-	EntrantUniqueID string
-}
-
-type PlayToWinSessionRecord struct {
-	PtwSessionId    pgtype.UUID
-	PlaytimeMinutes pgtype.Int4
-	Entries         []PlayToWinEntryRecord
-}
-
-type PlayToWinEntryRecord struct {
-	EntryId         pgtype.UUID
-	EntrantName     string
-	EntrantUniqueID string
 }
 
 func (s *PlayToWinService) GetPlayToWinGameByLibraryGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
@@ -208,7 +185,7 @@ func (s *PlayToWinService) ListPlayToWinEntriesByGroupId(ctx context.Context, gr
 	return wrapErrorOrReturn(&ptwEntries, []db.VwPlayToWinEntry{}, err)
 }
 
-func (s *PlayToWinService) insertPlayToWinSession(ctx context.Context, ptwGroupId pgtype.UUID, playtimeMinutes *int32, optTx pgx.Tx) (db.PlayToWinSession, error) {
+func (s *PlayToWinService) InsertPlayToWinSession(ctx context.Context, ptwGroupId pgtype.UUID, playtimeMinutes *int32, optTx pgx.Tx) (db.PlayToWinSession, error) {
 	params := db.CreatePlayToWinSessionParams{
 		PtwGroupID:      ptwGroupId,
 		PlaytimeMinutes: int32ToPgInt4(playtimeMinutes),
@@ -219,13 +196,10 @@ func (s *PlayToWinService) insertPlayToWinSession(ctx context.Context, ptwGroupI
 		return &ptwSession, err
 	})
 
-	if err != nil {
-		return db.PlayToWinSession{}, err
-	}
-	return *ptwSession, err
+	return wrapErrorOrReturn(ptwSession, db.PlayToWinSession{}, err)
 }
 
-func (s *PlayToWinService) insertPlayToWinEntry(ctx context.Context, ptwSessionId pgtype.UUID, ptwGroupId pgtype.UUID, entrantName string, entrantUniqueID string, optTx pgx.Tx) (db.PlayToWinEntry, error) {
+func (s *PlayToWinService) InsertPlayToWinEntry(ctx context.Context, ptwSessionId pgtype.UUID, ptwGroupId pgtype.UUID, entrantName string, entrantUniqueID string, optTx pgx.Tx) (db.PlayToWinEntry, error) {
 	params := db.CreatePlayToWinEntryParams{
 		PtwSessionID:    ptwSessionId,
 		PtwGroupID:      ptwGroupId,
@@ -237,45 +211,7 @@ func (s *PlayToWinService) insertPlayToWinEntry(ctx context.Context, ptwSessionI
 		return &ptwEntry, err
 	})
 
-	if err != nil {
-		return db.PlayToWinEntry{}, err
-	}
-	return *ptwEntry, err
-}
-
-func (s *PlayToWinService) RecordPlayToWinSession(ctx context.Context, params RecordPlayToWinSessionParams, optTx pgx.Tx) (PlayToWinSessionRecord, error) {
-	ptwGroup, err := s.GetPlayToWinGroupByPlayToWinGameId(ctx, params.PtwGameId, nil)
-	if err != nil {
-		return PlayToWinSessionRecord{}, err
-	}
-
-	record, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*PlayToWinSessionRecord, error) {
-		session, err := s.insertPlayToWinSession(ctx, ptwGroup.ID, params.PlaytimeMinutes, tx)
-		if err != nil {
-			return nil, err
-		}
-
-		var entries []PlayToWinEntryRecord
-		for _, entryParams := range params.Entries {
-			entry, err := s.insertPlayToWinEntry(ctx, session.ID, ptwGroup.ID, entryParams.EntrantName, entryParams.EntrantUniqueID, tx)
-			if err != nil {
-				return nil, err
-			}
-			entries = append(entries, PlayToWinEntryRecord{
-				EntryId:         entry.ID,
-				EntrantName:     entry.EntrantName,
-				EntrantUniqueID: entry.EntrantUniqueID,
-			})
-		}
-
-		return &PlayToWinSessionRecord{
-			PtwSessionId:    session.ID,
-			PlaytimeMinutes: session.PlaytimeMinutes,
-			Entries:         entries,
-		}, nil
-	})
-
-	return wrapErrorOrReturn(record, PlayToWinSessionRecord{}, err)
+	return wrapErrorOrReturn(ptwEntry, db.PlayToWinEntry{}, err)
 }
 
 func (s *PlayToWinService) UpdatePlayToWinGameWinner(ctx context.Context, ptwGameId pgtype.UUID, entryId pgtype.UUID, optTx pgx.Tx) error {

@@ -22,6 +22,20 @@ func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
 	}
 }
 
+func pgInt4ToInteger(pg4 pgtype.Int4) *int32 {
+	if !pg4.Valid {
+		return nil
+	}
+	return &pg4.Int32
+}
+
+func pgTextToString(text pgtype.Text) *string {
+	if !text.Valid {
+		return nil
+	}
+	return &text.String
+}
+
 func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 	var checkedOutAt *time.Time
 	if dbGameStatus.CheckoutTimestamp.Valid {

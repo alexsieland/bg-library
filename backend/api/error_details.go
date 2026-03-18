@@ -38,3 +38,12 @@ func (e *ErrorDetails) ValidateIntMax(fieldName string, i int32, maxVal int32) {
 		e.AddErrorDetail(fieldName, fmt.Sprintf("Must be less than or equal to %d", maxVal))
 	}
 }
+
+func (e *ErrorDetails) ValidateEnum(fieldName string, value string, allowedValues []string) {
+	for _, allowedValue := range allowedValues {
+		if value == allowedValue {
+			return
+		}
+	}
+	e.AddErrorDetail(fieldName, fmt.Sprintf("Value must be one of: %v", allowedValues))
+}
