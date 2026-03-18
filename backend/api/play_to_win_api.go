@@ -423,6 +423,6 @@ func (api *PlayToWinApi) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
 	panic("not implemented")
 }
 
-func (api *PlayToWinApi) ResetPlayToWinRaffle(ctx context.Context) {
-	panic("not implemented")
+func (api *PlayToWinApi) ResetPlayToWinRaffle(ctx context.Context) error {
+	return api.service.ResetPlayToWinGameWinners(ctx, nil)
 }

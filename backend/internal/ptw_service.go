@@ -369,3 +369,11 @@ func (s *PlayToWinService) DeletePlayToWinGameByLibraryGameId(ctx context.Contex
 
 	return wrapDatabaseError(err)
 }
+
+func (s *PlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error {
+	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		err := s.libraryService.queries.WithTx(tx).ResetPlayToWinGameWinners(ctx)
+		return nil, err
+	})
+	return wrapDatabaseError(err)
+}
