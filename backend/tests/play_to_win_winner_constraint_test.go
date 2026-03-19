@@ -50,9 +50,9 @@ func TestPlayToWinWinnerMustBelongToSourceOrDuplicateGame(t *testing.T) {
 	t.Setenv("GIN_MODE", "release")
 
 	server := api.NewServer()
-	err = server.Database.Connect()
+	err = server.LibService.Start()
 	assert.NoError(t, err)
-	defer server.Database.Close()
+	defer server.LibService.Stop()
 
 	r := gin.New()
 	api.RegisterHandlers(r, server)

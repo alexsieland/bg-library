@@ -105,17 +105,9 @@ func TestPlayToWinServiceRecordPlayToWinSession(t *testing.T) {
 		ctx := context.Background()
 		mockTx := MockWithinTx(t)
 
-		// First, GetPlayToWinGroupByPlayToWinGameId is called (outside inner tx)
-		ptwGameId := uuid.New()
+		// Setup play-to-win group and IDs used for session/entries
 		groupId := uuid.New()
 		ptwGroup := db.VwPlayToWinGroup{ID: pgtype.UUID{Bytes: groupId, Valid: true}, Name: "G", CreatedAt: pgtype.Timestamp{Valid: true}}
-		groupRow := new(MockRow)
-		groupRow.On("Scan", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = ptwGroup.ID
-			*args.Get(1).(*string) = ptwGroup.Name
-			*args.Get(2).(*pgtype.Timestamp) = ptwGroup.CreatedAt
-		}).Return(nil)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: ptwGameId, Valid: true}}).Return(groupRow).Once()
 
 		// Now, within the inner tx: CreatePlayToWinSession then CreatePlayToWinEntry for each entry
 		sessionId := uuid.New()
@@ -161,7 +153,6 @@ func TestPlayToWinServiceRecordPlayToWinSession(t *testing.T) {
 		_, err = svc.InsertPlayToWinEntry(ctx, session.ID, ptwGroup.ID, "Alice", "A1", nil)
 		assert.NoError(t, err)
 
-		groupRow.AssertExpectations(t)
 		sessionRow.AssertExpectations(t)
 		entryRow.AssertExpectations(t)
 		mockTx.AssertExpectations(t)

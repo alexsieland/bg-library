@@ -13,7 +13,7 @@ import (
 )
 
 type Server struct {
-	LibService     *internal.LibraryServiceInterface
+	LibService     internal.LibraryServiceInterface
 	PatronApi      *PatronApi
 	TransactionApi *TransactionApi
 	GameApi        *GameApi

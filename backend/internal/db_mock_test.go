@@ -114,6 +114,9 @@ func (m *MockTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, 
 }
 
 func (m *MockTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	// Debug: record that QueryRow was called (helps diagnose test expectation mismatches)
+	// Note: tests rely on mock expectations; this log is only for debugging in CI/local runs.
+	// fmt.Printf("MockTx.QueryRow called: sql=%s, args=%v\n", sql, args)
 	callArgs := m.Called(ctx, sql, args)
 	if callArgs.Get(0) == nil {
 		return nil
