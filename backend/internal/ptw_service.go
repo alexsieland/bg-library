@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/jackc/pgx/v5"
@@ -415,7 +416,20 @@ func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgt
 		panic("gameService must be set before calling ClaimPlayToWinGame")
 	}
 
-	_, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+	ptwGameOverview, err := s.GetPlayToWinGameOverview(ctx, ptwGameId, optTx)
+	if err != nil {
+		if errors.Is(ErrNotFound, err) {
+			return nil
+		}
+		return wrapDatabaseError(err)
+	}
+
+	// A game can't be claimed if it doesn't have a winner
+	if !ptwGameOverview.WinnerID.Valid {
+		return ErrClaimUnwonPtwGame
+	}
+
+	_, err = WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
 		gameDeletionReason := db.NullPlayToWinGameDeletionType{
 			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeClaimed,
 			Valid:                     true,
@@ -429,12 +443,12 @@ func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgt
 			PlayToWinEntryDeletionType: db.PlayToWinEntryDeletionTypeWon,
 			Valid:                      true,
 		}
-		err = s.DeletePlayToWinEntry(ctx, ptwGameId, entryDeletionReason, nil, tx)
+		err = s.DeletePlayToWinEntry(ctx, ptwGameOverview.WinnerID, entryDeletionReason, nil, tx)
 		if err != nil {
 			return nil, err
 		}
 
-		err = s.gameService.DeleteGame(ctx, ptwGameId, tx)
+		err = s.gameService.DeleteGame(ctx, ptwGameOverview.GameID, tx)
 		if err != nil {
 			return nil, err
 		}

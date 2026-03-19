@@ -264,6 +264,10 @@ func (api *PlayToWinApi) UpdatePlayToWinGame(ctx context.Context, ptwId types.UU
 }
 
 func (api *PlayToWinApi) DeletePlayToWinGame(ctx context.Context, ptwId types.UUID, request RemovePlayToWinGameRequest) error {
+	if request.RemovalReason == Claimed {
+		return api.ClaimPlayToWinGame(ctx, ptwId)
+	}
+
 	var errorDetails ErrorDetails
 	removalReason := string(request.RemovalReason)
 	dbRemovalReason := errorDetails.playToWinGameDeletionReason(&removalReason)

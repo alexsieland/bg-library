@@ -278,7 +278,7 @@ func (s *Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID)
 func (s *Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
 	var request RemovePlayToWinGameRequest
 	extractRequestBody[RemovePlayToWinGameRequest](c, &request)
-	if c.IsAborted() {
+	if !c.IsAborted() {
 		err := s.PlayToWinApi.RemovePlayToWinGameByGameId(c.Request.Context(), gameId, request)
 		handleError(c, err)
 		if c.IsAborted() {
@@ -300,7 +300,7 @@ func (s *Server) AddPlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
 func (s *Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 	var request RemovePlayToWinGameRequest
 	extractRequestBody[RemovePlayToWinGameRequest](c, &request)
-	if c.IsAborted() {
+	if !c.IsAborted() {
 		err := s.PlayToWinApi.DeletePlayToWinGame(c.Request.Context(), ptwId, request)
 		handleError(c, err)
 		if c.IsAborted() {
@@ -321,7 +321,7 @@ func (s *Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
 func (s *Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 	var request UpdatePlayToWinGameJSONRequestBody
 	extractRequestBody[UpdatePlayToWinGameJSONRequestBody](c, &request)
-	if c.IsAborted() {
+	if !c.IsAborted() {
 		err := s.PlayToWinApi.UpdatePlayToWinGame(c.Request.Context(), ptwId, request)
 		handleError(c, err)
 		if c.IsAborted() {
@@ -343,7 +343,7 @@ func (s *Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesPar
 func (s *Server) AddPlayToWinSession(c *gin.Context) {
 	var request CreatePlayToWinSessionRequest
 	extractRequestBody[CreatePlayToWinSessionRequest](c, &request)
-	if c.IsAborted() {
+	if !c.IsAborted() {
 		ptwSession, err := s.PlayToWinApi.RecordPlayToWinSession(c.Request.Context(), request)
 		handleError(c, err)
 		if c.IsAborted() {

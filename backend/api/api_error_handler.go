@@ -55,6 +55,10 @@ func handleError(c *gin.Context, err error) {
 		conflict(c, "Game already checked out by another patron")
 		return
 	}
+	if errors.Is(err, internal.ErrClaimUnwonPtwGames) {
+		badRequest(c, "Cannot claim play-to-win game without a winner")
+		return
+	}
 	if errors.Is(err, internal.ErrInvalidInput) {
 		badRequest(c, "Invalid input")
 	}
