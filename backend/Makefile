@@ -1,4 +1,4 @@
-.PHONY: help generate build-docker remove-docker run format lint test
+.PHONY: help generate build-docker remove-docker run format lint test coverage
 
 export GHCR_USERNAME ?= alexsieland
 
@@ -59,3 +59,8 @@ test:
 test-integration:
 	@echo "Running integration tests..."
 	@go test -v ./tests/... $(TEST_ARGS)
+
+# Run unit test coverage for all packages except the integration test package(s)
+coverage:
+	@echo "Running coverage (unit tests only, excluding packages ending with /tests)..."
+	go test -v ./... -coverprofile=coverage.out -covermode=atomic && go tool cover -html=coverage.out -o coverage.html
