@@ -10,14 +10,14 @@ import (
 
 type GameService struct {
 	libraryService *LibraryService
-	ptwService     *PlayToWinService
+	ptwService     PlayToWinServiceInterface
 }
 
 func NewGameService(libService *LibraryService) *GameService {
 	return &GameService{libraryService: libService}
 }
 
-func (s *GameService) SetPlayToWinService(ptwService *PlayToWinService) {
+func (s *GameService) SetPlayToWinService(ptwService PlayToWinServiceInterface) {
 	s.ptwService = ptwService
 }
 

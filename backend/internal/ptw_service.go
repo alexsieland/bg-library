@@ -14,6 +14,15 @@ type PlayToWinService struct {
 	gameService    *GameService
 }
 
+// PlayToWinServiceInterface defines the subset of methods from PlayToWinService
+// that other services depend on. Using an interface allows tests to inject a
+// mock implementation.
+type PlayToWinServiceInterface interface {
+	InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error)
+	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
+	GetPlayToWinGameByLibraryGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error)
+}
+
 func NewPlayToWinService(libService *LibraryService) *PlayToWinService {
 	return &PlayToWinService{libraryService: libService}
 }

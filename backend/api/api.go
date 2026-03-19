@@ -29,6 +29,7 @@ func NewServer() *Server {
 	var ptwSrv = internal.NewPlayToWinService(libService)
 	transSrv.SetGameService(gameSrv)
 	ptwSrv.SetGameService(gameSrv)
+	// PlayToWinService implements PlayToWinServiceInterface so it can be passed directly
 	gameSrv.SetPlayToWinService(ptwSrv)
 
 	return &Server{
