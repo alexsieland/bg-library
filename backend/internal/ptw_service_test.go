@@ -152,7 +152,14 @@ func TestPlayToWinServiceRecordPlayToWinSession(t *testing.T) {
 		// Next call for CreatePlayToWinEntry
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).Return(entryRow).Once()
 
-		mockTx.On("Commit", ctx).Return(nil).Once()
+		mockTx.On("Commit", ctx).Return(nil).Twice()
+
+		// Call the service methods to exercise the logic
+		session, err := svc.InsertPlayToWinSession(ctx, ptwGroup.ID, ptrInt32(30), nil)
+		assert.NoError(t, err)
+
+		_, err = svc.InsertPlayToWinEntry(ctx, session.ID, ptwGroup.ID, "Alice", "A1", nil)
+		assert.NoError(t, err)
 
 		groupRow.AssertExpectations(t)
 		sessionRow.AssertExpectations(t)
@@ -164,3 +171,6 @@ func TestPlayToWinServiceRecordPlayToWinSession(t *testing.T) {
 
 // Helpers for scanning used only in this file
 // (small, focused scan helpers; longer-lived helpers live in db_mock_test.go)
+
+// ptrInt32 is a helper to create *int32 pointers in tests
+func ptrInt32(v int32) *int32 { return &v }

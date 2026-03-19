@@ -43,7 +43,7 @@ func main() {
 	})
 
 	api.RegisterSwagger(r)
-	api.RegisterHandlers(r, &server)
+	api.RegisterHandlers(r, server)
 
 	// And we serve HTTP until the world ends.
 

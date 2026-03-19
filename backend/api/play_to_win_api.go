@@ -35,11 +35,11 @@ type playToWinService interface {
 }
 
 type PlayToWinApi struct {
-	libraryService *internal.LibraryService
+	libraryService internal.LibraryServiceInterface
 	service        playToWinService
 }
 
-func NewPlayToWinApi(libService *internal.LibraryService, ptwSrv *internal.PlayToWinService) *PlayToWinApi {
+func NewPlayToWinApi(libService internal.LibraryServiceInterface, ptwSrv *internal.PlayToWinService) *PlayToWinApi {
 	return &PlayToWinApi{
 		libraryService: libService,
 		service:        ptwSrv,

@@ -123,6 +123,5 @@ func (s *PatronService) searchPatrons(ctx context.Context, fullName *string, lim
 
 func (s *PatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
 	dbPatronList, err := s.searchPatrons(ctx, fullName, limit, offset, optTx)
-
 	return wrapErrorOrReturn(&dbPatronList, []db.VwLibraryPatron{}, err)
 }

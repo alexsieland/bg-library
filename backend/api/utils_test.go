@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alexsieland/bg-library/db"
+	"github.com/alexsieland/bg-library/internal"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -201,10 +202,10 @@ func TestConversionUtils(t *testing.T) {
 
 func TestValidationUtils(t *testing.T) {
 	t.Run("Should sanitize title correctly", func(t *testing.T) {
-		assert.Equal(t, "catan", SanitizeTitle("Catan"))
-		assert.Equal(t, "catan", SanitizeTitle("CATAN"))
+		assert.Equal(t, "catan", internal.SanitizeTitle("Catan"))
+		assert.Equal(t, "catan", internal.SanitizeTitle("CATAN"))
 		// norm.NFD check (e.g., combined characters)
-		assert.Equal(t, "e", SanitizeTitle("\u0065\u0301")) // e + combining acute accent -> e (accents removed)
+		assert.Equal(t, "e", internal.SanitizeTitle("\u0065\u0301")) // e + combining acute accent -> e (accents removed)
 	})
 }
 

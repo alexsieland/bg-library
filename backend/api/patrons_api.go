@@ -24,11 +24,11 @@ type patronService interface {
 }
 
 type PatronApi struct {
-	libraryService *internal.LibraryService
+	libraryService internal.LibraryServiceInterface
 	service        patronService
 }
 
-func NewPatronApi(libService *internal.LibraryService, patronSrv *internal.PatronService) *PatronApi {
+func NewPatronApi(libService internal.LibraryServiceInterface, patronSrv *internal.PatronService) *PatronApi {
 	return &PatronApi{
 		libraryService: libService,
 		service:        patronSrv,

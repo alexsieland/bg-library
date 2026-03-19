@@ -13,14 +13,14 @@ import (
 )
 
 type Server struct {
-	LibService     *internal.LibraryService
+	LibService     *internal.LibraryServiceInterface
 	PatronApi      *PatronApi
 	TransactionApi *TransactionApi
 	GameApi        *GameApi
 	PlayToWinApi   *PlayToWinApi
 }
 
-func NewServer() Server {
+func NewServer() *Server {
 	database := db.NewLibraryDatabase()
 	var libService = internal.NewLibraryService(database)
 	var gameSrv = internal.NewGameService(libService)
@@ -31,7 +31,7 @@ func NewServer() Server {
 	ptwSrv.SetGameService(gameSrv)
 	gameSrv.SetPlayToWinService(ptwSrv)
 
-	return Server{
+	return &Server{
 		LibService:     libService,
 		PatronApi:      NewPatronApi(libService, patronSrv),
 		TransactionApi: NewTransactionApi(libService, transSrv),

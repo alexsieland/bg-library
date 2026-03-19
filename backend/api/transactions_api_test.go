@@ -200,11 +200,10 @@ func (f *transactionApiTestFixture) build() *transactionApiTestFixture {
 }
 
 func newTestTransactionApi(service transactionService, tx pgx.Tx, beginErr error) *TransactionApi {
+	lib := &testLibService{tx: tx, err: beginErr}
 	return &TransactionApi{
-		service: service,
-		beginTx: func(context.Context) (pgx.Tx, error) {
-			return tx, beginErr
-		},
+		libraryService: lib,
+		service:        service,
 	}
 }
 

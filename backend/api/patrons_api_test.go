@@ -408,12 +408,21 @@ func (m *mockPatronService) ListPatrons(ctx context.Context, fullName *string, l
 	return args.Get(0).([]db.VwLibraryPatron), args.Error(1)
 }
 
+// small mock that implements internal.LibraryServiceInterface for tests
+type testLibService struct {
+	tx  pgx.Tx
+	err error
+}
+
+func (t *testLibService) BeginTx(ctx context.Context) (pgx.Tx, error) { return t.tx, t.err }
+func (t *testLibService) Start() error                                { return nil }
+func (t *testLibService) Stop()                                       {}
+
 func newTestPatronApi(service patronService, tx pgx.Tx, beginErr error) *PatronApi {
+	lib := &testLibService{tx: tx, err: beginErr}
 	return &PatronApi{
-		service: service,
-		beginTx: func(context.Context) (pgx.Tx, error) {
-			return tx, beginErr
-		},
+		libraryService: lib,
+		service:        service,
 	}
 }
 

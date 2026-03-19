@@ -193,7 +193,7 @@ func (s *PlayToWinService) InsertPlayToWinSession(ctx context.Context, ptwGroupI
 	}
 
 	ptwSession, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.PlayToWinSession, error) {
-		ptwSession, err := s.libraryService.queries.WithTx(optTx).CreatePlayToWinSession(ctx, params)
+		ptwSession, err := s.libraryService.queries.WithTx(tx).CreatePlayToWinSession(ctx, params)
 		return &ptwSession, err
 	})
 
@@ -208,7 +208,7 @@ func (s *PlayToWinService) InsertPlayToWinEntry(ctx context.Context, ptwSessionI
 		EntrantUniqueID: entrantUniqueID,
 	}
 	ptwEntry, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.PlayToWinEntry, error) {
-		ptwEntry, err := s.libraryService.queries.WithTx(optTx).CreatePlayToWinEntry(ctx, params)
+		ptwEntry, err := s.libraryService.queries.WithTx(tx).CreatePlayToWinEntry(ctx, params)
 		return &ptwEntry, err
 	})
 
