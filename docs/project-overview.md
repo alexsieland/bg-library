@@ -39,4 +39,14 @@ The system is built with a clear separation of concerns:
 3.  **Frontend (`frontend/`)**: A modern web interface that allows library administrators to manage the collection and handle patron transactions.
 4.  **Database (`PostgreSQL`)**: Stores all relational data, with a schema optimized for both performance (using indexes) and data preservation (using soft deletes and views).
 
-For detailed technical standards and implementation details, please refer to the [Coding Guidelines](coding-guidelines.md).
+Backend Layered Architecture
+
+The backend has been reworked into a clear layered architecture to improve separation of concerns and testability. Key points:
+
+- `backend/api/api.go` is the single entry point for all HTTP requests. It wires up the concrete services and exposes the generated server implementation.
+- Request handlers are organized per-category in `* _api.go` files (for example `games_api.go`, `patrons_api.go`). These files act primarily as a validation and translation layer: they parse and validate incoming requests, translate between API models and internal types, and call into a single service responsible for the requested domain.
+- Service layer files follow the naming convention `*_service.go` (for example `game_service.go`, `patron_service.go`). Services implement business logic and orchestration. Services are allowed to depend on other services when they need to collaborate.
+- `library_service.go` is a foundational service that encapsulates shared database access and transaction handling. Other services should rely on it (directly or indirectly) to perform database operations and to start/participate in transactions.
+- Dependency rule: an API handler should depend on at most one service. Services may call other services, but API handlers should not directly call multiple services or reach into lower layers.
+
+This layered approach keeps API handlers thin and focused on protocol concerns while pushing business rules, validations, and DB interactions into testable service implementations. For detailed technical standards and implementation details, please refer to the [Coding Guidelines](coding-guidelines.md).

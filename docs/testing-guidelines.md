@@ -14,6 +14,10 @@ All unit tests should follow the pattern:
 
 **Example (Go):**
 ```go
+package example_test
+
+import "testing"
+
 func TestAddGame(t *testing.T) {
     t.Run("Should return 201 Created when a valid game is provided", func(t *testing.T) {
         // ...
@@ -39,6 +43,13 @@ describe('GameCard', () => {
 - **Scope**: Focus on individual handlers, utilities, and business logic in isolation.
 - **Mocking**: Use the `DB` interface (defined in `api/api.go`) to mock database interactions.
 - **Location**: Place unit tests in the same package as the code being tested (e.g., `backend/api/games_api_test.go`).
+
+### Layer-aware testing guidance
+
+- API handler unit tests: Because API handlers are thin translation layers, unit tests for `*_api.go` files should focus on request parsing, validation, and that the handler calls the correct service method with the expected arguments. Handlers should be tested with a mocked service to avoid testing business logic twice.
+- Service unit tests: Services (files named `*_service.go`) contain business logic and data orchestration; unit tests on services should mock the `library_service` (or the `db.DB` interface backed queries) as appropriate and assert transactional behavior, complex validation, and inter-service coordination.
+- Integration tests: Continue to use testcontainers-go and the generated API client to exercise full workflows. Integration tests should not reach into service internals; they must interact via HTTP or the generated client only.
+
 - **Idioms**: Use `t.Run` for subtests and `t.Context()` when a context is required.
 - **Contract-First**: Unit tests must be written against the OpenAPI specification (`swagger/api.yaml`) as the source of truth for expected behaviour — including status codes, response shapes, and error cases. Do not derive expected behaviour solely from the current implementation. If a test passes but contradicts the spec, the test (or the implementation) is wrong.
 
