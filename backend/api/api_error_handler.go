@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func extractRequestBody[T any](c *gin.Context, request T) {
+func extractRequestBody[T any](c *gin.Context, request *T) {
 	err := c.ShouldBindBodyWithJSON(&request)
 	if err != nil {
 		malformedJson(c)
@@ -53,6 +53,10 @@ func handleError(c *gin.Context, err error) {
 	}
 	if errors.Is(err, internal.ErrCheckOutConflict) {
 		conflict(c, "Game already checked out by another patron")
+		return
+	}
+	if errors.Is(err, internal.ErrClaimUnwonPtwGame) {
+		badRequest(c, "Cannot claim play-to-win game without a winner")
 		return
 	}
 	if errors.Is(err, internal.ErrInvalidInput) {

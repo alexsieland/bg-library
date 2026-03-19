@@ -24,17 +24,14 @@ type patronService interface {
 }
 
 type PatronApi struct {
-	service patronService
-	beginTx func(ctx context.Context) (pgx.Tx, error)
+	libraryService *internal.LibraryService
+	service        patronService
 }
 
-func NewPatronApi(libService *internal.LibraryService) *PatronApi {
-	service := internal.NewPatronService(libService)
+func NewPatronApi(libService *internal.LibraryService, patronSrv *internal.PatronService) *PatronApi {
 	return &PatronApi{
-		service: service,
-		beginTx: func(ctx context.Context) (pgx.Tx, error) {
-			return libService.Database.BeginTx(ctx, pgx.TxOptions{})
-		},
+		libraryService: libService,
+		service:        patronSrv,
 	}
 }
 
@@ -62,9 +59,9 @@ func (api *PatronApi) BulkAddPatrons(ctx context.Context, requestBody io.ReadClo
 	csvReader := csv.NewReader(decodedReader)
 
 	// Start a db transaction
-	tx, err := api.beginTx(ctx)
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
-		log.Printf("Error creating transaction: %v", err)
+		log.Printf("Error beginning transaction: %v", err)
 		return BulkAddResponse{}, err
 	}
 

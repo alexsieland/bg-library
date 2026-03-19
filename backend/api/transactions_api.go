@@ -17,18 +17,14 @@ type transactionService interface {
 }
 
 type TransactionApi struct {
-	service transactionService
-	beginTx func(ctx context.Context) (pgx.Tx, error)
+	libraryService *internal.LibraryService
+	service        transactionService
 }
 
-func NewTransactionApi(libService *internal.LibraryService) *TransactionApi {
-	service := internal.NewTransactionService(libService)
-	service.SetGameService(internal.NewGameService(libService))
+func NewTransactionApi(libService *internal.LibraryService, transSrv *internal.TransactionService) *TransactionApi {
 	return &TransactionApi{
-		service: service,
-		beginTx: func(ctx context.Context) (pgx.Tx, error) {
-			return libService.Database.BeginTx(ctx, pgx.TxOptions{})
-		},
+		libraryService: libService,
+		service:        transSrv,
 	}
 }
 

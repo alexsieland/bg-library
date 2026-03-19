@@ -14,7 +14,7 @@ func setupTestLibraryService() (*LibraryService, *MockDatabase) {
 	mockDB := new(MockDatabase)
 	queries := db.New(mockDB)
 	lib := &LibraryService{
-		Database: mockDB,
+		database: mockDB,
 		queries:  queries,
 	}
 	return lib, mockDB

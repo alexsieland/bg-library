@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/alexsieland/bg-library/db"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -235,4 +236,87 @@ func MockVwLibraryPatronRows(rows *MockRows, patrons []db.VwLibraryPatron, err e
 
 	rows.On("Close").Return().Once()
 	rows.On("Err").Return(err).Once()
+}
+
+// ---- Shared game builders and mocks (used by multiple service tests) ----
+
+func makeLibraryGame(id uuid.UUID, title string, barcode *string) db.VwLibraryGame {
+	barcodePg := pgtype.Text{Valid: false}
+	if barcode != nil {
+		barcodePg = pgtype.Text{String: *barcode, Valid: true}
+	}
+	return db.VwLibraryGame{
+		ID:              pgtype.UUID{Bytes: id, Valid: true},
+		DisplayTitle:    title,
+		Title:           title,
+		SanitizedTitle:  SanitizeTitle(title),
+		Barcode:         barcodePg,
+		PlayToWinGameID: pgtype.UUID{Valid: false},
+		CreatedAt:       pgtype.Timestamp{Valid: true},
+	}
+}
+
+func MockVwLibraryGameScan(row *MockRow, g db.VwLibraryGame, err error) {
+	row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		*args.Get(0).(*pgtype.UUID) = g.ID
+		*args.Get(1).(*string) = g.DisplayTitle
+		*args.Get(2).(*string) = g.Title
+		*args.Get(3).(*string) = g.SanitizedTitle
+		*args.Get(4).(*pgtype.Text) = g.Barcode
+		*args.Get(5).(*pgtype.UUID) = g.PlayToWinGameID
+		*args.Get(6).(*pgtype.Timestamp) = g.CreatedAt
+	}).Return(err)
+}
+
+func MockVwLibraryGameRows(rows *MockRows, items []db.VwLibraryGame, err error) {
+	for range items {
+		rows.On("Next").Return(true).Once()
+	}
+	rows.On("Next").Return(false).Once()
+
+	if len(items) > 0 {
+		idx := 0
+		rows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			item := items[idx]
+			idx++
+			*args.Get(0).(*pgtype.UUID) = item.ID
+			*args.Get(1).(*string) = item.DisplayTitle
+			*args.Get(2).(*string) = item.Title
+			*args.Get(3).(*string) = item.SanitizedTitle
+			*args.Get(4).(*pgtype.Text) = item.Barcode
+			*args.Get(5).(*pgtype.UUID) = item.PlayToWinGameID
+			*args.Get(6).(*pgtype.Timestamp) = item.CreatedAt
+		}).Return(nil).Times(len(items))
+	}
+
+	rows.On("Close").Return().Once()
+	rows.On("Err").Return(err).Once()
+}
+
+func makeGame(id uuid.UUID, title string, barcode *string) db.Game {
+	barcodePg := pgtype.Text{Valid: false}
+	if barcode != nil {
+		barcodePg = pgtype.Text{String: *barcode, Valid: true}
+	}
+	return db.Game{
+		ID:             pgtype.UUID{Bytes: id, Valid: true},
+		Title:          title,
+		DisplayTitle:   pgtype.Text{String: title, Valid: true},
+		SanitizedTitle: SanitizeTitle(title),
+		CreatedAt:      pgtype.Timestamp{Valid: true},
+		DeletedAt:      pgtype.Timestamp{Valid: false},
+		Barcode:        barcodePg,
+	}
+}
+
+func MockGameScan(row *MockRow, g db.Game, err error) {
+	row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		*args.Get(0).(*pgtype.UUID) = g.ID
+		*args.Get(1).(*string) = g.Title
+		*args.Get(2).(*pgtype.Text) = g.DisplayTitle
+		*args.Get(3).(*string) = g.SanitizedTitle
+		*args.Get(4).(*pgtype.Timestamp) = g.CreatedAt
+		*args.Get(5).(*pgtype.Timestamp) = g.DeletedAt
+		*args.Get(6).(*pgtype.Text) = g.Barcode
+	}).Return(err)
 }
