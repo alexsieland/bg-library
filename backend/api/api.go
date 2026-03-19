@@ -155,7 +155,7 @@ func (s *Server) BulkAddPatrons(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	c.JSON(http.StatusOK, bulkAddResponse)
+	c.JSON(http.StatusCreated, bulkAddResponse)
 }
 
 // Transaction API
@@ -261,7 +261,7 @@ func (s *Server) BulkAddGames(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	c.JSON(http.StatusOK, bulkAddResponse)
+	c.JSON(http.StatusCreated, bulkAddResponse)
 }
 
 // Play To Win API
