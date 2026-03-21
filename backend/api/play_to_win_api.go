@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log"
 	"math/rand/v2"
 
@@ -260,7 +261,20 @@ func (api *PlayToWinApi) UpdatePlayToWinGame(ctx context.Context, ptwId types.UU
 		}
 	}
 
-	return api.service.UpdatePlayToWinGameWinner(ctx, uuidToPgTypeUUID(ptwId), winnerId, nil)
+	err := api.service.UpdatePlayToWinGameWinner(ctx, uuidToPgTypeUUID(ptwId), winnerId, nil)
+	if err != nil {
+		// If the database reported a foreign key constraint violation it will be
+		// wrapped as ErrInvalidInput by wrapDatabaseError(). Tests expect a
+		// validation-style error with a details entry for winnerId in this case.
+		if errors.Is(err, internal.ErrInvalidInput) {
+			var details ErrorDetails
+			details.AddErrorDetail("winnerId", "Must reference an entry belonging to this play to win game")
+			return details
+		}
+		log.Printf("Error updating play to win entry: %v", err)
+		return err
+	}
+	return nil
 }
 
 func (api *PlayToWinApi) DeletePlayToWinGame(ctx context.Context, ptwId types.UUID, request RemovePlayToWinGameRequest) error {

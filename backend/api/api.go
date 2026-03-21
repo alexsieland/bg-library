@@ -97,7 +97,7 @@ func (s *Server) AddPatron(c *gin.Context) {
 		if c.IsAborted() {
 			return
 		}
-		c.JSON(http.StatusOK, patron)
+		c.JSON(http.StatusCreated, patron)
 	}
 }
 
