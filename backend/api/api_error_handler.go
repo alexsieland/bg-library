@@ -47,13 +47,11 @@ func conflict(c *gin.Context, message string) {
 // any panic during the write so that middleware/tests can log and observe the
 // original error instead of a panic caused while encoding the error body.
 func safeAbortWithStatusJSON(c *gin.Context, code int, body any) {
-	// Log the intent so server logs reflect what we attempted to return.
-	log.Printf("Writing error response code=%d body=%T written=%v", code, body, c.Writer.Written())
+	// If the response was already written, do not try to write another body.
 	if c.Writer.Written() {
-		// If the response was already written, do not try to write another body.
-		log.Printf("safeAbortWithStatusJSON: response already written, skipping error write")
 		return
 	}
+	// Only log if a panic occurs while encoding/writing the error response.
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovered while writing error response: %v", r)
