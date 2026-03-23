@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alexsieland/bg-library/db"
+	// ...existing imports...
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -228,12 +229,10 @@ func TestGameServiceInsertGame_PTW(t *testing.T) {
 		mockTx.On("QueryRow", mock.Anything, mock.Anything, expectedArgs).Return(row).Once()
 
 		// Prepare PTW mock service and expectation
-		ptwGameID := uuid.New()
-		ptwGame := makeVwPlayToWinGame(ptwGameID, uuid.UUID(created.ID.Bytes), title)
-
 		mockPtw := new(MockPlayToWinService)
 		svc.ptwService = mockPtw
-		// Expect InsertPlayToWinGame to be called with the created game ID
+		// create a sample ptwGame result to return
+		ptwGame := makeVwPlayToWinGame(uuid.New(), uuid.UUID(created.ID.Bytes), created.Title)
 		mockPtw.On("InsertPlayToWinGame", mock.Anything, created.ID, mock.Anything).Return(ptwGame, nil).Once()
 
 		mockTx.On("Commit", ctx).Return(nil).Once()
@@ -278,7 +277,6 @@ func TestGameServiceSetIsPlayToWin(t *testing.T) {
 
 		mockRow := new(MockRow)
 		MockVwGameStatusScan(mockRow, status, nil)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{status.GameID}).Return(mockRow).Once()
 
 		mockPtw := new(MockPlayToWinService)
 		svc.ptwService = mockPtw
