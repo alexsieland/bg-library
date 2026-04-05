@@ -28,7 +28,7 @@ RUN chmod +x /docker-entrypoint.sh
 
 COPY frontend/nginx.conf /etc/nginx/conf.d/nginx.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY frontend/public/* /usr/share/nginx/html/
+COPY frontend/public/ /usr/share/nginx/html/
 
 EXPOSE 80
 
