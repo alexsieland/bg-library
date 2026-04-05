@@ -19,6 +19,16 @@ func NewLibraryService(database db.DB) *LibraryService {
 	}
 }
 
+// LibraryServiceInterface defines the methods of LibraryService that other
+// packages (notably the api package and tests) may rely on. Tests can provide
+// a mock implementing this interface to control transaction behavior without
+// modifying global state. *LibraryService implements this interface.
+type LibraryServiceInterface interface {
+	BeginTx(ctx context.Context) (pgx.Tx, error)
+	Start() error
+	Stop()
+}
+
 // withinTxImpl is the non-generic implementation function variable. Tests
 // can replace this to control transaction behavior in unit tests.
 var withinTxImpl func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) = func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) {

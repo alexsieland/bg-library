@@ -7,3 +7,7 @@
 *.ipr
 *.iws
 out/
+
+# Go Coverage tests
+backend/coverage.*
+tmp

@@ -17,11 +17,11 @@ type transactionService interface {
 }
 
 type TransactionApi struct {
-	libraryService *internal.LibraryService
+	libraryService internal.LibraryServiceInterface
 	service        transactionService
 }
 
-func NewTransactionApi(libService *internal.LibraryService, transSrv *internal.TransactionService) *TransactionApi {
+func NewTransactionApi(libService internal.LibraryServiceInterface, transSrv *internal.TransactionService) *TransactionApi {
 	return &TransactionApi{
 		libraryService: libService,
 		service:        transSrv,

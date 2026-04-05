@@ -14,6 +14,15 @@ type PlayToWinService struct {
 	gameService    *GameService
 }
 
+// PlayToWinServiceInterface defines the subset of methods from PlayToWinService
+// that other services depend on. Using an interface allows tests to inject a
+// mock implementation.
+type PlayToWinServiceInterface interface {
+	InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error)
+	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
+	GetPlayToWinGameByLibraryGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error)
+}
+
 func NewPlayToWinService(libService *LibraryService) *PlayToWinService {
 	return &PlayToWinService{libraryService: libService}
 }
@@ -193,7 +202,7 @@ func (s *PlayToWinService) InsertPlayToWinSession(ctx context.Context, ptwGroupI
 	}
 
 	ptwSession, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.PlayToWinSession, error) {
-		ptwSession, err := s.libraryService.queries.WithTx(optTx).CreatePlayToWinSession(ctx, params)
+		ptwSession, err := s.libraryService.queries.WithTx(tx).CreatePlayToWinSession(ctx, params)
 		return &ptwSession, err
 	})
 
@@ -208,7 +217,7 @@ func (s *PlayToWinService) InsertPlayToWinEntry(ctx context.Context, ptwSessionI
 		EntrantUniqueID: entrantUniqueID,
 	}
 	ptwEntry, err := WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*db.PlayToWinEntry, error) {
-		ptwEntry, err := s.libraryService.queries.WithTx(optTx).CreatePlayToWinEntry(ctx, params)
+		ptwEntry, err := s.libraryService.queries.WithTx(tx).CreatePlayToWinEntry(ctx, params)
 		return &ptwEntry, err
 	})
 

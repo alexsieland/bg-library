@@ -8,42 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStringToPgText(t *testing.T) {
-	t.Run("Should return invalid pg text when input is nil", func(t *testing.T) {
-		result := stringToPgText(nil)
-
-		assert.False(t, result.Valid)
-		assert.Empty(t, result.String)
-	})
-
-	t.Run("Should return valid pg text when input has value", func(t *testing.T) {
-		value := "hello"
-
-		result := stringToPgText(&value)
-
-		assert.True(t, result.Valid)
-		assert.Equal(t, value, result.String)
-	})
-}
-
-func TestInt32ToPgInt4(t *testing.T) {
-	t.Run("Should return invalid pg int4 when input is nil", func(t *testing.T) {
-		result := int32ToPgInt4(nil)
-
-		assert.False(t, result.Valid)
-		assert.Equal(t, int32(0), result.Int32)
-	})
-
-	t.Run("Should return valid pg int4 when input has value", func(t *testing.T) {
-		value := int32(42)
-
-		result := int32ToPgInt4(&value)
-
-		assert.True(t, result.Valid)
-		assert.Equal(t, value, result.Int32)
-	})
-}
-
 func TestUUIDToPgTypeUUID(t *testing.T) {
 	t.Run("Should return valid pg uuid when input is provided", func(t *testing.T) {
 		id := uuid.New()
@@ -58,7 +22,7 @@ func TestUUIDToPgTypeUUID(t *testing.T) {
 func TestPlayToWinGameDeletionReason(t *testing.T) {
 	t.Run("Should return invalid nullable reason and no errors when reason is nil", func(t *testing.T) {
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(nil, &errors)
+		result := errors.playToWinGameDeletionReason(nil)
 
 		assert.False(t, result.Valid)
 		assert.True(t, errors.Empty())
@@ -68,7 +32,7 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "claimed"
 
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(&reason, &errors)
+		result := errors.playToWinGameDeletionReason(&reason)
 
 		assert.True(t, result.Valid)
 		assert.Equal(t, db.PlayToWinGameDeletionTypeClaimed, result.PlayToWinGameDeletionType)
@@ -79,7 +43,7 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "mistake"
 
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(&reason, &errors)
+		result := errors.playToWinGameDeletionReason(&reason)
 
 		assert.True(t, result.Valid)
 		assert.Equal(t, db.PlayToWinGameDeletionTypeMistake, result.PlayToWinGameDeletionType)
@@ -90,7 +54,7 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "other"
 
 		var errors ErrorDetails
-		result := playToWinGameDeletionReason(&reason, &errors)
+		result := errors.playToWinGameDeletionReason(&reason)
 
 		assert.True(t, result.Valid)
 		assert.Equal(t, db.PlayToWinGameDeletionTypeOther, result.PlayToWinGameDeletionType)
@@ -101,13 +65,13 @@ func TestPlayToWinGameDeletionReason(t *testing.T) {
 		reason := "invalid_reason"
 
 		errors := ErrorDetails{[]ErrorDetail{{Field: "existingField", Message: "existing message"}}}
-		result := playToWinGameDeletionReason(&reason, &errors)
+		result := errors.playToWinGameDeletionReason(&reason)
 
 		assert.False(t, result.Valid)
 		assert.Len(t, errors.Details, 2)
 		assert.Equal(t, "existingField", errors.Details[0].Field)
 		assert.Equal(t, "existing message", errors.Details[0].Message)
 		assert.Equal(t, "deletionReason", errors.Details[1].Field)
-		assert.Equal(t, "Must be one of: claimed, mistake, other", errors.Details[1].Message)
+		assert.Equal(t, "Invalid play to win game deletion reason", errors.Details[1].Message)
 	})
 }

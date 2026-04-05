@@ -114,6 +114,9 @@ func (m *MockTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, 
 }
 
 func (m *MockTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	// Debug: record that QueryRow was called (helps diagnose test expectation mismatches)
+	// Note: tests rely on mock expectations; this log is only for debugging in CI/local runs.
+	// fmt.Printf("MockTx.QueryRow called: sql=%s, args=%v\n", sql, args)
 	callArgs := m.Called(ctx, sql, args)
 	if callArgs.Get(0) == nil {
 		return nil
@@ -319,4 +322,34 @@ func MockGameScan(row *MockRow, g db.Game, err error) {
 		*args.Get(5).(*pgtype.Timestamp) = g.DeletedAt
 		*args.Get(6).(*pgtype.Text) = g.Barcode
 	}).Return(err)
+}
+
+// MockPlayToWinService is a mock for the PlayToWinService interface used in
+// unit tests where GameService or other services depend on PTW operations.
+// Tests can set expectations on methods like InsertPlayToWinGame and
+// DeletePlayToWinGameByLibraryGameId.
+
+type MockPlayToWinService struct {
+	mock.Mock
+}
+
+func (m *MockPlayToWinService) InsertPlayToWinGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
+	args := m.Called(ctx, gameId, optTx)
+	if args.Get(0) == nil {
+		return db.VwPlayToWinGame{}, args.Error(1)
+	}
+	return args.Get(0).(db.VwPlayToWinGame), args.Error(1)
+}
+
+func (m *MockPlayToWinService) DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error {
+	args := m.Called(ctx, gameId, deletionReason, deletionReasonComment, optTx)
+	return args.Error(0)
+}
+
+func (m *MockPlayToWinService) GetPlayToWinGameByLibraryGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGame, error) {
+	args := m.Called(ctx, gameId, optTx)
+	if args.Get(0) == nil {
+		return db.VwPlayToWinGame{}, args.Error(1)
+	}
+	return args.Get(0).(db.VwPlayToWinGame), args.Error(1)
 }

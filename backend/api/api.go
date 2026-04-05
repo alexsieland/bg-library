@@ -13,14 +13,14 @@ import (
 )
 
 type Server struct {
-	LibService     *internal.LibraryService
+	LibService     internal.LibraryServiceInterface
 	PatronApi      *PatronApi
 	TransactionApi *TransactionApi
 	GameApi        *GameApi
 	PlayToWinApi   *PlayToWinApi
 }
 
-func NewServer() Server {
+func NewServer() *Server {
 	database := db.NewLibraryDatabase()
 	var libService = internal.NewLibraryService(database)
 	var gameSrv = internal.NewGameService(libService)
@@ -29,9 +29,10 @@ func NewServer() Server {
 	var ptwSrv = internal.NewPlayToWinService(libService)
 	transSrv.SetGameService(gameSrv)
 	ptwSrv.SetGameService(gameSrv)
+	// PlayToWinService implements PlayToWinServiceInterface so it can be passed directly
 	gameSrv.SetPlayToWinService(ptwSrv)
 
-	return Server{
+	return &Server{
 		LibService:     libService,
 		PatronApi:      NewPatronApi(libService, patronSrv),
 		TransactionApi: NewTransactionApi(libService, transSrv),
@@ -96,7 +97,7 @@ func (s *Server) AddPatron(c *gin.Context) {
 		if c.IsAborted() {
 			return
 		}
-		c.JSON(http.StatusOK, patron)
+		c.JSON(http.StatusCreated, patron)
 	}
 }
 
@@ -155,7 +156,7 @@ func (s *Server) BulkAddPatrons(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	c.JSON(http.StatusOK, bulkAddResponse)
+	c.JSON(http.StatusCreated, bulkAddResponse)
 }
 
 // Transaction API
@@ -261,7 +262,7 @@ func (s *Server) BulkAddGames(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	c.JSON(http.StatusOK, bulkAddResponse)
+	c.JSON(http.StatusCreated, bulkAddResponse)
 }
 
 // Play To Win API

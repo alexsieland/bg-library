@@ -29,11 +29,11 @@ type gameService interface {
 }
 
 type GameApi struct {
-	libraryService *internal.LibraryService
+	libraryService internal.LibraryServiceInterface
 	service        gameService
 }
 
-func NewGamesApi(libService *internal.LibraryService, gameSrv *internal.GameService) *GameApi {
+func NewGamesApi(libService internal.LibraryServiceInterface, gameSrv *internal.GameService) *GameApi {
 	return &GameApi{
 		libraryService: libService,
 		service:        gameSrv,

@@ -10,14 +10,14 @@ import (
 
 type GameService struct {
 	libraryService *LibraryService
-	ptwService     *PlayToWinService
+	ptwService     PlayToWinServiceInterface
 }
 
 func NewGameService(libService *LibraryService) *GameService {
 	return &GameService{libraryService: libService}
 }
 
-func (s *GameService) SetPlayToWinService(ptwService *PlayToWinService) {
+func (s *GameService) SetPlayToWinService(ptwService PlayToWinServiceInterface) {
 	s.ptwService = ptwService
 }
 
@@ -180,9 +180,7 @@ func (s *GameService) GetGameStatus(ctx context.Context, gameId pgtype.UUID, opt
 }
 
 func (s *GameService) InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.VwLibraryGame, error) {
-	if s.ptwService == nil {
-		panic("ptwService must be set before calling InsertGame")
-	}
+	// ptwService is only required if creating a PlayToWin game
 
 	createGameParams := db.CreateGameParams{
 		Title:          title,
@@ -198,6 +196,9 @@ func (s *GameService) InsertGame(ctx context.Context, title string, barcode *str
 
 		var ptwGame db.VwPlayToWinGame
 		if isPlayToWin {
+			if s.ptwService == nil {
+				return nil, ErrInvalidState
+			}
 			ptwGame, err = s.ptwService.InsertPlayToWinGame(ctx, newGame.ID, tx)
 			if err != nil {
 				return nil, err

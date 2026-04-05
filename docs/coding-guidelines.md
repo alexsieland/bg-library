@@ -17,6 +17,16 @@ The backend is built with Go using the Gin web framework. It follows a contract-
     - Database configuration and connection management in `backend/db/database.go`.
     - Integration tests in `backend/tests/`.
 
+### Backend Layered Architecture (Rework)
+
+- Entry point: `backend/api/api.go` wires concrete services into the generated server and is the canonical HTTP entrypoint for the backend.
+- Per-category API handlers: Implementations live in `*_api.go` files (e.g. `games_api.go`, `patrons_api.go`). These handlers are intentionally thin — their responsibilities are request parsing, validation, model translation, and calling a single service to perform the requested operation.
+- Service layer: Files named `*_service.go` contain business logic and orchestration. Services should encapsulate domain rules, perform complex validation, and coordinate database transactions. Services may depend on other services when needed.
+- Shared library service: `library_service.go` provides a common, tested abstraction over database connections, queries, and transaction helpers (including a generic `WithinTx` helper). All services should rely on this library service for starting transactions and performing low-level DB operations.
+- Dependency rule: An API handler should call only one service. Services may call other services, but API handlers must not reach into multiple services or lower-level DB code directly.
+
+This structure improves testability and enforces a clean separation between protocol concerns (API layer) and business concerns (service layer).
+
 ### Guidelines
 - **Use Modern Go**: Follow Go 1.25+ idioms (e.g., `any` instead of `interface{}`, `slices` and `maps` packages, `t.Context()` in tests).
 - **Error Handling**: 
@@ -26,6 +36,8 @@ The backend is built with Go using the Gin web framework. It follows a contract-
 - **Dependency Injection**: The `Server` struct in `backend/api/api.go` holds dependencies like the database. Handlers are methods on this struct.
 - **Validation**: Perform input validation in the handlers using helpers from `utils.go`. Do not rely solely on database constraints.
 - **Contract Compliance**: Handlers must strictly follow the `ServerInterface` generated from the OpenAPI spec. Use `FromX` conversion functions in `utils.go` to map database models to API models.
+
+Note: As part of the layered rework, aim to move non-protocol logic (for example: heavy validation, transaction orchestration, or multi-entity updates) out of API handlers and into the appropriate service. Keep handlers focused on translating HTTP to service calls and returning correctly-typed responses.
 
 ## 2. Frontend (Vite, Svelte, TypeScript, openapi-typescript)
 
