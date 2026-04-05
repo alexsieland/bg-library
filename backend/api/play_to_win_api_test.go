@@ -304,11 +304,15 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		svc := new(mockPlayToWinService)
 		fixture := newTestPlayToWinApi(svc, nil, nil)
 		ctx := context.Background()
-		ptwID := uuid.New()
+		gameID := uuid.New()
 
-		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, mock.Anything, (*string)(nil), (pgx.Tx)(nil)).Return(nil).Once()
+		dbRemovalReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake,
+			Valid:                     true,
+		}
+		svc.On("DeletePlayToWinGameByLibraryGameId", ctx, pgtype.UUID{Bytes: gameID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(nil).Once()
 
-		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{})
+		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(gameID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
 		assert.NoError(t, err)
 		svc.AssertExpectations(t)
 	})
@@ -317,12 +321,16 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		svc := new(mockPlayToWinService)
 		fixture := newTestPlayToWinApi(svc, nil, nil)
 		ctx := context.Background()
-		ptwID := uuid.New()
+		gameID := uuid.New()
 		expected := errors.New("delete failed")
 
-		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, mock.Anything, (*string)(nil), (pgx.Tx)(nil)).Return(expected).Once()
+		dbRemovalReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake,
+			Valid:                     true,
+		}
+		svc.On("DeletePlayToWinGameByLibraryGameId", ctx, pgtype.UUID{Bytes: gameID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(expected).Once()
 
-		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{})
+		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(gameID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
 		assert.ErrorIs(t, err, expected)
 		svc.AssertExpectations(t)
 	})
@@ -339,20 +347,20 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 		dbEntries := []db.VwPlayToWinEntry{
 			{
 				ID:              pgtype.UUID{Bytes: entryID, Valid: true},
-				PtwSessionID:    pgtype.UUID{Valid: false},
-				PtwGroupID:      pgtype.UUID{Valid: false},
-				EntrantName:     "Alice",
-				EntrantUniqueID: "A1",
+				EntrantName:     "Test Entrant",
+				EntrantUniqueID: "unique-id-1",
 				CreatedAt:       pgtype.Timestamp{Valid: true},
 			},
 		}
 
-		svc.On("ListPlayToWinEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbEntries, nil).Once()
+		svc.On("GetPlayToWinGameEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbEntries, nil).Once()
 
 		got, err := fixture.GetPlayToWinGameEntries(ctx, types.UUID(ptwID))
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(got.Entries))
 		assert.Equal(t, entryID.String(), got.Entries[0].EntryId.String())
+		assert.Equal(t, "Test Entrant", got.Entries[0].EntrantName)
+		assert.Equal(t, "unique-id-1", got.Entries[0].EntrantUniqueId)
 		svc.AssertExpectations(t)
 	})
 
@@ -362,7 +370,7 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 		ctx := context.Background()
 		ptwID := uuid.New()
 
-		svc.On("ListPlayToWinEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return([]db.VwPlayToWinEntry{}, nil).Once()
+		svc.On("GetPlayToWinGameEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return([]db.VwPlayToWinEntry{}, nil).Once()
 
 		got, err := fixture.GetPlayToWinGameEntries(ctx, types.UUID(ptwID))
 		assert.NoError(t, err)
@@ -456,43 +464,89 @@ func TestListPlayToWinGames(t *testing.T) {
 func TestRecordPlayToWinSession(t *testing.T) {
 	t.Run("Should return converted session when service succeeds", func(t *testing.T) {
 		svc := new(mockPlayToWinService)
-		fixture := newTestPlayToWinApi(svc, nil, nil)
+		mockTx := new(MockTx)
+		fixture := newTestPlayToWinApi(svc, mockTx, nil)
 		ctx := context.Background()
+		ptwID := uuid.New()
 		groupID := uuid.New()
 		sessionID := uuid.New()
-		minutes := int32(30)
+		entryID := uuid.New()
+		playtime := int32(30)
 
+		dbGroup := db.VwPlayToWinGroup{
+			ID:   pgtype.UUID{Bytes: groupID, Valid: true},
+			Name: "Test Group",
+		}
 		dbSession := db.PlayToWinSession{
 			ID:              pgtype.UUID{Bytes: sessionID, Valid: true},
 			PtwGroupID:      pgtype.UUID{Bytes: groupID, Valid: true},
-			PlaytimeMinutes: pgtype.Int4{Int32: minutes, Valid: true},
-			CreatedAt:       pgtype.Timestamp{Valid: true},
+			PlaytimeMinutes: pgtype.Int4{Int32: playtime, Valid: true},
+		}
+		dbEntry := db.PlayToWinEntry{
+			ID:              pgtype.UUID{Bytes: entryID, Valid: true},
+			EntrantName:     "Test Entrant",
+			EntrantUniqueID: "unique-id-1",
 		}
 
-		svc.On("InsertPlayToWinSession", ctx, pgtype.UUID{Bytes: groupID, Valid: true}, &minutes, (pgx.Tx)(nil)).Return(dbSession, nil).Once()
+		req := CreatePlayToWinSessionRequest{
+			PlayToWinId:     types.UUID(ptwID),
+			PlaytimeMinutes: &playtime,
+			Entries: []struct {
+				EntrantName     string `json:"entrantName"`
+				EntrantUniqueId string `json:"entrantUniqueId"`
+			}{
+				{EntrantName: "Test Entrant", EntrantUniqueId: "unique-id-1"},
+			},
+		}
 
-		got, err := fixture.RecordPlayToWinSession(ctx, CreatePlayToWinSessionRequest{
-			PlayToWinId:     types.UUID(groupID),
-			PlaytimeMinutes: &minutes,
-		})
+		svc.On("GetPlayToWinGroupByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbGroup, nil).Once()
+		svc.On("InsertPlayToWinSession", ctx, pgtype.UUID{Bytes: groupID, Valid: true}, req.PlaytimeMinutes, mockTx).Return(dbSession, nil).Once()
+		svc.On("InsertPlayToWinEntry", ctx, pgtype.UUID{Bytes: sessionID, Valid: true}, pgtype.UUID{Bytes: groupID, Valid: true}, "Test Entrant", "unique-id-1", mockTx).Return(dbEntry, nil).Once()
+		mockTx.On("Commit", ctx).Return(nil).Once()
+
+		got, err := fixture.RecordPlayToWinSession(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, sessionID.String(), got.SessionId.String())
+		assert.Equal(t, 1, len(got.PlayToWinEntries))
+		assert.Equal(t, entryID.String(), got.PlayToWinEntries[0].EntryId.String())
+		assert.Equal(t, "Test Entrant", got.PlayToWinEntries[0].EntrantName)
 		svc.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 
 	t.Run("Should propagate service error when insert fails", func(t *testing.T) {
 		svc := new(mockPlayToWinService)
-		fixture := newTestPlayToWinApi(svc, nil, nil)
+		mockTx := new(MockTx)
+		fixture := newTestPlayToWinApi(svc, mockTx, nil)
 		ctx := context.Background()
+		ptwID := uuid.New()
 		groupID := uuid.New()
-		expected := errors.New("insert failed")
+		expected := errors.New("session insert failed")
 
-		svc.On("InsertPlayToWinSession", ctx, pgtype.UUID{Bytes: groupID, Valid: true}, (*int32)(nil), (pgx.Tx)(nil)).Return(db.PlayToWinSession{}, expected).Once()
+		dbGroup := db.VwPlayToWinGroup{
+			ID:   pgtype.UUID{Bytes: groupID, Valid: true},
+			Name: "Test Group",
+		}
 
-		got, err := fixture.RecordPlayToWinSession(ctx, CreatePlayToWinSessionRequest{PlayToWinId: types.UUID(groupID)})
+		req := CreatePlayToWinSessionRequest{
+			PlayToWinId: types.UUID(ptwID),
+			Entries: []struct {
+				EntrantName     string `json:"entrantName"`
+				EntrantUniqueId string `json:"entrantUniqueId"`
+			}{
+				{EntrantName: "Test Entrant", EntrantUniqueId: "unique-id-1"},
+			},
+		}
+
+		svc.On("GetPlayToWinGroupByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbGroup, nil).Once()
+		svc.On("InsertPlayToWinSession", ctx, pgtype.UUID{Bytes: groupID, Valid: true}, (*int32)(nil), mockTx).Return(db.PlayToWinSession{}, expected).Once()
+		mockTx.On("Rollback", ctx).Return(nil).Once()
+
+		got, err := fixture.RecordPlayToWinSession(ctx, req)
 		assert.Equal(t, PlayToWinSession{}, got)
 		assert.ErrorIs(t, err, expected)
 		svc.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
 	})
 }
 
@@ -506,10 +560,8 @@ func TestUpdatePlayToWinGame(t *testing.T) {
 
 		svc.On("UpdatePlayToWinGameWinner", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, pgtype.UUID{Bytes: entryID, Valid: true}, (pgx.Tx)(nil)).Return(nil).Once()
 
-		err := fixture.UpdatePlayToWinGame(ctx, types.UUID(ptwID), UpdatePlayToWinGame{WinnerId: (*types.UUID)(&types.UUID{})})
-		// Need to properly construct the UUID pointer
 		winnerUUID := types.UUID(entryID)
-		err = fixture.UpdatePlayToWinGame(ctx, types.UUID(ptwID), UpdatePlayToWinGame{WinnerId: &winnerUUID})
+		err := fixture.UpdatePlayToWinGame(ctx, types.UUID(ptwID), UpdatePlayToWinGame{WinnerId: &winnerUUID})
 		assert.NoError(t, err)
 		svc.AssertExpectations(t)
 	})
@@ -538,9 +590,13 @@ func TestDeletePlayToWinGame(t *testing.T) {
 		ctx := context.Background()
 		ptwID := uuid.New()
 
-		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, mock.Anything, (*string)(nil), (pgx.Tx)(nil)).Return(nil).Once()
+		dbRemovalReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake,
+			Valid:                     true,
+		}
+		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(nil).Once()
 
-		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{})
+		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
 		assert.NoError(t, err)
 		svc.AssertExpectations(t)
 	})
@@ -552,9 +608,13 @@ func TestDeletePlayToWinGame(t *testing.T) {
 		ptwID := uuid.New()
 		expected := errors.New("delete failed")
 
-		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, mock.Anything, (*string)(nil), (pgx.Tx)(nil)).Return(expected).Once()
+		dbRemovalReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake,
+			Valid:                     true,
+		}
+		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(expected).Once()
 
-		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{})
+		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
 		assert.ErrorIs(t, err, expected)
 		svc.AssertExpectations(t)
 	})
@@ -597,30 +657,23 @@ func TestDrawPlayToWinRaffle(t *testing.T) {
 		ptwID := uuid.New()
 		entryID := uuid.New()
 
-		// DrawPlayToWinRaffle logic: get overview, get entries, select random, return entry
-		overview := db.VwPlayToWinGameOverview{
-			PtwGameID: pgtype.UUID{Bytes: ptwID, Valid: true},
-			GameID:    pgtype.UUID{Valid: true},
-			GameTitle: "Test",
-			CreatedAt: pgtype.Timestamp{Valid: true},
-			WinnerID:  pgtype.UUID{Valid: false},
-		}
-
-		entries := []db.VwPlayToWinEntry{
+		dbEntries := []db.VwPlayToWinEntry{
 			{
 				ID:              pgtype.UUID{Bytes: entryID, Valid: true},
-				EntrantName:     "Alice",
-				EntrantUniqueID: "A1",
+				EntrantName:     "Winner",
+				EntrantUniqueID: "winner-id",
 				CreatedAt:       pgtype.Timestamp{Valid: true},
 			},
 		}
 
-		svc.On("GetPlayToWinGameOverview", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(overview, nil).Once()
-		svc.On("ListPlayToWinEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(entries, nil).Once()
+		svc.On("GetPlayToWinGameEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbEntries, nil).Once()
+		svc.On("UpdatePlayToWinGameWinner", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, pgtype.UUID{Bytes: entryID, Valid: true}, (pgx.Tx)(nil)).Return(nil).Once()
 
 		got, err := fixture.DrawPlayToWinRaffle(ctx, types.UUID(ptwID))
 		assert.NoError(t, err)
 		assert.Equal(t, entryID.String(), got.EntryId.String())
+		assert.Equal(t, "Winner", got.EntrantName)
+		assert.Equal(t, "winner-id", got.EntrantUniqueId)
 		svc.AssertExpectations(t)
 	})
 }
