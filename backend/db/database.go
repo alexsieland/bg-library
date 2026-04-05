@@ -24,6 +24,15 @@ func (conf databaseConfig) databaseURL() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", conf.User, conf.Password, conf.Host, conf.Port, conf.DatabaseName)
 }
 
+type DB interface {
+	Connect() error
+	Close()
+	Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error)
+	QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row
+	BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error)
+}
+
 type LibraryDatabase struct {
 	pool     *pgxpool.Pool
 	dbConfig databaseConfig

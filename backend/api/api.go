@@ -1,71 +1,47 @@
 package api
 
 import (
-	"context"
-	"errors"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/alexsieland/bg-library/db"
+	"github.com/alexsieland/bg-library/internal"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/oapi-codegen/runtime/types"
 )
 
-type DB interface {
-	Connect() error
-	Close()
-	Exec(ctx context.Context, s string, i ...interface{}) (pgconn.CommandTag, error)
-	Query(ctx context.Context, s string, i ...interface{}) (pgx.Rows, error)
-	QueryRow(ctx context.Context, s string, i ...interface{}) pgx.Row
-	BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error)
-}
-
 type Server struct {
-	Database DB
-	queries  *db.Queries
+	LibService     internal.LibraryServiceInterface
+	PatronApi      *PatronApi
+	TransactionApi *TransactionApi
+	GameApi        *GameApi
+	PlayToWinApi   *PlayToWinApi
 }
 
-var errValidation = errors.New("Validation error")
-
-func NewServer() Server {
+func NewServer() *Server {
 	database := db.NewLibraryDatabase()
-	return Server{
-		Database: database,
-		queries:  db.New(database),
+	var libService = internal.NewLibraryService(database)
+	var gameSrv = internal.NewGameService(libService)
+	var patronSrv = internal.NewPatronService(libService)
+	var transSrv = internal.NewTransactionService(libService)
+	var ptwSrv = internal.NewPlayToWinService(libService)
+	transSrv.SetGameService(gameSrv)
+	ptwSrv.SetGameService(gameSrv)
+	// PlayToWinService implements PlayToWinServiceInterface so it can be passed directly
+	gameSrv.SetPlayToWinService(ptwSrv)
+
+	return &Server{
+		LibService:     libService,
+		PatronApi:      NewPatronApi(libService, patronSrv),
+		TransactionApi: NewTransactionApi(libService, transSrv),
+		GameApi:        NewGamesApi(libService, gameSrv),
+		PlayToWinApi:   NewPlayToWinApi(libService, ptwSrv),
 	}
 }
 
-func internalError(c *gin.Context, err error) {
-	c.AbortWithStatusJSON(http.StatusInternalServerError, NewInternalError(err))
-}
-
-func notFound(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusNotFound, NewErrorResponse(NOTFOUND, "Resource not found"))
-}
-
-func malformedJson(c *gin.Context) {
-	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponse(MALFORMEDREQUEST, "JSON body is malformed"))
-}
-
-func validationError(c *gin.Context, errorDetails ErrorDetails) {
-	c.AbortWithStatusJSON(http.StatusBadRequest, NewErrorResponseWithDetails(VALIDATIONERROR, "Validation error", errorDetails.Details))
-}
-
-func conflict(c *gin.Context, message string) {
-	c.AbortWithStatusJSON(http.StatusConflict, NewErrorResponse(CONFLICT, message))
-}
-
-func (s Server) GetHealth(c *gin.Context) {
-	_, err := s.Database.Exec(c.Request.Context(), "SELECT 1;")
-	if err != nil {
-		log.Printf("Error checking database health: %v", err)
-		c.JSON(http.StatusServiceUnavailable, NewErrorResponse(SERVICEUNAVAILABLE, "Database is unavailable"))
-		return
-	}
+func (s *Server) GetHealth(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
@@ -84,7 +60,7 @@ func RegisterSwagger(r *gin.Engine) {
 			return
 		}
 
-		// Get the server URL from environment variable, default to http://localhost:8080
+		// Get the server URL from the environment variable, default to http://localhost:8080
 		serverURL := os.Getenv("API_URL")
 		if serverURL == "" {
 			serverURL = "http://localhost:8080"
@@ -108,4 +84,292 @@ func RegisterSwagger(r *gin.Engine) {
 			c.JSON(http.StatusInternalServerError, NewInternalError(err))
 		}
 	})
+}
+
+// Patron API
+
+func (s *Server) AddPatron(c *gin.Context) {
+	var request AddPatronJSONRequestBody
+	extractRequestBody[AddPatronJSONRequestBody](c, &request)
+	if !c.IsAborted() {
+		patron, err := s.PatronApi.AddPatron(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, patron)
+	}
+}
+
+func (s *Server) GetPatron(c *gin.Context, patronId types.UUID) {
+	patron, err := s.PatronApi.GetPatron(c.Request.Context(), patronId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, patron)
+}
+
+func (s *Server) GetPatronByBarcode(c *gin.Context, patronBarcode string) {
+	patron, err := s.PatronApi.GetPatronByBarcode(c.Request.Context(), patronBarcode)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, patron)
+}
+
+func (s *Server) DeletePatron(c *gin.Context, patronId types.UUID) {
+	err := s.PatronApi.DeletePatron(c.Request.Context(), patronId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) UpdatePatron(c *gin.Context, patronId types.UUID) {
+	var request UpdatePatronJSONRequestBody
+	extractRequestBody[UpdatePatronJSONRequestBody](c, &request)
+	if !c.IsAborted() {
+		err := s.PatronApi.UpdatePatron(c.Request.Context(), patronId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (s *Server) ListPatrons(c *gin.Context, params ListPatronsParams) {
+	patronList, err := s.PatronApi.ListPatrons(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, patronList)
+}
+
+func (s *Server) BulkAddPatrons(c *gin.Context) {
+	bulkAddResponse, err := s.PatronApi.BulkAddPatrons(c.Request.Context(), c.Request.Body)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusCreated, bulkAddResponse)
+}
+
+// Transaction API
+
+func (s *Server) CheckInGame(c *gin.Context, params CheckInGameParams) {
+	err := s.TransactionApi.CheckInGame(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) CheckOutGame(c *gin.Context) {
+	var request CheckOutGameJSONRequestBody
+	extractRequestBody[CheckOutGameJSONRequestBody](c, &request)
+	if !c.IsAborted() {
+		transaction, err := s.TransactionApi.CheckOutGame(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, transaction)
+	}
+}
+
+func (s *Server) ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams) {
+	transactionEvents, err := s.TransactionApi.ListTransactionEvents(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, transactionEvents)
+}
+
+// Game API
+
+func (s *Server) AddGame(c *gin.Context) {
+	var request CreateGameRequest
+	extractRequestBody[CreateGameRequest](c, &request)
+	if !c.IsAborted() {
+		game, err := s.GameApi.AddGame(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, game)
+	}
+}
+
+func (s *Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
+	game, err := s.GameApi.GetGameByBarcode(c.Request.Context(), gameBarcode)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, game)
+}
+
+func (s *Server) DeleteGame(c *gin.Context, gameId types.UUID) {
+	err := s.GameApi.DeleteGame(c.Request.Context(), gameId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) GetGame(c *gin.Context, gameId types.UUID) {
+	game, err := s.GameApi.GetGame(c.Request.Context(), gameId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, game)
+}
+
+func (s *Server) UpdateGame(c *gin.Context, gameId types.UUID) {
+	var request CreateGameRequest
+	extractRequestBody[CreateGameRequest](c, &request)
+	if !c.IsAborted() {
+		err := s.GameApi.UpdateGame(c.Request.Context(), gameId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (s *Server) ListGames(c *gin.Context, params ListGamesParams) {
+	gameStatusList, err := s.GameApi.ListGames(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, gameStatusList)
+}
+
+func (s *Server) BulkAddGames(c *gin.Context) {
+	bulkAddResponse, err := s.GameApi.BulkAddGames(c.Request.Context(), c.Request.Body)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusCreated, bulkAddResponse)
+}
+
+// Play To Win API
+
+func (s *Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID) {
+	ptwEntries, err := s.PlayToWinApi.GetPlayToWinGameEntries(c.Request.Context(), playToWinId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwEntries)
+}
+
+func (s *Server) RemovePlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	var request RemovePlayToWinGameRequest
+	extractRequestBody[RemovePlayToWinGameRequest](c, &request)
+	if !c.IsAborted() {
+		err := s.PlayToWinApi.RemovePlayToWinGameByGameId(c.Request.Context(), gameId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (s *Server) AddPlayToWinGameByGameId(c *gin.Context, gameId types.UUID) {
+	_, err := s.PlayToWinApi.AddPlayToWinGameByGameId(c.Request.Context(), gameId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	var request RemovePlayToWinGameRequest
+	extractRequestBody[RemovePlayToWinGameRequest](c, &request)
+	if !c.IsAborted() {
+		err := s.PlayToWinApi.DeletePlayToWinGame(c.Request.Context(), ptwId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+	}
+}
+
+func (s *Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	ptwGame, err := s.PlayToWinApi.GetPlayToWinGameOverview(c.Request.Context(), ptwId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwGame)
+}
+
+func (s *Server) UpdatePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	var request UpdatePlayToWinGameJSONRequestBody
+	extractRequestBody[UpdatePlayToWinGameJSONRequestBody](c, &request)
+	if !c.IsAborted() {
+		err := s.PlayToWinApi.UpdatePlayToWinGame(c.Request.Context(), ptwId, request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (s *Server) ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams) {
+	ptwGames, err := s.PlayToWinApi.ListPlayToWinGames(c.Request.Context(), params)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwGames)
+}
+
+func (s *Server) AddPlayToWinSession(c *gin.Context) {
+	var request CreatePlayToWinSessionRequest
+	extractRequestBody[CreatePlayToWinSessionRequest](c, &request)
+	if !c.IsAborted() {
+		ptwSession, err := s.PlayToWinApi.RecordPlayToWinSession(c.Request.Context(), request)
+		handleError(c, err)
+		if c.IsAborted() {
+			return
+		}
+		c.JSON(http.StatusCreated, ptwSession)
+	}
+}
+
+// Play To Win Raffle API
+
+func (s *Server) DrawPlayToWinRaffle(c *gin.Context, ptwId types.UUID) {
+	ptwEntry, err := s.PlayToWinApi.DrawPlayToWinRaffle(c.Request.Context(), ptwId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.JSON(http.StatusOK, ptwEntry)
+}
+
+func (s *Server) ResetPlayToWinRaffle(c *gin.Context) {
+	err := s.PlayToWinApi.ResetPlayToWinRaffle(c.Request.Context())
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

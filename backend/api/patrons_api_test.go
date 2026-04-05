@@ -1,723 +1,468 @@
 package api
 
 import (
-	"bytes"
+	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
+	"io"
+	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/alexsieland/bg-library/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func TestAddPatron(t *testing.T) {
-	t.Run("Should return 201 Created when valid patron is added", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "John Doe"
+func TestPatronApiAddPatron(t *testing.T) {
+	t.Run("Should return a patron when the request is valid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		expectedPatron := testDBPatron(uuid.New(), "Jane Doe", ptr("P-1001"))
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false} // deleted_at
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}           // barcode
-		}).Return(nil)
+		fixture.service.On("InsertPatron", fixture.ctx, "Jane Doe", ptr("P-1001"), nil).Return(expectedPatron, nil).Once()
 
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
+		patron, err := fixture.api.AddPatron(fixture.ctx, AddPatronJSONRequestBody{Name: "Jane Doe", Barcode: ptr("P-1001")})
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: name})
-		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.AddPatron(c)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-		var response Patron
-		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, name, response.Name)
-		assert.Equal(t, patronID, response.PatronId)
-		mockDB.AssertExpectations(t)
+		assert.Equal(t, FromPatron(expectedPatron), patron)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 400 Bad Request when JSON is malformed", func(t *testing.T) {
-		server, _ := setupTestServer()
+	t.Run("Should return validation details when the request fields are invalid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		tooLongName := strings.Repeat("n", 101)
+		tooLongBarcode := strings.Repeat("b", 49)
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBufferString("{invalid json}"))
-		c.Request.Header.Set("Content-Type", "application/json")
+		patron, err := fixture.api.AddPatron(fixture.ctx, AddPatronJSONRequestBody{Name: tooLongName, Barcode: &tooLongBarcode})
 
-		server.AddPatron(c)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "JSON body is malformed")
+		assert.Equal(t, Patron{}, patron)
+		assertValidationError(t, err, ErrorDetails{Details: []ErrorDetail{
+			{Field: "name", Message: "Length must be between 1 and 100"},
+			{Field: "barcode", Message: "Length must be between 1 and 48"},
+		}})
 	})
 
-	t.Run("Should return 400 Bad Request when name is too long", func(t *testing.T) {
-		server, _ := setupTestServer()
+	t.Run("Should return the service error when inserting a patron fails", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		expectedErr := errors.New("insert failed")
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: string(make([]byte, 101))})
-		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
+		fixture.service.On("InsertPatron", fixture.ctx, "Jane Doe", (*string)(nil), nil).Return(db.Patron{}, expectedErr).Once()
 
-		server.AddPatron(c)
+		patron, err := fixture.api.AddPatron(fixture.ctx, AddPatronJSONRequestBody{Name: "Jane Doe"})
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
-	})
-
-	t.Run("Should return 500 Internal Server Error when DB returns error", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		name := "John Doe"
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: name})
-		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.AddPatron(c)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
-	})
-
-	t.Run("Should return 201 Created with barcode when barcode is provided", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "John Doe"
-		barcode := "9780000000001"
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false} // deleted_at
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{String: barcode, Valid: true}
-		}).Return(nil)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: name, Barcode: &barcode})
-		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.AddPatron(c)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-		var response Patron
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, name, response.Name)
-		assert.Equal(t, patronID, response.PatronId)
-		assert.NotNil(t, response.Barcode)
-		assert.Equal(t, barcode, *response.Barcode)
-		mockDB.AssertExpectations(t)
-	})
-
-	t.Run("Should return 400 Bad Request when barcode exceeds 48 characters", func(t *testing.T) {
-		server, _ := setupTestServer()
-		name := "John Doe"
-		barcode := string(make([]byte, 49)) // 49 chars
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(AddPatronJSONRequestBody{Name: name, Barcode: &barcode})
-		c.Request = httptest.NewRequest("POST", "/patrons", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.AddPatron(c)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
+		assert.Equal(t, Patron{}, patron)
+		assert.ErrorIs(t, err, expectedErr)
+		fixture.service.AssertExpectations(t)
 	})
 }
 
-func TestDeletePatron(t *testing.T) {
-	t.Run("Should return 204 No Content when patron is deleted", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
+func TestPatronApiBulkAddPatrons(t *testing.T) {
+	t.Run("Should import patrons and commit the transaction when the CSV is valid", func(t *testing.T) {
+		tx := &stubTx{}
+		fixture := newPatronApiTestFixture(t).withTx(tx).build()
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(pgconn.CommandTag{}, nil)
+		fixture.service.On("InsertPatron", fixture.ctx, "Jane Doe", ptr("P-2001"), mock.Anything).Return(testDBPatron(uuid.New(), "Jane Doe", ptr("P-2001")), nil).Once().Run(func(args mock.Arguments) {
+			assert.Same(t, tx, args.Get(3))
+		})
+		fixture.service.On("InsertPatron", fixture.ctx, "John Smith", (*string)(nil), mock.Anything).Return(testDBPatron(uuid.New(), "John Smith", nil), nil).Once().Run(func(args mock.Arguments) {
+			assert.Same(t, tx, args.Get(3))
+		})
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("DELETE", "/patrons/"+patronID.String(), nil)
-		server.DeletePatron(c, types.UUID(patronID))
+		response, err := fixture.api.BulkAddPatrons(fixture.ctx, encodedCSVBody("name,barcode\nJane Doe,P-2001\nJohn Smith,\n"))
 
-		assert.Equal(t, http.StatusNoContent, w.Code)
-		mockDB.AssertExpectations(t)
+		assert.NoError(t, err)
+		assert.Equal(t, BulkAddResponse{Imported: 2}, response)
+		assert.Equal(t, 1, tx.commitCount)
+		assert.Equal(t, 0, tx.rollbackCount)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 500 Internal Server Error when DB error occurs on delete", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
+	t.Run("Should return the transaction start error when opening the bulk import transaction fails", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).withTxError(errors.New("begin failed")).build()
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(pgconn.CommandTag{}, errors.New("db error"))
+		response, err := fixture.api.BulkAddPatrons(fixture.ctx, encodedCSVBody("name,barcode\nJane Doe,P-2001\n"))
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("DELETE", "/patrons/"+patronID.String(), nil)
-		server.DeletePatron(c, types.UUID(patronID))
+		assert.Equal(t, BulkAddResponse{}, response)
+		assert.EqualError(t, err, "begin failed")
+	})
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
+	t.Run("Should return the CSV read error when the request body is not valid base64", func(t *testing.T) {
+		tx := &stubTx{}
+		fixture := newPatronApiTestFixture(t).withTx(tx).build()
+
+		response, err := fixture.api.BulkAddPatrons(fixture.ctx, io.NopCloser(strings.NewReader("%%%")))
+
+		assert.Equal(t, BulkAddResponse{}, response)
+		assert.Error(t, err)
+		assert.Equal(t, 0, tx.commitCount)
+		assert.Equal(t, 1, tx.rollbackCount)
+		fixture.service.AssertNotCalled(t, "InsertPatron", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Should accumulate validation details and skip inserts when any CSV row is invalid", func(t *testing.T) {
+		tx := &stubTx{}
+		fixture := newPatronApiTestFixture(t).withTx(tx).build()
+		tooLongBarcode := strings.Repeat("b", 49)
+
+		response, err := fixture.api.BulkAddPatrons(fixture.ctx, encodedCSVBody("name,barcode\n,P-2002\nValid Name,"+tooLongBarcode+"\n"))
+
+		assert.Equal(t, BulkAddResponse{}, response)
+		assertValidationError(t, err, ErrorDetails{Details: []ErrorDetail{
+			{Field: "name", Message: "Length must be between 1 and 100"},
+			{Field: "barcode", Message: "Length must be between 1 and 48"},
+		}})
+		assert.Equal(t, 0, tx.commitCount)
+		assert.Equal(t, 1, tx.rollbackCount)
+		fixture.service.AssertNotCalled(t, "InsertPatron", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Should return the service error and roll back when an insert fails during bulk import", func(t *testing.T) {
+		tx := &stubTx{}
+		fixture := newPatronApiTestFixture(t).withTx(tx).build()
+		expectedErr := errors.New("insert failed")
+
+		fixture.service.On("InsertPatron", fixture.ctx, "Jane Doe", (*string)(nil), mock.Anything).Return(db.Patron{}, expectedErr).Once().Run(func(args mock.Arguments) {
+			assert.Same(t, tx, args.Get(3))
+		})
+
+		response, err := fixture.api.BulkAddPatrons(fixture.ctx, encodedCSVBody("name,barcode\nJane Doe,\n"))
+
+		assert.Equal(t, BulkAddResponse{}, response)
+		assert.ErrorIs(t, err, expectedErr)
+		assert.Equal(t, 0, tx.commitCount)
+		assert.Equal(t, 1, tx.rollbackCount)
+		fixture.service.AssertExpectations(t)
+	})
+
+	t.Run("Should return the commit error and roll back when committing the bulk import transaction fails", func(t *testing.T) {
+		tx := &stubTx{commitErr: errors.New("commit failed")}
+		fixture := newPatronApiTestFixture(t).withTx(tx).build()
+
+		fixture.service.On("InsertPatron", fixture.ctx, "Jane Doe", (*string)(nil), mock.Anything).Return(testDBPatron(uuid.New(), "Jane Doe", nil), nil).Once().Run(func(args mock.Arguments) {
+			assert.Same(t, tx, args.Get(3))
+		})
+
+		response, err := fixture.api.BulkAddPatrons(fixture.ctx, encodedCSVBody("name,barcode\nJane Doe,\n"))
+
+		assert.Equal(t, BulkAddResponse{}, response)
+		assert.EqualError(t, err, "commit failed")
+		assert.Equal(t, 1, tx.commitCount)
+		assert.Equal(t, 1, tx.rollbackCount)
+		fixture.service.AssertExpectations(t)
 	})
 }
 
-func TestGetPatron(t *testing.T) {
-	t.Run("Should return 200 OK when patron is found", func(t *testing.T) {
-		server, mockDB := setupTestServer()
+func TestPatronApiDeletePatron(t *testing.T) {
+	t.Run("Should forward the converted patron identifier when deleting a patron", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
 		patronID := uuid.New()
-		name := "John Doe"
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-		}).Return(nil)
+		fixture.service.On("DeletePatron", fixture.ctx, testUUID(patronID), nil).Return(nil).Once()
 
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(mockRow)
+		err := fixture.api.DeletePatron(fixture.ctx, types.UUID(patronID))
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/"+patronID.String(), nil)
-		server.GetPatron(c, types.UUID(patronID))
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		var response Patron
-		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, name, response.Name)
-		assert.Equal(t, patronID, response.PatronId)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 404 Not Found when patron does not exist", func(t *testing.T) {
-		server, mockDB := setupTestServer()
+	t.Run("Should return the service error when deleting a patron fails", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
 		patronID := uuid.New()
+		expectedErr := errors.New("delete failed")
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(mockRow)
+		fixture.service.On("DeletePatron", fixture.ctx, testUUID(patronID), nil).Return(expectedErr).Once()
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/"+patronID.String(), nil)
-		server.GetPatron(c, types.UUID(patronID))
+		err := fixture.api.DeletePatron(fixture.ctx, types.UUID(patronID))
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-
-	t.Run("Should return 500 Internal Server Error when DB error occurs on get", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}}).Return(mockRow)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/"+patronID.String(), nil)
-		server.GetPatron(c, types.UUID(patronID))
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
+		assert.ErrorIs(t, err, expectedErr)
+		fixture.service.AssertExpectations(t)
 	})
 }
 
-func TestGetPatronByBarcode(t *testing.T) {
-	t.Run("Should return 200 OK when patron is found by barcode", func(t *testing.T) {
-		server, mockDB := setupTestServer()
+func TestPatronApiGetPatron(t *testing.T) {
+	t.Run("Should return a converted patron when the service finds one", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
 		patronID := uuid.New()
-		name := "John Doe"
-		barcode := "1234567890"
+		barcode := "P-3001"
+		expectedPatron := testDBLibraryPatron(patronID, "Jordan Doe", ptr(barcode))
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Text) = pgtype.Text{String: barcode, Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-		}).Return(nil)
+		fixture.service.On("GetPatron", fixture.ctx, testUUID(patronID), nil).Return(expectedPatron, nil).Once()
 
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
+		patron, err := fixture.api.GetPatron(fixture.ctx, types.UUID(patronID))
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/barcode/"+barcode, nil)
-		server.GetPatronByBarcode(c, barcode)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		var response Patron
-		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, name, response.Name)
-		assert.Equal(t, patronID, response.PatronId)
-		mockDB.AssertExpectations(t)
+		assert.Equal(t, FromVwLibraryPatron(expectedPatron), patron)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 400 Bad Request when barcode is empty", func(t *testing.T) {
-		server, _ := setupTestServer()
+	t.Run("Should return the service error when fetching a patron fails", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		patronID := uuid.New()
+		expectedErr := errors.New("lookup failed")
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/barcode/", nil)
-		server.GetPatronByBarcode(c, "")
+		fixture.service.On("GetPatron", fixture.ctx, testUUID(patronID), nil).Return(db.VwLibraryPatron{}, expectedErr).Once()
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
+		patron, err := fixture.api.GetPatron(fixture.ctx, types.UUID(patronID))
 
-	t.Run("Should return 400 Bad Request when barcode exceeds 48 characters", func(t *testing.T) {
-		server, _ := setupTestServer()
-		barcode := "1234567890123456789012345678901234567890123456789" // 49 chars
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/barcode/"+barcode, nil)
-		server.GetPatronByBarcode(c, barcode)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("Should return 404 Not Found when patron does not exist for barcode", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		barcode := "1234567890"
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pgx.ErrNoRows)
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/barcode/"+barcode, nil)
-		server.GetPatronByBarcode(c, barcode)
-
-		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-
-	t.Run("Should return 500 Internal Server Error when database error occurs", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		barcode := "1234567890"
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons/barcode/"+barcode, nil)
-		server.GetPatronByBarcode(c, barcode)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
-		mockDB.AssertExpectations(t)
+		assert.Equal(t, Patron{}, patron)
+		assert.ErrorIs(t, err, expectedErr)
+		fixture.service.AssertExpectations(t)
 	})
 }
 
-func TestUpdatePatron(t *testing.T) {
-	t.Run("Should return 204 No Content when patron is updated", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "Updated Name"
+func TestPatronApiGetPatronByBarcode(t *testing.T) {
+	t.Run("Should return a converted patron when the barcode is valid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		barcode := "P-4001"
+		expectedPatron := testDBLibraryPatron(uuid.New(), "Taylor Doe", ptr(barcode))
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, nil)
+		fixture.service.On("GetPatronByBarcode", fixture.ctx, barcode, nil).Return(expectedPatron, nil).Once()
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(UpdatePatronJSONRequestBody{Name: name})
-		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
+		patron, err := fixture.api.GetPatronByBarcode(fixture.ctx, barcode)
 
-		server.UpdatePatron(c, types.UUID(patronID))
-
-		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.NoError(t, err)
+		assert.Equal(t, FromVwLibraryPatron(expectedPatron), patron)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 404 Not Found when updating non-existent patron", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "Updated Name"
+	t.Run("Should return validation details when the barcode is invalid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		tooLongBarcode := strings.Repeat("b", 49)
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, pgx.ErrNoRows)
+		patron, err := fixture.api.GetPatronByBarcode(fixture.ctx, tooLongBarcode)
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(UpdatePatronJSONRequestBody{Name: name})
-		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.UpdatePatron(c, types.UUID(patronID))
-
-		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-
-	t.Run("Should return 500 Internal Server Error when DB error occurs on update", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "Updated Name"
-
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{Valid: false}}).Return(pgconn.CommandTag{}, errors.New("db error"))
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(UpdatePatronJSONRequestBody{Name: name})
-		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.UpdatePatron(c, types.UUID(patronID))
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
-	})
-
-	t.Run("Should return 204 No Content when patron is updated with barcode", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "Updated Name"
-		barcode := "9780000000001"
-
-		mockDB.On("Exec", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronID, Valid: true}, name, pgtype.Text{String: barcode, Valid: true}}).Return(pgconn.CommandTag{}, nil)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(UpdatePatronJSONRequestBody{Name: name, Barcode: &barcode})
-		c.Request = httptest.NewRequest("PUT", "/patrons/"+patronID.String(), bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		server.UpdatePatron(c, types.UUID(patronID))
-
-		assert.Equal(t, http.StatusNoContent, w.Code)
-		mockDB.AssertExpectations(t)
+		assert.Equal(t, Patron{}, patron)
+		assertValidationError(t, err, ErrorDetails{Details: []ErrorDetail{{Field: "patronBarcode", Message: "Length must be between 1 and 48"}}})
 	})
 }
 
-func TestListPatrons(t *testing.T) {
-	t.Run("Should return 200 OK with list of patrons when called without search", func(t *testing.T) {
-		server, mockDB := setupTestServer()
+func TestPatronApiUpdatePatron(t *testing.T) {
+	t.Run("Should forward the update request to the service when the request is valid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
 		patronID := uuid.New()
-		name := "John Doe"
+		barcode := "P-5001"
 
-		mockRows := new(MockRows)
-		mockRows.On("Next").Return(true).Once()
-		mockRows.On("Next").Return(false).Once()
-		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Text) = pgtype.Text{Valid: false} // barcode
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-		}).Return(nil)
-		mockRows.On("Close").Return()
-		mockRows.On("Err").Return(nil)
+		fixture.service.On("UpdatePatron", fixture.ctx, testUUID(patronID), "Updated Name", ptr(barcode), nil).Return(nil).Once()
 
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{int32(999), int32(0)}).Return(mockRows, nil)
+		err := fixture.api.UpdatePatron(fixture.ctx, types.UUID(patronID), UpdatePatronJSONRequestBody{Name: "Updated Name", Barcode: ptr(barcode)})
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons", nil)
-		server.ListPatrons(c, ListPatronsParams{})
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		var response PatronList
-		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.Patrons, 1)
-		assert.Equal(t, name, response.Patrons[0].Name)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 200 OK with searched patrons when name is provided", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		name := "John"
+	t.Run("Should return validation details when the update request is invalid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		tooLongName := strings.Repeat("n", 101)
 
-		mockRows := new(MockRows)
-		mockRows.On("Next").Return(false)
-		mockRows.On("Close").Return()
-		mockRows.On("Err").Return(nil)
+		err := fixture.api.UpdatePatron(fixture.ctx, types.UUID(uuid.New()), UpdatePatronJSONRequestBody{Name: tooLongName})
 
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{"%" + name + "%", int32(999), int32(0)}).Return(mockRows, nil)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons?name=John", nil)
-		server.ListPatrons(c, ListPatronsParams{Name: &name})
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		mockDB.AssertExpectations(t)
+		assertValidationError(t, err, ErrorDetails{Details: []ErrorDetail{{Field: "name", Message: "Length must be between 1 and 100"}}})
 	})
 
-	t.Run("Should return 500 Internal Server Error when DB error occurs on list", func(t *testing.T) {
-		server, mockDB := setupTestServer()
+	t.Run("Should return the service error when updating a patron fails", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		patronID := uuid.New()
+		expectedErr := errors.New("update failed")
 
-		mockDB.On("Query", mock.Anything, mock.Anything, []any{int32(999), int32(0)}).Return(nil, errors.New("db error"))
+		fixture.service.On("UpdatePatron", fixture.ctx, testUUID(patronID), "Updated Name", (*string)(nil), nil).Return(expectedErr).Once()
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/patrons", nil)
-		server.ListPatrons(c, ListPatronsParams{})
+		err := fixture.api.UpdatePatron(fixture.ctx, types.UUID(patronID), UpdatePatronJSONRequestBody{Name: "Updated Name"})
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
+		assert.ErrorIs(t, err, expectedErr)
+		fixture.service.AssertExpectations(t)
 	})
 }
 
-func TestBulkAddPatrons(t *testing.T) {
-	t.Run("Should return 201 Created with imported count when valid CSV is provided", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID1 := uuid.New()
-		patronID2 := uuid.New()
-		name1 := "John Doe"
-		name2 := "Jane Smith"
+func TestPatronApiListPatrons(t *testing.T) {
+	t.Run("Should return a converted patron list when the list request is valid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		searchName := "Doe"
+		barcode := "P-6001"
+		expectedPatrons := []db.VwLibraryPatron{
+			testDBLibraryPatron(uuid.New(), "Casey Doe", ptr(barcode)),
+			testDBLibraryPatron(uuid.New(), "Logan Doe", nil),
+		}
 
-		// CSV content: "John Doe"\n"Jane Smith"
-		csvContent := "name\n" + name1 + "\n" + name2
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+		fixture.service.On("ListPatrons", fixture.ctx, ptr(searchName), int32(999), int32(0), nil).Return(expectedPatrons, nil).Once()
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+		patronList, err := fixture.api.ListPatrons(fixture.ctx, ListPatronsParams{Name: ptr(searchName)})
 
-		// First patron
-		mockRow1 := new(MockRow)
-		mockRow1.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID1, Valid: true}
-			*args.Get(1).(*string) = name1
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false} // deleted_at
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}           // barcode
-		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name1, pgtype.Text{Valid: false}}).Return(mockRow1)
-
-		// Second patron
-		mockRow2 := new(MockRow)
-		mockRow2.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID2, Valid: true}
-			*args.Get(1).(*string) = name2
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false} // deleted_at
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}           // barcode
-		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name2, pgtype.Text{Valid: false}}).Return(mockRow2)
-
-		mockTx.On("Commit", mock.Anything).Return(nil)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
-
-		server.BulkAddPatrons(c)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-		var response BulkAddResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, int32(2), response.Imported)
-		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
+		assert.Equal(t, PatronList{Patrons: []Patron{
+			FromVwLibraryPatron(expectedPatrons[0]),
+			FromVwLibraryPatron(expectedPatrons[1]),
+		}}, patronList)
+		fixture.service.AssertExpectations(t)
 	})
 
-	t.Run("Should return 400 Bad Request when any CSV record fails validation", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		validName := "John Doe"
-		invalidName := string(make([]byte, 101)) // Too long name should fail validation
+	t.Run("Should return validation details when the list search name is invalid", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		tooLongName := strings.Repeat("n", 101)
 
-		csvContent := "name\n" + validName + "\n" + invalidName
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+		patronList, err := fixture.api.ListPatrons(fixture.ctx, ListPatronsParams{Name: &tooLongName})
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = validName
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}
-		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{validName, pgtype.Text{Valid: false}}).Return(mockRow)
-		mockTx.On("Rollback", mock.Anything).Return(nil)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
-
-		server.BulkAddPatrons(c)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "Validation error")
-		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
+		assert.Equal(t, PatronList{}, patronList)
+		assertValidationError(t, err, ErrorDetails{Details: []ErrorDetail{{Field: "name", Message: "Length must be between 1 and 100"}}})
 	})
 
-	t.Run("Should return 500 Internal Server Error when transaction fails to begin", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		csvContent := "John Doe"
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+	t.Run("Should return the service error when listing patrons fails", func(t *testing.T) {
+		fixture := newPatronApiTestFixture(t).build()
+		expectedErr := errors.New("list failed")
 
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(nil, errors.New("transaction error"))
+		fixture.service.On("ListPatrons", fixture.ctx, (*string)(nil), int32(999), int32(0), nil).Return(nil, expectedErr).Once()
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
+		patronList, err := fixture.api.ListPatrons(fixture.ctx, ListPatronsParams{})
 
-		server.BulkAddPatrons(c)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "transaction error")
-		mockDB.AssertExpectations(t)
+		assert.Equal(t, PatronList{}, patronList)
+		assert.ErrorIs(t, err, expectedErr)
+		fixture.service.AssertExpectations(t)
 	})
+}
 
-	t.Run("Should return 500 Internal Server Error when DB error occurs during insert", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		name := "John Doe"
-		csvContent := "name\n" + name
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+type patronApiTestFixture struct {
+	ctx     context.Context
+	service *mockPatronService
+	api     *PatronApi
+	tx      pgx.Tx
+	txErr   error
+}
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+func newPatronApiTestFixture(t *testing.T) *patronApiTestFixture {
+	return &patronApiTestFixture{
+		ctx:     t.Context(),
+		service: new(mockPatronService),
+	}
+}
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error"))
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
-		mockTx.On("Rollback", mock.Anything).Return(nil)
+func (f *patronApiTestFixture) withTx(tx pgx.Tx) *patronApiTestFixture {
+	f.tx = tx
+	return f
+}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
+func (f *patronApiTestFixture) withTxError(err error) *patronApiTestFixture {
+	f.txErr = err
+	return f
+}
 
-		server.BulkAddPatrons(c)
+func (f *patronApiTestFixture) build() *patronApiTestFixture {
+	f.api = newTestPatronApi(f.service, f.tx, f.txErr)
+	return f
+}
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "db error")
-		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
-	})
+// ptr creates a pointer to a value, useful for creating pointers to literals or constants
+func ptr[T any](v T) *T {
+	return &v
+}
 
-	t.Run("Should return 500 Internal Server Error when transaction commit fails", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "John Doe"
-		csvContent := "name\n" + name
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+// testUUID converts a uuid.UUID to pgtype.UUID for testing
+func testUUID(id uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{Bytes: id, Valid: true}
+}
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+type mockPatronService struct {
+	mock.Mock
+}
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false} // deleted_at
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{Valid: false}           // barcode
-		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{Valid: false}}).Return(mockRow)
+func (m *mockPatronService) InsertPatron(ctx context.Context, name string, barcode *string, optTx pgx.Tx) (db.Patron, error) {
+	args := m.Called(ctx, name, barcode, optTx)
+	if args.Get(0) == nil {
+		return db.Patron{}, args.Error(1)
+	}
+	return args.Get(0).(db.Patron), args.Error(1)
+}
 
-		mockTx.On("Commit", mock.Anything).Return(errors.New("commit error"))
-		mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
+func (m *mockPatronService) DeletePatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) error {
+	args := m.Called(ctx, patronId, optTx)
+	return args.Error(0)
+}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
+func (m *mockPatronService) GetPatron(ctx context.Context, patronId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryPatron, error) {
+	args := m.Called(ctx, patronId, optTx)
+	if args.Get(0) == nil {
+		return db.VwLibraryPatron{}, args.Error(1)
+	}
+	return args.Get(0).(db.VwLibraryPatron), args.Error(1)
+}
 
-		server.BulkAddPatrons(c)
+func (m *mockPatronService) GetPatronByBarcode(ctx context.Context, patronBarcode string, optTx pgx.Tx) (db.VwLibraryPatron, error) {
+	args := m.Called(ctx, patronBarcode, optTx)
+	if args.Get(0) == nil {
+		return db.VwLibraryPatron{}, args.Error(1)
+	}
+	return args.Get(0).(db.VwLibraryPatron), args.Error(1)
+}
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "commit error")
-		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
-	})
+func (m *mockPatronService) UpdatePatron(ctx context.Context, patronId pgtype.UUID, fullName string, barcode *string, optTx pgx.Tx) error {
+	args := m.Called(ctx, patronId, fullName, barcode, optTx)
+	return args.Error(0)
+}
 
-	t.Run("Should import patrons with barcode when barcode column is present", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		patronID := uuid.New()
-		name := "John Doe"
-		barcode := "P12345"
+func (m *mockPatronService) ListPatrons(ctx context.Context, fullName *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryPatron, error) {
+	args := m.Called(ctx, fullName, limit, offset, optTx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]db.VwLibraryPatron), args.Error(1)
+}
 
-		csvContent := "name,barcode\n" + name + "," + barcode
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+// small mock that implements internal.LibraryServiceInterface for tests
+type testLibService struct {
+	tx  pgx.Tx
+	err error
+}
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
+func (t *testLibService) BeginTx(ctx context.Context) (pgx.Tx, error) { return t.tx, t.err }
+func (t *testLibService) Start() error                                { return nil }
+func (t *testLibService) Stop()                                       {}
 
-		mockRow := new(MockRow)
-		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			*args.Get(0).(*pgtype.UUID) = pgtype.UUID{Bytes: patronID, Valid: true}
-			*args.Get(1).(*string) = name
-			*args.Get(2).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: true}
-			*args.Get(3).(*pgtype.Timestamp) = pgtype.Timestamp{Valid: false}
-			*args.Get(4).(*pgtype.Text) = pgtype.Text{String: barcode, Valid: true}
-		}).Return(nil)
-		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{name, pgtype.Text{String: barcode, Valid: true}}).Return(mockRow)
-		mockTx.On("Commit", mock.Anything).Return(nil)
+func newTestPatronApi(service patronService, tx pgx.Tx, beginErr error) *PatronApi {
+	lib := &testLibService{tx: tx, err: beginErr}
+	return &PatronApi{
+		libraryService: lib,
+		service:        service,
+	}
+}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
+func encodedCSVBody(csvContent string) io.ReadCloser {
+	encoded := base64.StdEncoding.EncodeToString([]byte(csvContent))
+	return io.NopCloser(strings.NewReader(encoded))
+}
 
-		server.BulkAddPatrons(c)
+func testDBPatron(id uuid.UUID, fullName string, barcode *string) db.Patron {
+	return db.Patron{
+		ID:        pgtype.UUID{Bytes: id, Valid: true},
+		FullName:  fullName,
+		Barcode:   testDBBarcode(barcode),
+		CreatedAt: pgtype.Timestamp{Valid: true},
+		DeletedAt: pgtype.Timestamp{Valid: false},
+	}
+}
 
-		assert.Equal(t, http.StatusCreated, w.Code)
-		var response BulkAddResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, int32(1), response.Imported)
-		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
-	})
+func testDBLibraryPatron(id uuid.UUID, fullName string, barcode *string) db.VwLibraryPatron {
+	return db.VwLibraryPatron{
+		ID:        pgtype.UUID{Bytes: id, Valid: true},
+		FullName:  fullName,
+		Barcode:   testDBBarcode(barcode),
+		CreatedAt: pgtype.Timestamp{Valid: true},
+	}
+}
 
-	t.Run("Should handle empty CSV and return 201 with zero imported", func(t *testing.T) {
-		server, mockDB := setupTestServer()
-		csvContent := ""
-		base64Content := base64.StdEncoding.EncodeToString([]byte(csvContent))
+func testDBBarcode(barcode *string) pgtype.Text {
+	if barcode == nil {
+		return pgtype.Text{Valid: false}
+	}
 
-		mockTx := new(MockTx)
-		mockDB.On("BeginTx", mock.Anything, pgx.TxOptions{}).Return(mockTx, nil)
-		mockTx.On("Commit", mock.Anything).Return(nil)
+	return pgtype.Text{String: *barcode, Valid: true}
+}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("POST", "/patrons/bulk", bytes.NewBufferString(base64Content))
-		c.Request.Header.Set("Content-Type", "text/plain")
-
-		server.BulkAddPatrons(c)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-		var response BulkAddResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, int32(0), response.Imported)
-		mockDB.AssertExpectations(t)
-		mockTx.AssertExpectations(t)
-	})
+func assertValidationError(t *testing.T, err error, expected ErrorDetails) {
+	t.Helper()
+	details, ok := err.(ErrorDetails)
+	if !assert.True(t, ok, "expected ErrorDetails, got %T", err) {
+		return
+	}
+	assert.Equal(t, expected, details)
 }

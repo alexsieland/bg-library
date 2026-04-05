@@ -1,0 +1,97 @@
+package internal
+
+import (
+	"context"
+
+	"github.com/alexsieland/bg-library/db"
+	"github.com/jackc/pgx/v5"
+)
+
+type LibraryService struct {
+	database db.DB
+	queries  *db.Queries
+}
+
+func NewLibraryService(database db.DB) *LibraryService {
+	return &LibraryService{
+		database: database,
+		queries:  db.New(database),
+	}
+}
+
+// LibraryServiceInterface defines the methods of LibraryService that other
+// packages (notably the api package and tests) may rely on. Tests can provide
+// a mock implementing this interface to control transaction behavior without
+// modifying global state. *LibraryService implements this interface.
+type LibraryServiceInterface interface {
+	BeginTx(ctx context.Context) (pgx.Tx, error)
+	Start() error
+	Stop()
+}
+
+// withinTxImpl is the non-generic implementation function variable. Tests
+// can replace this to control transaction behavior in unit tests.
+var withinTxImpl func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) = func(s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (any, error)) (any, error) {
+	var (
+		tx  pgx.Tx
+		err error
+	)
+	if optTx != nil {
+		tx = optTx
+	} else {
+		tx, err = s.database.BeginTx(ctx, pgx.TxOptions{})
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			if tx != nil {
+				_ = tx.Rollback(ctx)
+			}
+		}()
+	}
+
+	result, err := fn(tx)
+	if err != nil {
+		return nil, err
+	}
+	if optTx == nil {
+		if err = tx.Commit(ctx); err != nil {
+			return nil, err
+		}
+		// prevent the deferred rollback from running
+		tx = nil
+	}
+	return result, nil
+}
+
+// WithinTx is a generic, type-safe wrapper around the non-generic
+// `withinTxImpl`. Tests should override `withinTxImpl` when they need to
+// mock transaction behavior; they must not attempt to assign a generic
+// function literal to `WithinTx` (Go does not allow function literals with
+// type parameters).
+func WithinTx[T any](s *LibraryService, ctx context.Context, optTx pgx.Tx, fn func(tx pgx.Tx) (*T, error)) (*T, error) {
+	wrapper := func(tx pgx.Tx) (any, error) {
+		res, err := fn(tx)
+		return any(res), err
+	}
+	out, err := withinTxImpl(s, ctx, optTx, wrapper)
+	if err != nil {
+		return nil, err
+	}
+	if out == nil {
+		return nil, nil
+	}
+	return out.(*T), nil
+}
+
+func (s *LibraryService) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	return s.database.BeginTx(ctx, pgx.TxOptions{})
+}
+
+func (s *LibraryService) Start() error {
+	return s.database.Connect()
+}
+
+func (s *LibraryService) Stop() {
+	s.database.Close()
+}

@@ -1,20 +1,39 @@
 package api
 
 import (
-	"strings"
 	"time"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
-	"golang.org/x/text/unicode/norm"
 )
 
 //Conversion Utils
 
 func pgUUIDToUUID(pgUUID pgtype.UUID) uuid.UUID {
 	return pgUUID.Bytes
+}
+
+func uuidToPgTypeUUID(uuid uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{
+		Bytes: uuid,
+		Valid: true,
+	}
+}
+
+func pgInt4ToInteger(pg4 pgtype.Int4) *int32 {
+	if !pg4.Valid {
+		return nil
+	}
+	return &pg4.Int32
+}
+
+func pgTextToString(text pgtype.Text) *string {
+	if !text.Valid {
+		return nil
+	}
+	return &text.String
 }
 
 func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
@@ -90,8 +109,9 @@ func FromPatron(dbPatron db.Patron) Patron {
 
 func FromVwLibraryGame(dbGame db.VwLibraryGame) Game {
 	game := Game{
-		GameId: pgUUIDToUUID(dbGame.ID),
-		Title:  dbGame.Title,
+		GameId:      pgUUIDToUUID(dbGame.ID),
+		Title:       dbGame.Title,
+		IsPlayToWin: dbGame.PlayToWinGameID.Valid,
 	}
 	if dbGame.Barcode.Valid {
 		game.Barcode = &dbGame.Barcode.String
@@ -161,17 +181,6 @@ func FromPlayToWinGameOverview(dbPTWGame db.VwPlayToWinGameOverview) PlayToWinGa
 		Winner:      winner,
 	}
 	return game
-}
-
-func SanitizeTitle(title string) string {
-	t := norm.NFD.String(strings.ToLower(title))
-	var result strings.Builder
-	for _, r := range t {
-		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == ' ' || r == ':' || r == '-' {
-			result.WriteRune(r)
-		}
-	}
-	return result.String()
 }
 
 // Error Utils

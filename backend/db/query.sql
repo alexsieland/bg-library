@@ -125,21 +125,37 @@ FROM vw_library_transaction_events
 WHERE sanitized_title ILIKE $1 AND patron_full_name ILIKE $2
 LIMIT $3 OFFSET $4;
 
--- name: ListPlayToWinGames :many
+-- name: GetPlayToWinGameOverview :one
+SELECT *
+FROM vw_play_to_win_game_overview
+WHERE ptw_game_id = $1;
+
+-- name: ListPlayToWinGameOverviews :many
+SELECT *
+FROM vw_play_to_win_game_overview
+LIMIT $1 OFFSET $2;
+
+-- name: SearchPlayToWinGameOverviews :many
 SELECT *
 FROM vw_play_to_win_game_overview
 WHERE sanitized_title ILIKE $1
 LIMIT $2 OFFSET $3;
 
--- name: GetPlayToWinGame :one
+-- name: GetPlayToWinGameByLibraryGameId :one
 SELECT *
-FROM vw_play_to_win_game_overview
-WHERE ptw_game_id = $1;
+FROM vw_play_to_win_games
+WHERE game_id = $1;
 
 -- name: GetPlayToWinGroup :one
 SELECT *
 FROM vw_play_to_win_groups
 WHERE id = $1;
+
+-- name: GetPlayToWinGroupByPlayToWinGameId :one
+SELECT gr.*
+FROM vw_play_to_win_groups AS gr
+LEFT JOIN play_to_win_games AS ga ON gr.id = ga.ptw_group_id
+WHERE ga.id = $1;
 
 -- name: GetPlayToWinGroupByName :one
 SELECT *
@@ -150,34 +166,18 @@ WHERE name ILIKE $1;
 INSERT INTO play_to_win_groups (name) VALUES ($1)
 RETURNING *;
 
--- name: GetPlayToWinSessions :many
-SELECT
-    id AS ptw_session_id,
-    ptw_group_id,
-    playtime_minutes,
-    created_at
+-- name: GetPlayToWinSessionsByGroupId :many
+SELECT *
 FROM vw_play_to_win_sessions
 WHERE ptw_group_id = $1;
 
 -- name: GetPlayToWinEntriesByGroupId :many
-SELECT
-    id AS ptw_entry_id,
-    ptw_session_id,
-    ptw_group_id,
-    entrant_name,
-    entrant_unique_id,
-    created_at
+SELECT *
 FROM vw_play_to_win_entries
 WHERE ptw_group_id = $1;
 
 -- name: GetPlayToWinEntriesByPlayToWinGameId :many
-SELECT
-    e.id AS ptw_entry_id,
-    ptw_session_id,
-    e.ptw_group_id,
-    entrant_name,
-    entrant_unique_id,
-    e.created_at
+SELECT e.*
 FROM vw_play_to_win_entries e
 LEFT JOIN play_to_win_games g ON e.ptw_group_id = g.ptw_group_id
 WHERE g.id = $1;

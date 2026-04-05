@@ -13,11 +13,11 @@ func main() {
 	// create a type that satisfies the `api.ServerInterface`, which contains an implementation of every operation from the generated code
 
 	server := api.NewServer()
-	err := server.Database.Connect()
+	err := server.LibService.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer server.Database.Close()
+	defer server.LibService.Stop()
 
 	r := gin.Default()
 

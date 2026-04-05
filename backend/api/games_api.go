@@ -1,100 +1,85 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/csv"
-	"errors"
 	"io"
 	"log"
-	"net/http"
 
 	"github.com/alexsieland/bg-library/db"
-	"github.com/gin-gonic/gin"
+	"github.com/alexsieland/bg-library/internal"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
 )
 
-func (s Server) AddGame(c *gin.Context) {
-	var jsonObject AddGameJSONRequestBody
-	err := c.ShouldBindBodyWithJSON(&jsonObject)
-	if err != nil {
-		malformedJson(c)
-		return
-	}
+type gameService interface {
+	ListGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error)
+	ListGameStatuses(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error)
+	ListCheckedOutGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error)
+	InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.VwLibraryGame, error)
+	UpdateGame(ctx context.Context, gameId pgtype.UUID, title string, barcode *string, optTx pgx.Tx) error
+	GetGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryGame, error)
+	GetGamesByBarcode(ctx context.Context, barcode string, optTx pgx.Tx) ([]db.VwLibraryGame, error)
+	GetGameStatus(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwGameStatus, error)
+	DeleteGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) error
+	SetIsPlayToWin(ctx context.Context, gameId pgtype.UUID, isPlayToWin bool, optTx pgx.Tx) error
+}
 
+type GameApi struct {
+	libraryService internal.LibraryServiceInterface
+	service        gameService
+}
+
+func NewGamesApi(libService internal.LibraryServiceInterface, gameSrv *internal.GameService) *GameApi {
+	return &GameApi{
+		libraryService: libService,
+		service:        gameSrv,
+	}
+}
+
+func (api *GameApi) AddGame(ctx context.Context, request CreateGameRequest) (Game, error) {
 	var errorDetails ErrorDetails
 	isPlayToWin := false
-	if jsonObject.IsPlayToWin != nil {
-		isPlayToWin = *jsonObject.IsPlayToWin
+	if request.IsPlayToWin != nil {
+		isPlayToWin = *request.IsPlayToWin
 	}
-	dbGame, err := s.insertGame(c, jsonObject.Title, jsonObject.Barcode, isPlayToWin, &errorDetails, nil)
-	if errors.Is(err, errValidation) {
-		validationError(c, errorDetails)
-		return
+
+	errorDetails.ValidateStringLength("title", request.Title, 1, 100)
+	if request.Barcode != nil {
+		errorDetails.ValidateStringLength("barcode", *request.Barcode, 1, 48)
 	}
+
+	if !errorDetails.Empty() {
+		return Game{}, errorDetails
+	}
+
+	dbGame, err := api.service.InsertGame(ctx, request.Title, request.Barcode, isPlayToWin, nil)
 	if err != nil {
 		log.Printf("Error creating game: %v", err)
-		internalError(c, err)
-		return
+		return Game{}, err
 	}
 
-	c.JSON(http.StatusCreated, FromGame(dbGame, isPlayToWin))
+	return FromVwLibraryGame(dbGame), nil
 }
 
-func (s Server) insertGame(c *gin.Context, title string, barcode *string, isPlayToWin bool, errorDetails *ErrorDetails, tx *pgx.Tx) (db.Game, error) {
-	errorDetails.ValidateStringLength("title", title, 1, 100)
-	if barcode != nil {
-		errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
-	}
-	if !errorDetails.Empty() {
-		return db.Game{}, errValidation
-	}
-
-	dbBarcode := pgtype.Text{Valid: false}
-	if barcode != nil {
-		dbBarcode = pgtype.Text{String: *barcode, Valid: true}
-	}
-	createGameParams := db.CreateGameParams{
-		Title:          title,
-		SanitizedTitle: SanitizeTitle(title),
-		Barcode:        dbBarcode,
-	}
-
-	var game db.Game
-	var err error
-	if tx != nil {
-		game, err = s.queries.WithTx(*tx).CreateGame(c.Request.Context(), createGameParams)
-	} else {
-		game, err = s.queries.CreateGame(c.Request.Context(), createGameParams)
-	}
-
-	if err != nil {
-		return db.Game{}, err
-	}
-
-	if isPlayToWin {
-		err = s.addPlayToWinByGameId(c, pgUUIDToUUID(game.ID), tx)
-	}
-	return game, err
-}
-
-func (s Server) BulkAddGames(c *gin.Context) {
-	decodedReader := base64.NewDecoder(base64.StdEncoding, c.Request.Body)
+func (api *GameApi) BulkAddGames(ctx context.Context, requestBody io.ReadCloser) (BulkAddResponse, error) {
+	decodedReader := base64.NewDecoder(base64.StdEncoding, requestBody)
 	csvReader := csv.NewReader(decodedReader)
 
 	// Start a db transaction
-	tx, err := s.Database.BeginTx(c.Request.Context(), pgx.TxOptions{})
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
-		log.Printf("Error creating transaction: %v", err)
-		internalError(c, err)
-		return
+		log.Printf("Error beginning transaction: %v", err)
+		return BulkAddResponse{}, err
 	}
 
 	//defer rollback if there is an error
 	defer func() {
 		if tx != nil {
-			_ = tx.Rollback(c.Request.Context())
+			_ = tx.Rollback(ctx)
 		}
 	}()
 
@@ -104,23 +89,22 @@ func (s Server) BulkAddGames(c *gin.Context) {
 	firstRow := true
 	for {
 		record, err := csvReader.Read()
-		if firstRow {
-			firstRow = false
-			continue
-		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			log.Printf("Error reading CSV: %v", err)
-			internalError(c, err)
-			return
+			return BulkAddResponse{}, err
 		}
-
+		if firstRow {
+			firstRow = false
+			continue
+		}
 		if len(record) == 0 {
 			continue
 		}
 
+		// Validate each row
 		title := record[0]
 		errorDetails.ValidateStringLength("title", title, 1, 100)
 
@@ -130,254 +114,141 @@ func (s Server) BulkAddGames(c *gin.Context) {
 			errorDetails.ValidateStringLength("barcode", *barcode, 1, 48)
 		}
 
-		isPlayToWin := false
-		if len(record) > 2 && record[2] == "true" {
-			isPlayToWin = true
-		}
-
-		_, err = s.insertGame(c, title, barcode, isPlayToWin, &errorDetails, &tx)
-		if errors.Is(err, errValidation) {
+		// If there have been any validation errors, check remaining records for validation errors but skip database inserts
+		if !errorDetails.Empty() {
 			continue
 		}
+
+		isPlayToWin := len(record) > 2 && record[2] == "true"
+
+		// If there are no validation errors, attempt to insert patron into database
+		_, err = api.service.InsertGame(ctx, title, barcode, isPlayToWin, tx)
 		if err != nil {
-			log.Printf("Error adding game: %v", err)
-			internalError(c, err)
-			return
+			log.Printf("Error adding games: %v", err)
+			return BulkAddResponse{}, err
 		}
 		recordCount++
 	}
 
-	//If there are any validation errors, rollback the transaction
 	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+		return BulkAddResponse{}, errorDetails
 	}
 
 	//If there are no validation errors, commit the transaction
-	err = tx.Commit(c.Request.Context())
+	err = tx.Commit(ctx)
 	if err != nil {
 		log.Printf("Error committing transaction: %v", err)
-		internalError(c, err)
+		return BulkAddResponse{}, err
 	}
-	tx = nil // Prevent deferred rollback after a successful commit
 
-	c.JSON(http.StatusCreated, BulkAddResponse{Imported: recordCount})
+	tx = nil // Prevent deferred rollback after a successful commit
+	return BulkAddResponse{Imported: recordCount}, nil
 }
 
-func (s Server) DeleteGame(c *gin.Context, gameId types.UUID) {
-	err := s.queries.DeleteGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+func (api *GameApi) DeleteGame(ctx context.Context, gameId types.UUID) error {
+	err := api.service.DeleteGame(ctx, uuidToPgTypeUUID(gameId), nil)
 	if err != nil {
 		log.Printf("Error deleting game: %v", err)
-		internalError(c, err)
-		return
 	}
-
-	c.JSON(http.StatusNoContent, nil)
+	return err
 }
 
-func (s Server) getGame(c *gin.Context, gameId types.UUID) (db.VwLibraryGame, error) {
-	return s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
-}
-
-func (s Server) GetGame(c *gin.Context, gameId types.UUID) {
-	dbGame, err := s.queries.GetGame(c.Request.Context(), uuidToPgTypeUUID(gameId))
+func (api *GameApi) GetGame(ctx context.Context, gameId types.UUID) (Game, error) {
+	dbGame, err := api.service.GetGame(ctx, uuidToPgTypeUUID(gameId), nil)
 	if err != nil {
-		if isNotFound(err) {
-			notFound(c)
-			return
-		}
 		log.Printf("Error getting game: %v", err)
-		internalError(c, err)
-		return
+		return Game{}, err
 	}
-	c.JSON(http.StatusOK, FromVwLibraryGame(dbGame))
+	return FromVwLibraryGame(dbGame), nil
 }
 
-func (s Server) GetGameByBarcode(c *gin.Context, gameBarcode string) {
+func (api *GameApi) GetGameByBarcode(ctx context.Context, gameBarcode string) (GameList, error) {
 	var errorDetails ErrorDetails
 	errorDetails.ValidateStringLength("gameBarcode", gameBarcode, 1, 48)
 	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+		return GameList{}, errorDetails
 	}
-	var barcode = pgtype.Text{String: gameBarcode, Valid: true}
-	dbGames, err := s.queries.GetGameByBarcode(c.Request.Context(), barcode)
+	dbGames, err := api.service.GetGamesByBarcode(ctx, gameBarcode, nil)
 	if err != nil {
 		log.Printf("Error getting game: %v", err)
-		internalError(c, err)
-		return
+		return GameList{}, err
 	}
-	if dbGames == nil || len(dbGames) == 0 {
-		notFound(c)
-		return
-	}
-	c.JSON(http.StatusOK, FromVwLibraryGames(dbGames))
+	return FromVwLibraryGames(dbGames), nil
 }
 
-func (s Server) UpdateGame(c *gin.Context, gameId types.UUID) {
-	// validate json body
-	var jsonObject UpdateGameJSONRequestBody
-	err := c.ShouldBindBodyWithJSON(&jsonObject)
-	if err != nil {
-		malformedJson(c)
-		return
-	}
-
+func (api *GameApi) UpdateGame(ctx context.Context, gameId uuid.UUID, request CreateGameRequest) error {
 	// validate field values
 	var errorDetails ErrorDetails
-	errorDetails.ValidateStringLength("title", jsonObject.Title, 1, 100)
-	if jsonObject.Barcode != nil {
-		errorDetails.ValidateStringLength("barcode", *jsonObject.Barcode, 1, 48)
+	errorDetails.ValidateStringLength("title", request.Title, 1, 100)
+	if request.Barcode != nil {
+		errorDetails.ValidateStringLength("barcode", *request.Barcode, 1, 48)
 	}
 	if !errorDetails.Empty() {
-		validationError(c, errorDetails)
-		return
+		return errorDetails
 	}
 
-	// get the current game entry to determine if it is currently a play to win game
-	dbGame, err := s.getGame(c, gameId)
+	// Start a db transaction
+	tx, err := api.libraryService.BeginTx(ctx)
 	if err != nil {
-		// since edit will fail anyways if game is not found, we can safely return a client error here
-		if isNotFound(err) {
-			notFound(c)
-			return
-		}
-		internalError(c, err)
-		return
+		log.Printf("Error beginning transaction: %v", err)
+		return err
 	}
 
-	// start a db transaction
-	tx, err := s.Database.BeginTx(c, pgx.TxOptions{})
-	if err != nil {
-		internalError(c, err)
-		return
-	}
+	//defer rollback if there is an error
 	defer func() {
 		if tx != nil {
-			_ = tx.Rollback(c.Request.Context())
+			_ = tx.Rollback(ctx)
 		}
 	}()
 
-	// update the game entry
-	err = s.queries.EditGame(c.Request.Context(), db.EditGameParams{
-		ID:             uuidToPgTypeUUID(gameId),
-		DisplayTitle:   stringToPgText(&jsonObject.Title),
-		SanitizedTitle: SanitizeTitle(jsonObject.Title),
-		Barcode:        stringToPgText(jsonObject.Barcode),
-	})
+	err = api.service.UpdateGame(ctx, uuidToPgTypeUUID(gameId), request.Title, request.Barcode, tx)
 	if err != nil {
-		// if FK violation, then this means the game id is invalid, so return 404
-		if isForeignKeyConstraintViolation(err) {
-			notFound(c)
-			return
-		}
 		log.Printf("Error updating game: %v", err)
-		internalError(c, err)
-		return
+		return err
 	}
-
-	// if edit included play to win status, then see if we need to add or remove the play to win game entry
-	if jsonObject.IsPlayToWin != nil {
-		if *jsonObject.IsPlayToWin == true && !dbGame.PlayToWinGameID.Valid {
-			err = s.addPlayToWinByGameId(c, gameId, &tx)
-			if err != nil {
-				log.Printf("Error adding play to win game: %v", err)
-				internalError(c, err)
-				return
-			}
-		} else if *jsonObject.IsPlayToWin == false && dbGame.PlayToWinGameID.Valid {
-			// If game was play to win, but is now not, then remove it with the reason 'mistake'
-			reason := string(db.PlayToWinGameDeletionTypeMistake)
-			err = s.removePlayToWinByGameId(c, gameId, &reason, nil, &tx)
-			if err != nil {
-				log.Printf("Error removing play to win game: %v", err)
-				internalError(c, err)
-				return
-			}
-		}
+	isPlayToWin := request.IsPlayToWin != nil && *request.IsPlayToWin
+	err = api.service.SetIsPlayToWin(ctx, uuidToPgTypeUUID(gameId), isPlayToWin, tx)
+	if err != nil {
+		log.Printf("Error setting game play to win state to %v: %v", isPlayToWin, err)
+		return err
 	}
 
 	// commit the transaction
-	err = tx.Commit(c.Request.Context())
+	err = tx.Commit(ctx)
 	if err != nil {
-		internalError(c, err)
-		return
+		log.Printf("Error committing transaction: %v", err)
+		return err
 	}
 
 	// prevent deferred rollback after a successful commit
 	tx = nil
-
-	c.JSON(http.StatusNoContent, nil)
+	return nil
 }
 
-func (s Server) listCheckedOutGames(c *gin.Context, params ListGamesParams) {
-	var dbGameStatusList []db.VwGameStatus
-	if params.Title == nil {
-		var err error
-		dbGameStatusList, err = s.queries.ListCheckedOutGames(c.Request.Context(), db.ListCheckedOutGamesParams{
-			Limit:  999,
-			Offset: 0,
-		})
+func (api *GameApi) ListGames(ctx context.Context, params ListGamesParams) (GameStatusList, error) {
+	var (
+		dbGameStatusList []db.VwGameStatus
+		limit            int32 = 100
+		offset           int32 = 0
+		errorDetails     ErrorDetails
+		err              error
+	)
 
-		if err != nil {
-			log.Printf("Error listing checked out games: %v", err)
-			internalError(c, err)
-		}
-
-	} else {
-		var err error
-		title := *params.Title
-		dbGameStatusList, err = s.queries.SearchCheckedOutGames(c.Request.Context(), db.SearchCheckedOutGamesParams{
-			SanitizedTitle: "%" + SanitizeTitle(title) + "%",
-			Limit:          999,
-			Offset:         0,
-		})
-		if err != nil {
-			log.Printf("Error searching checked out games: %v", err)
-			internalError(c, err)
-			return
-		}
+	if params.Title != nil {
+		errorDetails.ValidateStringLength("title", *params.Title, 1, 100)
+	}
+	if !errorDetails.Empty() {
+		return GameStatusList{}, errorDetails
 	}
 
-	gameStatusList := make([]GameStatus, len(dbGameStatusList))
-	for i, dbGameStatus := range dbGameStatusList {
-		gameStatusList[i] = FromVwGameStatus(dbGameStatus)
-	}
-
-	c.JSON(http.StatusOK, GameStatusList{Games: gameStatusList})
-}
-
-func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
 	if params.CheckedOut != nil && *params.CheckedOut {
-		s.listCheckedOutGames(c, params)
-		return
-	}
-	var dbGameStatusList []db.VwGameStatus
-	if params.Title == nil {
-		var err error
-		dbGameStatusList, err = s.queries.ListGamesStatus(c.Request.Context(), db.ListGamesStatusParams{
-			Limit:  999,
-			Offset: 0,
-		})
-
-		if err != nil {
-			log.Printf("Error listing games: %v", err)
-			internalError(c, err)
-		}
-
+		dbGameStatusList, err = api.service.ListCheckedOutGames(ctx, params.Title, limit, offset, nil)
 	} else {
-		var err error
-		title := *params.Title
-		dbGameStatusList, err = s.queries.SearchGameStatus(c.Request.Context(), db.SearchGameStatusParams{
-			SanitizedTitle: "%" + SanitizeTitle(title) + "%",
-			Limit:          999,
-			Offset:         0,
-		})
-		if err != nil {
-			log.Printf("Error searching games: %v", err)
-			internalError(c, err)
-			return
-		}
+		dbGameStatusList, err = api.service.ListGameStatuses(ctx, params.Title, limit, offset, nil)
+	}
+	if err != nil {
+		log.Printf("Error listing games: %v", err)
+		return GameStatusList{}, err
 	}
 
 	gameStatusList := make([]GameStatus, len(dbGameStatusList))
@@ -385,5 +256,5 @@ func (s Server) ListGames(c *gin.Context, params ListGamesParams) {
 		gameStatusList[i] = FromVwGameStatus(dbGameStatus)
 	}
 
-	c.JSON(http.StatusOK, GameStatusList{Games: gameStatusList})
+	return GameStatusList{Games: gameStatusList}, nil
 }
