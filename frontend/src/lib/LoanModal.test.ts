@@ -562,13 +562,54 @@ describe('LoanModal (barcode enabled)', () => {
     });
   });
 
-  it('Should show a toast error when the barcode is not found', async () => {
+  it('Should open AddPatronModal with the scanned barcode pre-filled when the patron is not found', async () => {
     vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Not found'));
 
     render(LoanModal, { open: true, game: mockGame });
 
     const barcodeInput = screen.getByPlaceholderText('Scan…');
-    await fireEvent.input(barcodeInput, { target: { value: 'INVALID' } });
+    await fireEvent.input(barcodeInput, { target: { value: 'NEW-BADGE-99' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Add Patron', hidden: true })).toBeInTheDocument()
+    );
+
+    const addPatronBarcodeInput = document.getElementById(
+      'addPatronBarcode'
+    ) as HTMLInputElement | null;
+    expect(addPatronBarcodeInput).not.toBeNull();
+    expect(addPatronBarcodeInput!.value).toBe('NEW-BADGE-99');
+  });
+
+  it('Should not show an error toast when the barcode scan returns not found', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Not found'));
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'UNKNOWN-BADGE' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    // Allow async work to settle
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Add Patron', hidden: true })).toBeInTheDocument()
+    );
+
+    let toastMessages: string[] = [];
+    toasts.subscribe((t) => {
+      toastMessages = t.map((x) => x.message);
+    })();
+    expect(toastMessages).not.toContain(expect.stringContaining('Barcode scan failed'));
+  });
+
+  it('Should show an error toast when the barcode scan fails with a non-404 error', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Network error'));
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'BADGE-99' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
     await waitFor(() => {
@@ -576,8 +617,30 @@ describe('LoanModal (barcode enabled)', () => {
       toasts.subscribe((t) => {
         toastMessages = t.map((x) => x.message);
       })();
-      expect(toastMessages).toContain('Barcode scan failed: Not found');
+      expect(toastMessages).toContain('Barcode scan failed: Network error');
     });
+  });
+
+  it('Should not open AddPatronModal when the barcode scan fails with a non-404 error', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Network error'));
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'BADGE-99' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      let toastMessages: string[] = [];
+      toasts.subscribe((t) => {
+        toastMessages = t.map((x) => x.message);
+      })();
+      expect(toastMessages).toContain('Barcode scan failed: Network error');
+    });
+
+    expect(
+      screen.queryByRole('heading', { name: 'Add Patron', hidden: true })
+    ).not.toBeInTheDocument();
   });
 
   it('Should not call getPatronByBarcode when Enter is pressed with an empty barcode field', async () => {
