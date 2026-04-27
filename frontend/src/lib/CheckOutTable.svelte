@@ -73,6 +73,17 @@
     toasts.add(message, 'error');
   }
 
+  function resolveAvailableGame(
+    games: components['schemas']['Game'][]
+  ): components['schemas']['Game'] | null {
+    return (
+      games.find((g) => {
+        const status = gameStatusList.games.find((gs) => gs.game.gameId === g.gameId);
+        return status && !status.patron;
+      }) ?? null
+    );
+  }
+
   async function onScanComplete(barcode: string) {
     try {
       if (barcodeInputElement) {
@@ -82,10 +93,12 @@
       }
       const result = await apiClient.getGameByBarcode(barcode);
       if (result.games.length > 1) {
-        toasts.add(
-          'Barcode conflict handling not yet implemented. Please manually trigger the checkout.',
-          'error'
-        );
+        const available = resolveAvailableGame(result.games);
+        if (!available) {
+          toasts.add('All copies of this game are currently checked out.', 'error');
+          return;
+        }
+        handleBarcodeFound(available);
         return;
       }
       handleBarcodeFound(result.games[0]);
@@ -122,6 +135,7 @@
         bind:barcodeInputElement
         onGameFound={handleBarcodeFound}
         onError={handleBarcodeError}
+        resolveConflict={resolveAvailableGame}
       />
     {/if}
   </div>
