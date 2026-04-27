@@ -6,17 +6,19 @@
   export let open = false;
   export let patronId: string | null = null;
   export let initialName: string = '';
+  export let initialBarcode: string = '';
   export let onPatronCreated: (patron: Patron) => void = () => {};
   export let onCancel: () => void = () => {};
   let patronName = '';
   let patronBarcode = '';
   let barcodeLoading = false;
   let loading = false;
-  // Re-apply initialName and reset fields every time the modal opens
+  // Re-apply initialName/initialBarcode and reset fields every time the modal opens
   $: if (open && patronId) {
     loadPatronData();
   } else if (open) {
     patronName = initialName;
+    patronBarcode = initialBarcode;
   } else {
     patronName = '';
     patronBarcode = '';

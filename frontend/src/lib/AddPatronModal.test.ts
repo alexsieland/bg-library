@@ -174,6 +174,44 @@ describe('AddPatronModal (barcode enabled)', () => {
     expect(screen.getByTestId('add-patron-barcode-input')).toBeInTheDocument();
   });
 
+  it('Should pre-populate the barcode field with initialBarcode when opened', async () => {
+    render(AddPatronModal, { open: true, initialBarcode: 'BADGE-42' });
+    const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
+    expect(barcodeInput.value).toBe('BADGE-42');
+  });
+
+  it('Should submit with the initialBarcode value when no barcode scan is performed', async () => {
+    vi.mocked(apiClient.addPatron).mockResolvedValue({ ...mockPatron, barcode: 'BADGE-42' });
+    const onPatronCreated = vi.fn();
+
+    render(AddPatronModal, { open: true, initialBarcode: 'BADGE-42', onPatronCreated });
+
+    await fireEvent.input(screen.getByTestId('add-patron-name-input'), {
+      target: { value: 'Alice' },
+    });
+    await fireEvent.click(screen.getByTestId('add-patron-submit'));
+
+    await waitFor(() => {
+      expect(apiClient.addPatron).toHaveBeenCalledWith({ name: 'Alice', barcode: 'BADGE-42' });
+      expect(onPatronCreated).toHaveBeenCalled();
+    });
+  });
+
+  it('Should reset the barcode field when the modal is closed then re-opened without initialBarcode', async () => {
+    const { rerender } = render(AddPatronModal, { open: true, initialBarcode: 'BADGE-42' });
+
+    expect((screen.getByTestId('add-patron-barcode-input') as HTMLInputElement).value).toBe(
+      'BADGE-42'
+    );
+
+    await rerender({ open: false, initialBarcode: '' });
+    await rerender({ open: true, initialBarcode: '' });
+
+    await waitFor(() => {
+      expect((screen.getByTestId('add-patron-barcode-input') as HTMLInputElement).value).toBe('');
+    });
+  });
+
   it('Should not submit when Enter is pressed in the barcode input', async () => {
     vi.mocked(apiClient.getPatronByBarcode).mockRejectedValue(new Error('Not found'));
 

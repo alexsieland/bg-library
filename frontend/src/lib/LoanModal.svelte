@@ -25,6 +25,7 @@
 
   let patronBarcode = '';
   let barcodeLoading = false;
+  let pendingBarcode = '';
   let addPatronModalOpen = false;
 
   // Close AddPatronModal if the loan modal is closed programmatically
@@ -46,8 +47,15 @@
       const patron = await apiClient.getPatronByBarcode(value);
       selectPatron(patron);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Patron not found';
-      toasts.add(`Barcode scan failed: ${message}`, 'error');
+      const message = e instanceof Error ? e.message : '';
+      const isNotFound = message.toLowerCase().includes('not found') || message.includes('404');
+      if (isNotFound) {
+        // Patron doesn't exist yet — open the add-patron modal with the barcode pre-filled
+        pendingBarcode = value;
+        addPatronModalOpen = true;
+      } else {
+        toasts.add(`Barcode scan failed: ${message || 'Unknown error'}`, 'error');
+      }
     } finally {
       barcodeLoading = false;
     }
@@ -137,6 +145,7 @@
   }
 
   function openAddPatronModal() {
+    pendingBarcode = '';
     addPatronModalOpen = true;
   }
 
@@ -146,6 +155,7 @@
     patrons = [];
     lastValueRef.v = patron.name;
     cancelKey++;
+    pendingBarcode = '';
     addPatronModalOpen = false;
   }
 </script>
@@ -262,6 +272,7 @@
 <AddPatronModal
   bind:open={addPatronModalOpen}
   initialName={patronName}
+  initialBarcode={pendingBarcode}
   onPatronCreated={handleNewPatronCreated}
   onCancel={() => {
     addPatronModalOpen = false;
