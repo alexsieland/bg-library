@@ -34,8 +34,8 @@ func (m *mockGameService) ListGames(ctx context.Context, gameTitle *string, limi
 	}
 	return args.Get(0).([]db.VwLibraryGame), args.Error(1)
 }
-func (m *mockGameService) ListGameStatuses(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
-	args := m.Called(ctx, gameTitle, limit, offset, optTx)
+func (m *mockGameService) ListGameStatuses(ctx context.Context, checkedOut *bool, gameTitle *string, gameBarcode *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
+	args := m.Called(ctx, checkedOut, gameTitle, gameBarcode, limit, offset, optTx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -292,7 +292,7 @@ func TestDeleteGetListBulkErrors(t *testing.T) {
 		fixture := newTestGameApi(svc, nil, nil)
 		ctx := context.Background()
 
-		svc.On("ListGameStatuses", ctx, (*string)(nil), mock.Anything, mock.Anything, (pgx.Tx)(nil)).Return([]db.VwGameStatus{}, nil).Once()
+		svc.On("ListGameStatuses", ctx, (*bool)(nil), (*string)(nil), (*string)(nil), int32(100), int32(0), (pgx.Tx)(nil)).Return([]db.VwGameStatus{}, nil).Once()
 
 		resp, err := fixture.ListGames(ctx, ListGamesParams{})
 		assert.NoError(t, err)
@@ -369,7 +369,7 @@ func TestDeleteGetUpdateListGames(t *testing.T) {
 		title := "Search"
 		statuses := []db.VwGameStatus{}
 
-		svc.On("ListGameStatuses", ctx, &title, mock.Anything, mock.Anything, (pgx.Tx)(nil)).Return(statuses, nil).Once()
+		svc.On("ListGameStatuses", ctx, (*bool)(nil), &title, (*string)(nil), int32(100), int32(0), (pgx.Tx)(nil)).Return(statuses, nil).Once()
 		_, err := fixture.ListGames(ctx, ListGamesParams{Title: &title})
 		assert.NoError(t, err)
 		svc.AssertExpectations(t)

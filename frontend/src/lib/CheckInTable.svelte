@@ -92,7 +92,7 @@
     try {
       const result = await apiClient.listGames({ barcode, checkedOut: true });
       if (result.games.length === 0) {
-        toasts.add('All copies of this game are currently available.', 'info');
+        toasts.add('All copies of this game are currently available.', 'warn');
         return;
       }
       returnStatuses = result.games;
@@ -159,6 +159,7 @@
             bind:this={barcodeInputElement}
             bind:value={barcodeValue}
             onkeydown={handleBarcodeKeydown}
+            data-testid="barcode-scanner-input"
             type="text"
             placeholder="Scan…"
             aria-label="Barcode Scanner"

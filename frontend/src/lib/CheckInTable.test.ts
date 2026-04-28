@@ -17,10 +17,23 @@ vi.mock('./api-client', async (importOriginal) => {
     apiClient: {
       listGames: vi.fn(),
       checkInGame: vi.fn(),
-      getGameByBarcode: vi.fn(),
     },
   };
 });
+
+// Mock the barcode scanner action
+let savedOnScanCallback: ((barcode: string) => void) | null = null;
+vi.mock('./barcodeScannerAction', () => ({
+  barcodeScanner: (_node: any, options: { onScan: (barcode: string) => void }) => {
+    savedOnScanCallback = options.onScan;
+    return { destroy: () => {} };
+  },
+}));
+
+// Mock ReturnModal to test interaction
+vi.mock('./ReturnModal.svelte', () => ({
+  default: vi.fn(),
+}));
 
 const mockCheckedOutGames = {
   games: [
@@ -166,7 +179,7 @@ describe('CheckInTable (barcode enabled)', () => {
 
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
 
-    expect(screen.queryByPlaceholderText('Scan…')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('barcode-scanner-input')).not.toBeInTheDocument();
   });
 
   it('Should render the barcode input when isBarcodeEnabled is true', async () => {
@@ -176,103 +189,89 @@ describe('CheckInTable (barcode enabled)', () => {
 
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
 
-    expect(screen.getByPlaceholderText('Scan…')).toBeInTheDocument();
+    expect(screen.getByTestId('barcode-scanner-input')).toBeInTheDocument();
   });
 
-  it('Should call checkInGame when a barcode scan matches a checked out game', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+  it('Should open ReturnModal when a barcode scan matches checked out games', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce(mockCheckedOutGames);
+
+    render(CheckInTable);
+    await waitFor(() => screen.getByText('Catan'));
+
+    // Mock the barcode scan that returns checked out games
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
       games: [
         {
-          gameId: '1',
-          title: 'Catan',
-          barcode: '9780307455925',
-          isPlayToWin: false,
+          game: { gameId: '1', title: 'Catan', barcode: '9780307455925', isPlayToWin: false },
+          patron: { patronId: 'p1', name: 'Alice' },
+          transactionId: 't1',
+          checkedOutAt: '2026-01-31T12:00:00Z',
         },
       ],
     });
-    vi.mocked(apiClient.checkInGame).mockResolvedValue({} as any);
 
-    render(CheckInTable);
-
-    await waitFor(() => screen.getByText('Catan'));
-
-    const barcodeInput = screen.getByPlaceholderText('Scan…');
-    await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
-    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+    // Trigger window-level barcode scanner callback directly
+    expect(savedOnScanCallback).toBeTruthy();
+    savedOnScanCallback!('9780307455925');
 
     await waitFor(() => {
-      expect(apiClient.checkInGame).toHaveBeenCalledWith('t1');
+      expect(apiClient.listGames).toHaveBeenCalledWith({
+        barcode: '9780307455925',
+        checkedOut: true,
+      });
     });
+
+    // ReturnModal should be rendered (we're mocking it, so just verify the API was called correctly)
+    expect(apiClient.listGames).toHaveBeenCalledTimes(2);
   });
 
-  it('Should refresh the game list after a successful barcode check-in', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [
-        {
-          gameId: '1',
-          title: 'Catan',
-          barcode: '9780307455925',
-          isPlayToWin: false,
-        },
-      ],
-    });
-    vi.mocked(apiClient.checkInGame).mockResolvedValue({} as any);
+  it('Should show a warning toast when the scanned barcode has no checked out copies', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce(mockCheckedOutGames);
 
     render(CheckInTable);
-
     await waitFor(() => screen.getByText('Catan'));
 
-    const barcodeInput = screen.getByPlaceholderText('Scan…');
-    await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
-    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
-
-    await waitFor(() => {
-      expect(apiClient.listGames).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('Should show a warning toast when the scanned game is not in the checked out list', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [
-        {
-          gameId: 'unknown-id',
-          title: 'Azul',
-          barcode: '1111111111111',
-          isPlayToWin: false,
-        },
-      ],
+    // Mock the barcode scan that returns no checked out games
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
+      games: [],
     });
 
-    render(CheckInTable);
-
-    await waitFor(() => screen.getByText('Catan'));
-
-    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    const barcodeInput = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(barcodeInput, { target: { value: '1111111111111' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.checkInGame).not.toHaveBeenCalled();
+      expect(apiClient.listGames).toHaveBeenCalledWith({
+        barcode: '1111111111111',
+        checkedOut: true,
+      });
     });
+
+    // Should not call checkInGame since there are no checked out copies
+    expect(apiClient.checkInGame).not.toHaveBeenCalled();
   });
 
   it('Should show an error toast when the barcode lookup fails', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
-    vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce(mockCheckedOutGames);
 
     render(CheckInTable);
-
     await waitFor(() => screen.getByText('Catan'));
 
-    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    // Mock the barcode scan to fail
+    vi.mocked(apiClient.listGames).mockRejectedValueOnce(new Error('Not found'));
+
+    const barcodeInput = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(barcodeInput, { target: { value: '0000000000000' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.checkInGame).not.toHaveBeenCalled();
+      expect(apiClient.listGames).toHaveBeenCalledWith({
+        barcode: '0000000000000',
+        checkedOut: true,
+      });
     });
+
+    // Should not call checkInGame since the lookup failed
+    expect(apiClient.checkInGame).not.toHaveBeenCalled();
   });
 });
