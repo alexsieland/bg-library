@@ -8,10 +8,10 @@
     TableHeadCell,
     Button,
     Badge,
+    Spinner,
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
-  import BarcodeInput from './BarcodeInput.svelte';
-  import { apiClient, type GameStatusList } from './api-client';
+  import { apiClient, type GameStatusList, type GameStatus } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
@@ -24,8 +24,10 @@
   let error: string | null = null;
   let loading = true;
   let barcodeInputElement: HTMLInputElement | undefined;
+  let barcodeValue = '';
+  let barcodeLoading = false;
   let returnModalOpen = false;
-  let returnGames: components['schemas']['Game'][] = [];
+  let returnStatuses: GameStatus[] = [];
 
   async function fetchCheckedOutGames() {
     loading = true;
@@ -81,28 +83,45 @@
     });
   }
 
-  function handleBarcodeFound(games: components['schemas']['Game'][]) {
-    returnGames = games;
-    returnModalOpen = true;
-  }
-
   function handleBarcodeError(message: string) {
     toasts.add(message, 'error');
   }
 
-  async function onScanComplete(barcode: string) {
+  async function handleBarcodeScan(barcode: string) {
+    barcodeLoading = true;
     try {
-      if (barcodeInputElement) {
-        barcodeInputElement.focus();
-        barcodeInputElement.value = barcode;
-        barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
+      const result = await apiClient.listGames({ barcode, checkedOut: true });
+      if (result.games.length === 0) {
+        toasts.add('All copies of this game are currently available.', 'info');
+        return;
       }
-      const result = await apiClient.getGameByBarcode(barcode);
-      handleBarcodeFound(result.games);
+      returnStatuses = result.games;
+      returnModalOpen = true;
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to look up barcode';
       toasts.add(message, 'error');
+    } finally {
+      barcodeLoading = false;
     }
+  }
+
+  function handleBarcodeKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      const value = barcodeValue.trim();
+      barcodeValue = '';
+      if (value) {
+        handleBarcodeScan(value);
+      }
+    }
+  }
+
+  async function onScanComplete(barcode: string) {
+    if (barcodeInputElement) {
+      barcodeInputElement.focus();
+      barcodeInputElement.value = barcode;
+      barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    await handleBarcodeScan(barcode);
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -129,11 +148,38 @@
       />
     </div>
     {#if isBarcodeEnabled()}
-      <BarcodeInput
-        bind:barcodeInputElement
-        onGameFound={(game) => handleBarcodeFound([game])}
-        onError={handleBarcodeError}
-      />
+      <div class="flex items-center gap-2">
+        <span
+          class="text-xs font-medium tracking-wide whitespace-nowrap text-slate-400 uppercase select-none dark:text-slate-500"
+        >
+          Barcode
+        </span>
+        <div class="relative">
+          <input
+            bind:this={barcodeInputElement}
+            bind:value={barcodeValue}
+            onkeydown={handleBarcodeKeydown}
+            type="text"
+            placeholder="Scan…"
+            aria-label="Barcode Scanner"
+            autocomplete="off"
+            disabled={barcodeLoading}
+            class="w-36 rounded-lg border border-slate-200 bg-white
+                   px-3 py-2
+                   text-sm text-slate-500 placeholder:text-slate-300
+                   focus:border-slate-400 focus:ring-1
+                   focus:ring-slate-300 focus:outline-none
+                   disabled:opacity-50 dark:border-slate-600
+                   dark:bg-slate-800 dark:text-slate-400 dark:placeholder:text-slate-600 dark:focus:border-slate-500
+                   dark:focus:ring-slate-500"
+          />
+          {#if barcodeLoading}
+            <div class="pointer-events-none absolute inset-y-0 inset-e-0 flex items-center pe-2">
+              <Spinner size="4" />
+            </div>
+          {/if}
+        </div>
+      </div>
     {/if}
   </div>
 </div>
@@ -194,6 +240,6 @@
 
 <ReturnModal
   bind:open={returnModalOpen}
-  games={returnGames}
+  statuses={returnStatuses}
   onReturnSuccess={fetchCheckedOutGames}
 />
