@@ -76,59 +76,28 @@ func (s *GameService) listGameStatuses(ctx context.Context, gameTitle *string, l
 	return s.libraryService.queries.WithTx(optTx).ListGamesStatus(ctx, params)
 }
 
-func (s *GameService) searchGameStatuses(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
-	if gameTitle == nil || *gameTitle == "" {
-		return s.listGameStatuses(ctx, gameTitle, limit, offset, optTx)
+func (s *GameService) searchGameStatuses(ctx context.Context, checkedOut *bool, gameTitle *string, gameBarcode *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
+	var sanitizedTitle *string
+	if gameTitle != nil {
+		st := GenerateDBRegexString(SanitizeTitle(*gameTitle))
+		sanitizedTitle = &st
 	}
-
-	sanitizedTitle := SanitizeTitle(*gameTitle)
 	params := db.SearchGameStatusParams{
-		SanitizedTitle: GenerateDBRegexString(sanitizedTitle),
+		CheckedOut:     boolToPgBool(checkedOut),
+		SanitizedTitle: stringToPgText(sanitizedTitle),
+		GameBarcode:    stringToPgText(gameBarcode),
 		Limit:          limit,
 		Offset:         offset,
 	}
-
 	if optTx == nil {
 		return s.libraryService.queries.SearchGameStatus(ctx, params)
 	}
 	return s.libraryService.queries.WithTx(optTx).SearchGameStatus(ctx, params)
 }
 
-func (s *GameService) ListGameStatuses(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
-	gameStatuses, err := s.searchGameStatuses(ctx, gameTitle, limit, offset, optTx)
+func (s *GameService) ListGameStatuses(ctx context.Context, checkedOut *bool, gameTitle *string, gameBarcode *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
+	gameStatuses, err := s.searchGameStatuses(ctx, checkedOut, gameTitle, gameBarcode, limit, offset, optTx)
 	return wrapErrorOrReturn(&gameStatuses, []db.VwGameStatus{}, err)
-}
-
-func (s *GameService) listCheckedOutGames(ctx context.Context, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
-	params := db.ListCheckedOutGamesParams{Limit: limit, Offset: offset}
-
-	if optTx == nil {
-		return s.libraryService.queries.ListCheckedOutGames(ctx, params)
-	}
-	return s.libraryService.queries.WithTx(optTx).ListCheckedOutGames(ctx, params)
-}
-
-func (s *GameService) searchCheckedOutGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
-	if gameTitle == nil || *gameTitle == "" {
-		return s.listCheckedOutGames(ctx, limit, offset, optTx)
-	}
-
-	sanitizedTitle := SanitizeTitle(*gameTitle)
-	params := db.SearchCheckedOutGamesParams{
-		SanitizedTitle: GenerateDBRegexString(sanitizedTitle),
-		Limit:          limit,
-		Offset:         offset,
-	}
-
-	if optTx == nil {
-		return s.libraryService.queries.SearchCheckedOutGames(ctx, params)
-	}
-	return s.libraryService.queries.WithTx(optTx).SearchCheckedOutGames(ctx, params)
-}
-
-func (s *GameService) ListCheckedOutGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error) {
-	checkedOutGames, err := s.searchCheckedOutGames(ctx, gameTitle, limit, offset, optTx)
-	return wrapErrorOrReturn(&checkedOutGames, []db.VwGameStatus{}, err)
 }
 
 func (s *GameService) GetGamesByBarcode(ctx context.Context, barcode string, optTx pgx.Tx) ([]db.VwLibraryGame, error) {

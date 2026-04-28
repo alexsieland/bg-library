@@ -289,12 +289,15 @@ type VwDeletedPlayToWinSession struct {
 type VwGameStatus struct {
 	GameID            pgtype.UUID
 	GameTitle         string
+	GameBarcode       pgtype.Text
 	SanitizedTitle    string
 	PatronID          pgtype.UUID
 	PatronFullName    pgtype.Text
+	PatronBarcode     pgtype.Text
 	TransactionID     pgtype.UUID
 	CheckoutTimestamp pgtype.Timestamp
 	CheckinTimestamp  pgtype.Timestamp
+	CheckedOut        pgtype.Bool
 	PtwGameID         pgtype.UUID
 }
 

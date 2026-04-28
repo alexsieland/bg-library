@@ -396,7 +396,7 @@ func (q *Queries) GetGameByBarcode(ctx context.Context, barcode pgtype.Text) ([]
 }
 
 const getGameStatus = `-- name: GetGameStatus :one
-SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp, ptw_game_id
+SELECT game_id, game_title, game_barcode, sanitized_title, patron_id, patron_full_name, patron_barcode, transaction_id, checkout_timestamp, checkin_timestamp, checked_out, ptw_game_id
 FROM vw_game_status
 WHERE game_id = $1
 `
@@ -407,12 +407,15 @@ func (q *Queries) GetGameStatus(ctx context.Context, gameID pgtype.UUID) (VwGame
 	err := row.Scan(
 		&i.GameID,
 		&i.GameTitle,
+		&i.GameBarcode,
 		&i.SanitizedTitle,
 		&i.PatronID,
 		&i.PatronFullName,
+		&i.PatronBarcode,
 		&i.TransactionID,
 		&i.CheckoutTimestamp,
 		&i.CheckinTimestamp,
+		&i.CheckedOut,
 		&i.PtwGameID,
 	)
 	return i, err
@@ -636,7 +639,7 @@ func (q *Queries) GetPlayToWinSessionsByGroupId(ctx context.Context, ptwGroupID 
 }
 
 const listCheckedOutGames = `-- name: ListCheckedOutGames :many
-SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp, ptw_game_id
+SELECT game_id, game_title, game_barcode, sanitized_title, patron_id, patron_full_name, patron_barcode, transaction_id, checkout_timestamp, checkin_timestamp, checked_out, ptw_game_id
 FROM vw_game_status
 WHERE checkin_timestamp IS NULL AND checkout_timestamp IS NOT NULL
 ORDER BY sanitized_title
@@ -660,12 +663,15 @@ func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGam
 		if err := rows.Scan(
 			&i.GameID,
 			&i.GameTitle,
+			&i.GameBarcode,
 			&i.SanitizedTitle,
 			&i.PatronID,
 			&i.PatronFullName,
+			&i.PatronBarcode,
 			&i.TransactionID,
 			&i.CheckoutTimestamp,
 			&i.CheckinTimestamp,
+			&i.CheckedOut,
 			&i.PtwGameID,
 		); err != nil {
 			return nil, err
@@ -719,7 +725,7 @@ func (q *Queries) ListGames(ctx context.Context, arg ListGamesParams) ([]VwLibra
 }
 
 const listGamesStatus = `-- name: ListGamesStatus :many
-SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp, ptw_game_id
+SELECT game_id, game_title, game_barcode, sanitized_title, patron_id, patron_full_name, patron_barcode, transaction_id, checkout_timestamp, checkin_timestamp, checked_out, ptw_game_id
 FROM vw_game_status
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2
@@ -742,12 +748,15 @@ func (q *Queries) ListGamesStatus(ctx context.Context, arg ListGamesStatusParams
 		if err := rows.Scan(
 			&i.GameID,
 			&i.GameTitle,
+			&i.GameBarcode,
 			&i.SanitizedTitle,
 			&i.PatronID,
 			&i.PatronFullName,
+			&i.PatronBarcode,
 			&i.TransactionID,
 			&i.CheckoutTimestamp,
 			&i.CheckinTimestamp,
+			&i.CheckedOut,
 			&i.PtwGameID,
 		); err != nil {
 			return nil, err
@@ -901,66 +910,32 @@ func (q *Queries) RestorePlayToWinSession(ctx context.Context, id pgtype.UUID) e
 	return err
 }
 
-const searchCheckedOutGames = `-- name: SearchCheckedOutGames :many
-SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp, ptw_game_id
-FROM vw_game_status
-WHERE checkin_timestamp IS NULL AND vw_game_status.sanitized_title ILIKE $1
-ORDER BY sanitized_title
-LIMIT $2 OFFSET $3
-`
-
-type SearchCheckedOutGamesParams struct {
-	SanitizedTitle string
-	Limit          int32
-	Offset         int32
-}
-
-func (q *Queries) SearchCheckedOutGames(ctx context.Context, arg SearchCheckedOutGamesParams) ([]VwGameStatus, error) {
-	rows, err := q.db.Query(ctx, searchCheckedOutGames, arg.SanitizedTitle, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VwGameStatus
-	for rows.Next() {
-		var i VwGameStatus
-		if err := rows.Scan(
-			&i.GameID,
-			&i.GameTitle,
-			&i.SanitizedTitle,
-			&i.PatronID,
-			&i.PatronFullName,
-			&i.TransactionID,
-			&i.CheckoutTimestamp,
-			&i.CheckinTimestamp,
-			&i.PtwGameID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const searchGameStatus = `-- name: SearchGameStatus :many
-SELECT game_id, game_title, sanitized_title, patron_id, patron_full_name, transaction_id, checkout_timestamp, checkin_timestamp, ptw_game_id
+SELECT game_id, game_title, game_barcode, sanitized_title, patron_id, patron_full_name, patron_barcode, transaction_id, checkout_timestamp, checkin_timestamp, checked_out, ptw_game_id
 FROM vw_game_status
-WHERE sanitized_title ILIKE $1
+WHERE ($3::boolean IS NULL OR checked_out = $3)
+  AND ($4::text IS NULL OR sanitized_title ILIKE $4)
+  AND ($5::text IS NULL OR game_barcode ILIKE $5)
 ORDER BY sanitized_title
-LIMIT $2 OFFSET $3
+LIMIT $1 OFFSET $2
 `
 
 type SearchGameStatusParams struct {
-	SanitizedTitle string
 	Limit          int32
 	Offset         int32
+	CheckedOut     pgtype.Bool
+	SanitizedTitle pgtype.Text
+	GameBarcode    pgtype.Text
 }
 
 func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusParams) ([]VwGameStatus, error) {
-	rows, err := q.db.Query(ctx, searchGameStatus, arg.SanitizedTitle, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchGameStatus,
+		arg.Limit,
+		arg.Offset,
+		arg.CheckedOut,
+		arg.SanitizedTitle,
+		arg.GameBarcode,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -971,12 +946,15 @@ func (q *Queries) SearchGameStatus(ctx context.Context, arg SearchGameStatusPara
 		if err := rows.Scan(
 			&i.GameID,
 			&i.GameTitle,
+			&i.GameBarcode,
 			&i.SanitizedTitle,
 			&i.PatronID,
 			&i.PatronFullName,
+			&i.PatronBarcode,
 			&i.TransactionID,
 			&i.CheckoutTimestamp,
 			&i.CheckinTimestamp,
+			&i.CheckedOut,
 			&i.PtwGameID,
 		); err != nil {
 			return nil, err
