@@ -17,12 +17,15 @@
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
   import { barcodeScanner } from './barcodeScannerAction';
+  import ReturnModal from './ReturnModal.svelte';
 
   let searchQuery = '';
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
   let barcodeInputElement: HTMLInputElement | undefined;
+  let returnModalOpen = false;
+  let returnGames: components['schemas']['Game'][] = [];
 
   async function fetchCheckedOutGames() {
     loading = true;
@@ -78,13 +81,9 @@
     });
   }
 
-  function handleBarcodeFound(game: components['schemas']['Game']) {
-    const match = gameStatusList.games.find((gs) => gs.game.gameId === game.gameId);
-    if (!match) {
-      toasts.add(`${game.title} has already been returned.`, 'warn');
-      return;
-    }
-    handleReturn(match.transactionId, match.game.title);
+  function handleBarcodeFound(games: components['schemas']['Game'][]) {
+    returnGames = games;
+    returnModalOpen = true;
   }
 
   function handleBarcodeError(message: string) {
@@ -93,21 +92,13 @@
 
   async function onScanComplete(barcode: string) {
     try {
-      // Focus the barcode input field so the scan appears there
       if (barcodeInputElement) {
         barcodeInputElement.focus();
         barcodeInputElement.value = barcode;
         barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
       }
       const result = await apiClient.getGameByBarcode(barcode);
-      if (result.games.length > 1) {
-        toasts.add(
-          'Barcode conflict handling not yet implemented. Please manually trigger the check in.',
-          'error'
-        );
-        return;
-      }
-      handleBarcodeFound(result.games[0]);
+      handleBarcodeFound(result.games);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to look up barcode';
       toasts.add(message, 'error');
@@ -140,7 +131,7 @@
     {#if isBarcodeEnabled()}
       <BarcodeInput
         bind:barcodeInputElement
-        onGameFound={handleBarcodeFound}
+        onGameFound={(game) => handleBarcodeFound([game])}
         onError={handleBarcodeError}
       />
     {/if}
@@ -200,3 +191,9 @@
     </TableBody>
   </Table>
 {/if}
+
+<ReturnModal
+  bind:open={returnModalOpen}
+  games={returnGames}
+  onReturnSuccess={fetchCheckedOutGames}
+/>
