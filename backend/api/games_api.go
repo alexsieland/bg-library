@@ -236,8 +236,8 @@ func (api *GameApi) ListGames(ctx context.Context, params ListGamesParams) (Game
 	if params.Title != nil {
 		errorDetails.ValidateStringLength("title", *params.Title, 1, 100)
 	}
-	if params.Title != nil {
-		errorDetails.ValidateStringLength("barcode", *params.Barcode, 1, 100)
+	if params.Barcode != nil {
+		errorDetails.ValidateStringLength("barcode", *params.Barcode, 1, 48)
 	}
 	if !errorDetails.Empty() {
 		return GameStatusList{}, errorDetails
