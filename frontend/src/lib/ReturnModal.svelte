@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { Modal, Button, Select, Label, Spinner } from 'flowbite-svelte';
   import { apiClient, type GameStatus } from './api-client';
   import { toasts } from './toast-store';
@@ -9,19 +10,57 @@
 
   let selectedTransactionId = '';
   let returning = false;
+  let barcodeValue = '';
+  let barcodeError = '';
+  let barcodeInputEl: HTMLInputElement | null = null;
+
+  function captureBarcodeInput(node: HTMLInputElement) {
+    barcodeInputEl = node;
+    return {
+      destroy() {
+        barcodeInputEl = null;
+      },
+    };
+  }
 
   $: gameTitle = statuses[0]?.game.title ?? '';
   $: hasCheckedOutGames = statuses.length > 0;
 
-  // Reset selection whenever the modal opens with new statuses or closes
+  // Reset state whenever the modal opens with new statuses or closes
   $: if (open) {
+    barcodeValue = '';
+    barcodeError = '';
     if (statuses.length === 1 && statuses[0].transactionId) {
       selectedTransactionId = statuses[0].transactionId;
     } else {
       selectedTransactionId = '';
     }
+    // Focus the barcode input after the DOM updates
+    tick().then(() => {
+      barcodeInputEl?.focus();
+    });
   } else {
     selectedTransactionId = '';
+    barcodeValue = '';
+    barcodeError = '';
+  }
+
+  function handleBarcodeKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+
+    const trimmed = barcodeValue.trim();
+    if (!trimmed) return;
+
+    const match = statuses.find((s) => s.patron?.barcode === trimmed);
+    if (!match?.transactionId) {
+      barcodeError = `No checked-out patron found with barcode "${trimmed}"`;
+      return;
+    }
+
+    barcodeError = '';
+    selectedTransactionId = match.transactionId;
+    handleReturn();
   }
 
   async function handleReturn() {
@@ -44,6 +83,26 @@
 
 <Modal bind:open title={`Return Game: ${gameTitle}`} size="sm" autoclose={false}>
   <div class="space-y-4">
+    <div>
+      <Label for="returnBarcodeInput" class="mb-2">Scan Patron Barcode</Label>
+      <input
+        id="returnBarcodeInput"
+        data-testid="return-barcode-input"
+        use:captureBarcodeInput
+        bind:value={barcodeValue}
+        placeholder="Scan…"
+        disabled={!hasCheckedOutGames || returning}
+        onkeydown={handleBarcodeKeydown}
+        autocomplete="off"
+        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+      />
+      {#if barcodeError}
+        <p class="mt-1 text-sm text-red-500 dark:text-red-400" data-testid="return-barcode-error">
+          {barcodeError}
+        </p>
+      {/if}
+    </div>
+
     <div>
       <Label for="returnPatronSelect" class="mb-2">Patron</Label>
       <Select
