@@ -22,9 +22,11 @@
       const result = await apiClient.listGames({ barcode: value, checkedOut });
 
       if (result.games.length === 0) {
-        onError(
-          'All copies of this game are currently checked out or no game found with this barcode.'
-        );
+        if (checkedOut) {
+          onError('No checked out games with this barcode.');
+        } else {
+          onError('No available games with this barcode.');
+        }
         return;
       }
 
