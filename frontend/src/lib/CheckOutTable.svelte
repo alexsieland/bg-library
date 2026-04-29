@@ -11,7 +11,7 @@
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
-  import { apiClient, type GameStatusList } from './api-client';
+  import { apiClient, type GameStatusList, type GameStatus } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
@@ -72,6 +72,10 @@
     toasts.add(message, 'error');
   }
 
+  function handleStatusesFound(statuses: GameStatus[]) {
+    handleBarcodeFound(statuses[0].game);
+  }
+
   async function onScanComplete(barcode: string) {
     try {
       if (barcodeInputElement) {
@@ -120,7 +124,7 @@
     {#if isBarcodeEnabled()}
       <BarcodeInput
         bind:barcodeInputElement
-        onGameFound={handleBarcodeFound}
+        onStatusesFound={handleStatusesFound}
         onError={handleBarcodeError}
       />
     {/if}

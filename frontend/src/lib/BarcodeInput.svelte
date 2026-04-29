@@ -1,12 +1,11 @@
 <script lang="ts">
   import { Spinner } from 'flowbite-svelte';
   import { apiClient } from './api-client';
-  import type { components } from '../generated/library-api';
+  import type { GameStatus } from './api-client';
 
-  type Game = components['schemas']['Game'];
-
-  export let onGameFound: (game: Game) => void = () => {};
+  export let onStatusesFound: (statuses: GameStatus[]) => void = () => {};
   export let onError: (message: string) => void = () => {};
+  export let checkedOut: boolean = false;
   export let barcodeInputElement: HTMLInputElement | undefined;
 
   let barcode = '';
@@ -20,17 +19,16 @@
 
     loading = true;
     try {
-      const result = await apiClient.getGameByBarcode(value);
+      const result = await apiClient.listGames({ barcode: value, checkedOut });
 
-      if (result.games.length > 1) {
+      if (result.games.length === 0) {
         onError(
-          'Barcode conflict handling not yet implemented. Please manually trigger the check out.'
+          'All copies of this game are currently checked out or no game found with this barcode.'
         );
         return;
       }
 
-      // getGameByBarcode returns 404 (throws) when empty, so result.games[0] is always defined here
-      onGameFound(result.games[0]);
+      onStatusesFound(result.games);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to look up barcode';
       onError(message);

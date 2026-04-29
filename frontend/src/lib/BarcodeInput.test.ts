@@ -13,7 +13,7 @@ vi.mock('./api-client', async (importOriginal) => {
   return {
     ...actual,
     apiClient: {
-      getGameByBarcode: vi.fn(),
+      listGames: vi.fn(),
     },
   };
 });
@@ -38,28 +38,50 @@ describe('BarcodeInput', () => {
     expect(screen.getByTestId('barcode-scanner-input')).toBeInTheDocument();
   });
 
-  it('Should call getGameByBarcode with the scanned value when Enter is pressed', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [mockGame],
+  it('Should call listGames with the scanned barcode when Enter is pressed', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue({
+      games: [{ game: mockGame, patron: undefined }],
     });
 
-    render(BarcodeInput);
+    render(BarcodeInput, { props: { checkedOut: false } });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.getGameByBarcode).toHaveBeenCalledWith('9780307455925');
+      expect(apiClient.listGames).toHaveBeenCalledWith({
+        barcode: '9780307455925',
+        checkedOut: false,
+      });
+    });
+  });
+
+  it('Should call listGames with checkedOut: true when that prop is provided', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue({
+      games: [{ game: mockGame, patron: { patronId: 'p1', name: 'Alice' } }],
+    });
+
+    render(BarcodeInput, { props: { checkedOut: true } });
+
+    const input = screen.getByTestId('barcode-scanner-input');
+    await fireEvent.input(input, { target: { value: '9780307455925' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith({
+        barcode: '9780307455925',
+        checkedOut: true,
+      });
     });
   });
 
   it('Should clear the input field after a scan', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [mockGame],
+    vi.mocked(apiClient.listGames).mockResolvedValue({
+      games: [{ game: mockGame, patron: undefined }],
     });
 
-    render(BarcodeInput);
+    render(BarcodeInput, { props: { checkedOut: false } });
 
     const input = screen.getByTestId('barcode-scanner-input') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -70,17 +92,17 @@ describe('BarcodeInput', () => {
     });
   });
 
-  it('Should call onGameFound with the matched game when exactly one game is returned', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [mockGame],
-    });
-    const onGameFound = vi.fn();
+  it('Should call onStatusesFound with all returned statuses', async () => {
+    const game2 = { gameId: 'g2', title: 'Catan', barcode: '9780307455925', isPlayToWin: false };
+    const statuses = [
+      { game: mockGame, patron: undefined },
+      { game: game2, patron: undefined },
+    ];
+    vi.mocked(apiClient.listGames).mockResolvedValue({ games: statuses });
+    const onStatusesFound = vi.fn();
 
     render(BarcodeInput, {
-      props: {
-        onGameFound,
-        barcodeInputElement: undefined,
-      },
+      props: { checkedOut: false, onStatusesFound, barcodeInputElement: undefined },
     });
 
     const input = screen.getByTestId('barcode-scanner-input');
@@ -88,57 +110,35 @@ describe('BarcodeInput', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(onGameFound).toHaveBeenCalledWith(mockGame);
+      expect(onStatusesFound).toHaveBeenCalledWith(statuses);
     });
   });
 
-  it('Should call onError with the fallback conflict message when multiple games are returned and no resolveConflict is provided', async () => {
-    const conflictGames = [
-      {
-        gameId: 'g1',
-        title: 'Catan',
-        barcode: '9780307455925',
-        isPlayToWin: false,
-      },
-      {
-        gameId: 'g2',
-        title: 'Catan (2nd Edition)',
-        barcode: '9780307455925',
-        isPlayToWin: false,
-      },
-    ];
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: conflictGames,
-    });
+  it('Should call onError when no games are found', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
     const onError = vi.fn();
 
     render(BarcodeInput, {
-      props: {
-        onError,
-        barcodeInputElement: undefined,
-      },
+      props: { onError, checkedOut: false, barcodeInputElement: undefined },
     });
 
     const input = screen.getByTestId('barcode-scanner-input');
-    await fireEvent.input(input, { target: { value: '9780307455925' } });
+    await fireEvent.input(input, { target: { value: '0000000000000' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith(
-        'Barcode conflict handling not yet implemented. Please manually trigger the check out.'
+        'All copies of this game are currently checked out or no game found with this barcode.'
       );
     });
   });
 
-  it('Should call onError when the barcode is not found (404)', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
+  it('Should call onError when the barcode lookup fails', async () => {
+    vi.mocked(apiClient.listGames).mockRejectedValue(new Error('Not found'));
     const onError = vi.fn();
 
     render(BarcodeInput, {
-      props: {
-        onError,
-        barcodeInputElement: undefined,
-      },
+      props: { onError, checkedOut: false, barcodeInputElement: undefined },
     });
 
     const input = screen.getByTestId('barcode-scanner-input');
@@ -150,30 +150,29 @@ describe('BarcodeInput', () => {
     });
   });
 
-  it('Should not call getGameByBarcode when Enter is pressed with an empty input', async () => {
+  it('Should not call listGames when Enter is pressed with an empty input', async () => {
     render(BarcodeInput);
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(apiClient.getGameByBarcode).not.toHaveBeenCalled();
+    expect(apiClient.listGames).not.toHaveBeenCalled();
   });
 
-  it('Should not call getGameByBarcode when a key other than Enter is pressed', async () => {
+  it('Should not call listGames when a key other than Enter is pressed', async () => {
     render(BarcodeInput);
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(input, { key: 'a' });
 
-    expect(apiClient.getGameByBarcode).not.toHaveBeenCalled();
+    expect(apiClient.listGames).not.toHaveBeenCalled();
   });
 
   it('Should show a spinner while the barcode lookup is in progress', async () => {
-    // Never resolves — holds loading state open
-    vi.mocked(apiClient.getGameByBarcode).mockReturnValue(new Promise(() => {}));
+    vi.mocked(apiClient.listGames).mockReturnValue(new Promise(() => {}));
 
-    render(BarcodeInput);
+    render(BarcodeInput, { props: { checkedOut: false } });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
