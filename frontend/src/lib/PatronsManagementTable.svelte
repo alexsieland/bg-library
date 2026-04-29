@@ -102,7 +102,7 @@
   bind:open={addPatronModalOpen}
   patronId={selectedPatron?.patronId ?? null}
   initialName={selectedPatron?.name ?? ''}
-  onPatronCreated={handlePatronSaved}
+  onPatronSaved={handlePatronSaved}
   onCancel={() => {
     selectedPatron = null;
   }}

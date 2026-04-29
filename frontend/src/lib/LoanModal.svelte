@@ -273,7 +273,7 @@
   bind:open={addPatronModalOpen}
   initialName={patronName}
   initialBarcode={pendingBarcode}
-  onPatronCreated={handleNewPatronCreated}
+  onPatronSaved={handleNewPatronCreated}
   onCancel={() => {
     addPatronModalOpen = false;
   }}
