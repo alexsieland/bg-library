@@ -32,7 +32,7 @@ describe('BarcodeInput', () => {
   });
 
   it('Should render the barcode input field and label', () => {
-    render(BarcodeInput);
+    render(BarcodeInput, { props: { checkedOut: false, barcodeInputElement: undefined } });
 
     expect(screen.getByLabelText('Barcode Scanner')).toBeInTheDocument();
     expect(screen.getByTestId('barcode-scanner-input')).toBeInTheDocument();
@@ -43,7 +43,12 @@ describe('BarcodeInput', () => {
       games: [{ game: mockGame, patron: undefined }],
     });
 
-    render(BarcodeInput, { props: { checkedOut: false } });
+    render(BarcodeInput, {
+      props: {
+        checkedOut: false,
+        barcodeInputElement: undefined,
+      },
+    });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -62,7 +67,7 @@ describe('BarcodeInput', () => {
       games: [{ game: mockGame, patron: { patronId: 'p1', name: 'Alice' } }],
     });
 
-    render(BarcodeInput, { props: { checkedOut: true } });
+    render(BarcodeInput, { props: { checkedOut: true, barcodeInputElement: undefined } });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -81,7 +86,7 @@ describe('BarcodeInput', () => {
       games: [{ game: mockGame, patron: undefined }],
     });
 
-    render(BarcodeInput, { props: { checkedOut: false } });
+    render(BarcodeInput, { props: { checkedOut: false, barcodeInputElement: undefined } });
 
     const input = screen.getByTestId('barcode-scanner-input') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -149,7 +154,7 @@ describe('BarcodeInput', () => {
   });
 
   it('Should not call listGames when Enter is pressed with an empty input', async () => {
-    render(BarcodeInput);
+    render(BarcodeInput, { props: { checkedOut: false, barcodeInputElement: undefined } });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -158,7 +163,7 @@ describe('BarcodeInput', () => {
   });
 
   it('Should not call listGames when a key other than Enter is pressed', async () => {
-    render(BarcodeInput);
+    render(BarcodeInput, { props: { checkedOut: false, barcodeInputElement: undefined } });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
@@ -170,7 +175,7 @@ describe('BarcodeInput', () => {
   it('Should show a spinner while the barcode lookup is in progress', async () => {
     vi.mocked(apiClient.listGames).mockReturnValue(new Promise(() => {}));
 
-    render(BarcodeInput, { props: { checkedOut: false } });
+    render(BarcodeInput, { props: { checkedOut: false, barcodeInputElement: undefined } });
 
     const input = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(input, { target: { value: '9780307455925' } });
