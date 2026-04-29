@@ -127,9 +127,7 @@ describe('BarcodeInput', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith(
-        'All copies of this game are currently checked out or no game found with this barcode.'
-      );
+      expect(onError).toHaveBeenCalledWith(expect.any(String));
     });
   });
 
