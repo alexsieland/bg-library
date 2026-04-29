@@ -96,9 +96,11 @@ LIMIT $1 OFFSET $2;
 -- name: SearchGameStatus :many
 SELECT *
 FROM vw_game_status
-WHERE sanitized_title ILIKE $1
+WHERE (sqlc.narg('checked_out')::boolean IS NULL OR checked_out = sqlc.narg('checked_out'))
+  AND (sqlc.narg('sanitized_title')::text IS NULL OR sanitized_title ILIKE sqlc.narg('sanitized_title'))
+  AND (sqlc.narg('game_barcode')::text IS NULL OR game_barcode ILIKE sqlc.narg('game_barcode'))
 ORDER BY sanitized_title
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: GetGameStatus :one
 SELECT *
@@ -111,13 +113,6 @@ FROM vw_game_status
 WHERE checkin_timestamp IS NULL AND checkout_timestamp IS NOT NULL
 ORDER BY sanitized_title
 LIMIT $1 OFFSET $2;
-
--- name: SearchCheckedOutGames :many
-SELECT *
-FROM vw_game_status
-WHERE checkin_timestamp IS NULL AND vw_game_status.sanitized_title ILIKE $1
-ORDER BY sanitized_title
-LIMIT $2 OFFSET $3;
 
 -- name: SearchTransactionEvents :many
 SELECT transaction_id, game_id, game_title, patron_id, patron_full_name, event_type, event_timestamp, play_to_win_game_id

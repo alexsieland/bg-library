@@ -11,18 +11,20 @@
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
-  import { apiClient, type GameStatusList } from './api-client';
-  import type { components } from '../generated/library-api';
+  import { apiClient, type GameStatusList, type GameStatus } from './api-client';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
   import { barcodeScanner } from './barcodeScannerAction';
+  import ReturnModal from './ReturnModal.svelte';
 
   let searchQuery = '';
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
   let loading = true;
   let barcodeInputElement: HTMLInputElement | undefined;
+  let returnModalOpen = false;
+  let returnStatuses: GameStatus[] = [];
 
   async function fetchCheckedOutGames() {
     loading = true;
@@ -78,36 +80,26 @@
     });
   }
 
-  function handleBarcodeFound(game: components['schemas']['Game']) {
-    const match = gameStatusList.games.find((gs) => gs.game.gameId === game.gameId);
-    if (!match) {
-      toasts.add(`${game.title} has already been returned.`, 'warn');
-      return;
-    }
-    handleReturn(match.transactionId, match.game.title);
-  }
-
   function handleBarcodeError(message: string) {
     toasts.add(message, 'error');
   }
 
+  function handleStatusesFound(statuses: GameStatus[]) {
+    returnStatuses = statuses;
+    returnModalOpen = true;
+  }
+
   async function onScanComplete(barcode: string) {
+    if (barcodeInputElement) {
+      barcodeInputElement.focus();
+    }
     try {
-      // Focus the barcode input field so the scan appears there
-      if (barcodeInputElement) {
-        barcodeInputElement.focus();
-        barcodeInputElement.value = barcode;
-        barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      const result = await apiClient.getGameByBarcode(barcode);
-      if (result.games.length > 1) {
-        toasts.add(
-          'Barcode conflict handling not yet implemented. Please manually trigger the check in.',
-          'error'
-        );
+      const result = await apiClient.listGames({ barcode, checkedOut: true });
+      if (result.games.length === 0) {
+        toasts.add('All copies of this game are currently available.', 'warn');
         return;
       }
-      handleBarcodeFound(result.games[0]);
+      handleStatusesFound(result.games);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to look up barcode';
       toasts.add(message, 'error');
@@ -140,7 +132,8 @@
     {#if isBarcodeEnabled()}
       <BarcodeInput
         bind:barcodeInputElement
-        onGameFound={handleBarcodeFound}
+        checkedOut={true}
+        onStatusesFound={handleStatusesFound}
         onError={handleBarcodeError}
       />
     {/if}
@@ -200,3 +193,9 @@
     </TableBody>
   </Table>
 {/if}
+
+<ReturnModal
+  bind:open={returnModalOpen}
+  statuses={returnStatuses}
+  onReturnSuccess={fetchCheckedOutGames}
+/>

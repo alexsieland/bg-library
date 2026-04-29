@@ -31,7 +31,7 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 
 		gameId := uuid.New()
 		mockRow := new(MockRow)
-		MockRowScanError(mockRow, 9, errors.New("db error"))
+		MockRowScanError(mockRow, 12, errors.New("db error"))
 		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: gameId, Valid: true}}).Return(mockRow).Once()
 
 		_, err := svc.CheckOutGame(context.Background(), pgtype.UUID{Bytes: gameId, Valid: true}, pgtype.UUID{Valid: false}, nil)
@@ -210,16 +210,19 @@ func TestTransactionServiceListTransactionEvents(t *testing.T) {
 // ---- Helper mocks for scanning and rows ----
 
 func MockVwGameStatusScan(row *MockRow, status db.VwGameStatus, err error) {
-	row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	row.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		*args.Get(0).(*pgtype.UUID) = status.GameID
 		*args.Get(1).(*string) = status.GameTitle
-		*args.Get(2).(*string) = status.SanitizedTitle
-		*args.Get(3).(*pgtype.UUID) = status.PatronID
-		*args.Get(4).(*pgtype.Text) = status.PatronFullName
-		*args.Get(5).(*pgtype.UUID) = status.TransactionID
-		*args.Get(6).(*pgtype.Timestamp) = status.CheckoutTimestamp
-		*args.Get(7).(*pgtype.Timestamp) = status.CheckinTimestamp
-		*args.Get(8).(*pgtype.UUID) = status.PtwGameID
+		*args.Get(2).(*pgtype.Text) = status.GameBarcode
+		*args.Get(3).(*string) = status.SanitizedTitle
+		*args.Get(4).(*pgtype.UUID) = status.PatronID
+		*args.Get(5).(*pgtype.Text) = status.PatronFullName
+		*args.Get(6).(*pgtype.Text) = status.PatronBarcode
+		*args.Get(7).(*pgtype.UUID) = status.TransactionID
+		*args.Get(8).(*pgtype.Timestamp) = status.CheckoutTimestamp
+		*args.Get(9).(*pgtype.Timestamp) = status.CheckinTimestamp
+		*args.Get(10).(*pgtype.Bool) = status.CheckedOut
+		*args.Get(11).(*pgtype.UUID) = status.PtwGameID
 	}).Return(err)
 }
 

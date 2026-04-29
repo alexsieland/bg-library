@@ -17,8 +17,7 @@ import (
 
 type gameService interface {
 	ListGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwLibraryGame, error)
-	ListGameStatuses(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error)
-	ListCheckedOutGames(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error)
+	ListGameStatuses(ctx context.Context, checkedOut *bool, gameTitle *string, gameBarcode *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwGameStatus, error)
 	InsertGame(ctx context.Context, title string, barcode *string, isPlayToWin bool, optTx pgx.Tx) (db.VwLibraryGame, error)
 	UpdateGame(ctx context.Context, gameId pgtype.UUID, title string, barcode *string, optTx pgx.Tx) error
 	GetGame(ctx context.Context, gameId pgtype.UUID, optTx pgx.Tx) (db.VwLibraryGame, error)
@@ -237,15 +236,14 @@ func (api *GameApi) ListGames(ctx context.Context, params ListGamesParams) (Game
 	if params.Title != nil {
 		errorDetails.ValidateStringLength("title", *params.Title, 1, 100)
 	}
+	if params.Barcode != nil {
+		errorDetails.ValidateStringLength("barcode", *params.Barcode, 1, 48)
+	}
 	if !errorDetails.Empty() {
 		return GameStatusList{}, errorDetails
 	}
 
-	if params.CheckedOut != nil && *params.CheckedOut {
-		dbGameStatusList, err = api.service.ListCheckedOutGames(ctx, params.Title, limit, offset, nil)
-	} else {
-		dbGameStatusList, err = api.service.ListGameStatuses(ctx, params.Title, limit, offset, nil)
-	}
+	dbGameStatusList, err = api.service.ListGameStatuses(ctx, params.CheckedOut, params.Title, params.Barcode, limit, offset, nil)
 	if err != nil {
 		log.Printf("Error listing games: %v", err)
 		return GameStatusList{}, err

@@ -251,12 +251,15 @@ CREATE VIEW vw_game_status AS
 SELECT DISTINCT ON (g.id)
         g.id AS game_id,
         g.display_title AS game_title,
+        g.barcode AS game_barcode,
         g.sanitized_title,
         t.patron_id,
         p.full_name AS patron_full_name,
+        p.barcode AS patron_barcode,
         t.id AS transaction_id,
         t.checkout_timestamp,
         t.checkin_timestamp,
+        (checkout_timestamp IS NOT NULL AND checkin_timestamp IS NULL) AS checked_out,
         ptw.id AS ptw_game_id
 FROM vw_library_games AS g
 LEFT JOIN transactions AS t ON t.game_id = g.id

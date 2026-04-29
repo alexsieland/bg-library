@@ -16,10 +16,18 @@ vi.mock('./api-client', async (importOriginal) => {
     ...actual,
     apiClient: {
       listGames: vi.fn(),
-      getGameByBarcode: vi.fn(),
     },
   };
 });
+
+// Mock the barcode scanner action
+let savedOnScanCallback: ((barcode: string) => void) | null = null;
+vi.mock('./barcodeScannerAction', () => ({
+  barcodeScanner: (_node: any, options: { onScan: (barcode: string) => void }) => {
+    savedOnScanCallback = options.onScan;
+    return { destroy: () => {} };
+  },
+}));
 
 const mockGamesResponse = {
   games: [
@@ -166,34 +174,42 @@ describe('CheckOutTable (barcode enabled)', () => {
   });
 
   it('Should open the loan modal with the found game when a barcode scan succeeds', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue({ games: [] });
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [
-        {
-          gameId: 'g1',
-          title: 'Catan',
-          barcode: '9780307455925',
-          isPlayToWin: false,
-        },
-      ],
-    });
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({ games: [] });
 
     render(CheckOutTable);
 
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
+
+    // Mock the barcode scan that returns an available game
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
+      games: [
+        {
+          game: {
+            gameId: 'g1',
+            title: 'Catan',
+            barcode: '9780307455925',
+            isPlayToWin: false,
+          },
+          patron: undefined,
+        },
+      ],
+    });
 
     const barcodeInput = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(apiClient.getGameByBarcode).toHaveBeenCalledWith('9780307455925');
+      expect(apiClient.listGames).toHaveBeenCalledWith({
+        barcode: '9780307455925',
+        checkedOut: false,
+      });
       expect(screen.getByText('Loan Game: Catan')).toBeInTheDocument();
     });
   });
-
   it('Should open the loan modal for the first available copy when multiple games share a barcode', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue({
+    // Initial load
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
       games: [
         {
           game: { gameId: 'g1', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
@@ -209,29 +225,38 @@ describe('CheckOutTable (barcode enabled)', () => {
         },
       ],
     });
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
+
+    render(CheckOutTable);
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    // Window-level barcode scan triggers onScanComplete
+    // which calls listGames with barcode and checkedOut: false
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
       games: [
-        { gameId: 'g1', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
-        { gameId: 'g2', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
-        { gameId: 'g3', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
+        {
+          game: { gameId: 'g2', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
+          patron: undefined,
+        },
+        {
+          game: { gameId: 'g3', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
+          patron: undefined,
+        },
       ],
     });
 
-    render(CheckOutTable);
-    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
+    // Trigger the window-level barcode scanner callback directly
+    expect(savedOnScanCallback).toBeTruthy();
+    savedOnScanCallback!('UPC-001');
 
-    const barcodeInput = screen.getByTestId('barcode-scanner-input');
-    await fireEvent.input(barcodeInput, { target: { value: 'UPC-001' } });
-    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
-
-    // g1 is checked out; g2 is the first available — loan modal should open for Catan (g2)
+    // g1 is checked out (filtered out); g2 is the first available — loan modal should open for Catan (g2)
     await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith({ barcode: 'UPC-001', checkedOut: false });
       expect(screen.getByText('Loan Game: Catan')).toBeInTheDocument();
     });
   });
 
   it('Should show an error toast when all copies of a duplicate-barcode game are checked out', async () => {
-    vi.mocked(apiClient.listGames).mockResolvedValue({
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
       games: [
         {
           game: { gameId: 'g1', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
@@ -243,20 +268,24 @@ describe('CheckOutTable (barcode enabled)', () => {
         },
       ],
     });
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [
-        { gameId: 'g1', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
-        { gameId: 'g2', title: 'Catan', barcode: 'UPC-001', isPlayToWin: false },
-      ],
-    });
 
     const { container } = render(CheckOutTable);
     await waitFor(() => expect(apiClient.listGames).toHaveBeenCalled());
+
+    // Mock barcode scan - since all copies are checked out, filtering for checkedOut: false returns empty
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({
+      games: [],
+    });
 
     const barcodeInput = screen.getByTestId('barcode-scanner-input');
     await fireEvent.input(barcodeInput, { target: { value: 'UPC-001' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith({ barcode: 'UPC-001', checkedOut: false });
+    });
+
+    // Should not open loan modal since no available copies
     await waitFor(() => {
       expect(screen.queryByText('Loan Game: Catan')).not.toBeInTheDocument();
     });

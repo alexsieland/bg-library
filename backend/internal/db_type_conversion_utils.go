@@ -17,3 +17,10 @@ func int32ToPgInt4(i *int32) pgtype.Int4 {
 	}
 	return pgtype.Int4{Int32: *i, Valid: true}
 }
+
+func boolToPgBool(i *bool) pgtype.Bool {
+	if i == nil {
+		return pgtype.Bool{}
+	}
+	return pgtype.Bool{Bool: *i, Valid: true}
+}

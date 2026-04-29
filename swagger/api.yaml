@@ -63,6 +63,11 @@ paths:
           schema:
             type: string
           description: Filter games by title (optional)
+        - in: query
+          name: barcode
+          schema:
+            type: string
+          description: Filter games by barcode (optional). Returns all copies sharing this barcode along with their checkout status.
       responses:
         '200':
           description: List of games with checkout status successfully retrieved

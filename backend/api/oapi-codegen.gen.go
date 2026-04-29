@@ -306,6 +306,9 @@ type ListGamesParams struct {
 
 	// Title Filter games by title (optional)
 	Title *string `form:"title,omitempty" json:"title,omitempty"`
+
+	// Barcode Filter games by barcode (optional). Returns all copies sharing this barcode along with their checkout status.
+	Barcode *string `form:"barcode,omitempty" json:"barcode,omitempty"`
 }
 
 // BulkAddGamesTextBody defines parameters for BulkAddGames.
@@ -1343,6 +1346,22 @@ func NewListGamesRequest(server string, params *ListGamesParams) (*http.Request,
 		if params.Title != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "title", runtime.ParamLocationQuery, *params.Title); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Barcode != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "barcode", runtime.ParamLocationQuery, *params.Barcode); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -4458,6 +4477,14 @@ func (siw *ServerInterfaceWrapper) ListGames(c *gin.Context) {
 	err = runtime.BindQueryParameter("form", true, false, "title", c.Request.URL.Query(), &params.Title)
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter title: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "barcode" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "barcode", c.Request.URL.Query(), &params.Barcode)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter barcode: %w", err), http.StatusBadRequest)
 		return
 	}
 

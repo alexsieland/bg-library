@@ -71,6 +71,7 @@ func dbGameStatusToOpenAPIGame(dbGameStatus db.VwGameStatus) Game {
 	return Game{
 		GameId:      pgUUIDToUUID(dbGameStatus.GameID),
 		Title:       dbGameStatus.GameTitle,
+		Barcode:     pgTextToString(dbGameStatus.GameBarcode),
 		IsPlayToWin: dbGameStatus.PtwGameID.Valid,
 	}
 }
@@ -79,6 +80,7 @@ func dbGameStatusToOpenAPIPatron(dbGameStatus db.VwGameStatus) *Patron {
 	if dbGameStatus.PatronID.Valid && dbGameStatus.PatronFullName.Valid {
 		return &Patron{
 			PatronId: pgUUIDToUUID(dbGameStatus.PatronID),
+			Barcode:  pgTextToString(dbGameStatus.PatronBarcode),
 			Name:     dbGameStatus.PatronFullName.String,
 		}
 	}

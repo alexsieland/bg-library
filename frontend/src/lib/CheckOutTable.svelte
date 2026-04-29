@@ -11,7 +11,7 @@
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
-  import { apiClient, type GameStatusList } from './api-client';
+  import { apiClient, type GameStatusList, type GameStatus } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
@@ -28,7 +28,6 @@
   let error: string | null = null;
   let loading = true;
   let barcodeInputElement: HTMLInputElement | undefined;
-
   async function fetchGames() {
     console.log('fetchGames called with query:', searchQuery);
     loading = true;
@@ -73,15 +72,8 @@
     toasts.add(message, 'error');
   }
 
-  function resolveAvailableGame(
-    games: components['schemas']['Game'][]
-  ): components['schemas']['Game'] | null {
-    return (
-      games.find((g) => {
-        const status = gameStatusList.games.find((gs) => gs.game.gameId === g.gameId);
-        return status && !status.patron;
-      }) ?? null
-    );
+  function handleStatusesFound(statuses: GameStatus[]) {
+    handleBarcodeFound(statuses[0].game);
   }
 
   async function onScanComplete(barcode: string) {
@@ -91,17 +83,16 @@
         barcodeInputElement.value = barcode;
         barcodeInputElement.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      const result = await apiClient.getGameByBarcode(barcode);
-      if (result.games.length > 1) {
-        const available = resolveAvailableGame(result.games);
-        if (!available) {
-          toasts.add('All copies of this game are currently checked out.', 'error');
-          return;
-        }
-        handleBarcodeFound(available);
+      const result = await apiClient.listGames({ barcode, checkedOut: false });
+      if (result.games.length === 0) {
+        toasts.add(
+          'All copies of this game are currently checked out or no game found with this barcode.',
+          'error'
+        );
         return;
       }
-      handleBarcodeFound(result.games[0]);
+      // Since we filtered for available games, just take the first one
+      handleBarcodeFound(result.games[0].game);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to look up barcode';
       toasts.add(message, 'error');
@@ -133,9 +124,8 @@
     {#if isBarcodeEnabled()}
       <BarcodeInput
         bind:barcodeInputElement
-        onGameFound={handleBarcodeFound}
+        onStatusesFound={handleStatusesFound}
         onError={handleBarcodeError}
-        resolveConflict={resolveAvailableGame}
       />
     {/if}
   </div>
