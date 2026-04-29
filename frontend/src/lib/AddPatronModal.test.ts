@@ -17,6 +17,7 @@ vi.mock('./api-client', async (importOriginal) => {
     apiClient: {
       addPatron: vi.fn(),
       getPatron: vi.fn(),
+      updatePatron: vi.fn(),
       getPatronByBarcode: vi.fn(),
     },
   };
@@ -68,11 +69,11 @@ describe('AddPatronModal', () => {
     expect(apiClient.addPatron).not.toHaveBeenCalled();
   });
 
-  it('Should call onPatronCreated with the new patron on successful submit', async () => {
+  it('Should call onPatronSaved with the new patron on successful submit', async () => {
     vi.mocked(apiClient.addPatron).mockResolvedValue(mockPatron);
-    const onPatronCreated = vi.fn();
+    const onPatronSaved = vi.fn();
 
-    render(AddPatronModal, { open: true, onPatronCreated });
+    render(AddPatronModal, { open: true, onPatronSaved });
 
     const input = screen.getByTestId('add-patron-name-input');
     await fireEvent.input(input, { target: { value: 'Alice' } });
@@ -80,7 +81,7 @@ describe('AddPatronModal', () => {
 
     await waitFor(() => {
       expect(apiClient.addPatron).toHaveBeenCalledWith({ name: 'Alice' });
-      expect(onPatronCreated).toHaveBeenCalledWith(mockPatron);
+      expect(onPatronSaved).toHaveBeenCalledWith(mockPatron);
     });
   });
 
@@ -102,6 +103,44 @@ describe('AddPatronModal', () => {
 
     await waitFor(() => {
       expect(toasts.add).toHaveBeenCalledWith('Failed to add patron: Server error', 'error');
+    });
+  });
+
+  it('Should call updatePatron and onPatronSaved when submitting in edit mode', async () => {
+    const updatedPatron = { patronId: 'p1', name: 'Alice Updated' };
+    vi.mocked(apiClient.updatePatron).mockResolvedValue(undefined);
+    vi.mocked(apiClient.getPatron).mockResolvedValue(updatedPatron);
+    const onPatronSaved = vi.fn();
+
+    render(AddPatronModal, { open: true, patronId: 'p1', initialName: 'Alice', onPatronSaved });
+
+    await waitFor(() => expect(apiClient.getPatron).toHaveBeenCalledWith('p1'));
+
+    const input = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'Alice Updated' } });
+    await fireEvent.click(screen.getByTestId('add-patron-submit'));
+
+    await waitFor(() => {
+      expect(apiClient.updatePatron).toHaveBeenCalledWith('p1', { name: 'Alice Updated' });
+      expect(apiClient.getPatron).toHaveBeenCalledTimes(2);
+      expect(onPatronSaved).toHaveBeenCalledWith(updatedPatron);
+    });
+  });
+
+  it('Should show an error toast when updatePatron fails in edit mode', async () => {
+    vi.mocked(apiClient.getPatron).mockResolvedValue(mockPatron);
+    vi.mocked(apiClient.updatePatron).mockRejectedValue(new Error('Update failed'));
+
+    render(AddPatronModal, { open: true, patronId: 'p1', initialName: 'Alice' });
+
+    await waitFor(() => expect(apiClient.getPatron).toHaveBeenCalled());
+
+    const input = screen.getByTestId('add-patron-name-input');
+    await fireEvent.input(input, { target: { value: 'Alice Updated' } });
+    await fireEvent.click(screen.getByTestId('add-patron-submit'));
+
+    await waitFor(() => {
+      expect(toasts.add).toHaveBeenCalledWith('Failed to update patron: Update failed', 'error');
     });
   });
 
@@ -157,7 +196,7 @@ describe('AddPatronModal', () => {
     });
 
     await waitFor(() => {
-      expect(toasts.add).toHaveBeenCalledWith('Failed to load game: Load failed', 'error');
+      expect(toasts.add).toHaveBeenCalledWith('Failed to load patron: Load failed', 'error');
     });
   });
 });
@@ -182,9 +221,9 @@ describe('AddPatronModal (barcode enabled)', () => {
 
   it('Should submit with the initialBarcode value when no barcode scan is performed', async () => {
     vi.mocked(apiClient.addPatron).mockResolvedValue({ ...mockPatron, barcode: 'BADGE-42' });
-    const onPatronCreated = vi.fn();
+    const onPatronSaved = vi.fn();
 
-    render(AddPatronModal, { open: true, initialBarcode: 'BADGE-42', onPatronCreated });
+    render(AddPatronModal, { open: true, initialBarcode: 'BADGE-42', onPatronSaved });
 
     await fireEvent.input(screen.getByTestId('add-patron-name-input'), {
       target: { value: 'Alice' },
@@ -193,7 +232,7 @@ describe('AddPatronModal (barcode enabled)', () => {
 
     await waitFor(() => {
       expect(apiClient.addPatron).toHaveBeenCalledWith({ name: 'Alice', barcode: 'BADGE-42' });
-      expect(onPatronCreated).toHaveBeenCalled();
+      expect(onPatronSaved).toHaveBeenCalled();
     });
   });
 
@@ -263,9 +302,9 @@ describe('AddPatronModal (barcode enabled)', () => {
       ...mockPatron,
       barcode: '1234567890',
     });
-    const onPatronCreated = vi.fn();
+    const onPatronSaved = vi.fn();
 
-    render(AddPatronModal, { open: true, onPatronCreated });
+    render(AddPatronModal, { open: true, onPatronSaved });
 
     await fireEvent.input(screen.getByTestId('add-patron-name-input'), {
       target: { value: 'Alice' },
@@ -283,7 +322,7 @@ describe('AddPatronModal (barcode enabled)', () => {
         name: 'Alice',
         barcode: '1234567890',
       });
-      expect(onPatronCreated).toHaveBeenCalled();
+      expect(onPatronSaved).toHaveBeenCalled();
     });
   });
 

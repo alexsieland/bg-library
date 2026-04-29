@@ -7,8 +7,13 @@
   export let patronId: string | null = null;
   export let initialName: string = '';
   export let initialBarcode: string = '';
-  export let onPatronCreated: (patron: Patron) => void = () => {};
+  export let onPatronSaved: (patron: Patron) => void = () => {};
   export let onCancel: () => void = () => {};
+
+  // Determine if we're in edit mode
+  $: isEditMode = patronId !== null;
+  $: modalTitle = isEditMode ? 'Update Patron' : 'Add Patron';
+  $: submitButtonText = isEditMode ? 'Update Patron' : 'Add Patron';
   let patronName = '';
   let patronBarcode = '';
   let barcodeLoading = false;
@@ -31,8 +36,8 @@
       patronName = patron.name;
       patronBarcode = patron.barcode || '';
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to load game';
-      toasts.add(`Failed to load game: ${message}`, 'error');
+      const message = e instanceof Error ? e.message : 'Failed to load patron';
+      toasts.add(`Failed to load patron: ${message}`, 'error');
     }
   }
 
@@ -40,15 +45,26 @@
     if (!patronName.trim()) return;
     loading = true;
     try {
-      const newPatron = await apiClient.addPatron({
+      const requestBody = {
         name: patronName.trim(),
         ...(patronBarcode.trim() ? { barcode: patronBarcode.trim() } : {}),
-      });
-      onPatronCreated(newPatron);
+      };
+
+      let savedPatron: Patron;
+
+      if (isEditMode && patronId) {
+        await apiClient.updatePatron(patronId, requestBody);
+        savedPatron = await apiClient.getPatron(patronId);
+      } else {
+        savedPatron = await apiClient.addPatron(requestBody);
+      }
+
+      onPatronSaved(savedPatron);
       open = false;
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to add patron';
-      toasts.add(`Failed to add patron: ${message}`, 'error');
+      const message = e instanceof Error ? e.message : 'Failed to save patron';
+      const action = isEditMode ? 'update' : 'add';
+      toasts.add(`Failed to ${action} patron: ${message}`, 'error');
     } finally {
       loading = false;
     }
@@ -94,7 +110,7 @@
   }
 </script>
 
-<Modal bind:open title="Add Patron" size="sm" autoclose={false}>
+<Modal bind:open title={modalTitle} size="sm" autoclose={false}>
   <div class="space-y-4">
     <div>
       <Label for="addPatronName" class="mb-2">Patron Name</Label>
@@ -151,7 +167,7 @@
         {#if loading}
           <Spinner size="4" class="me-2" />
         {/if}
-        Add Patron
+        {submitButtonText}
       </Button>
     </div>
   </div>
