@@ -179,7 +179,7 @@ SELECT
     ptw_entry.entrant_name AS winner_name,
     ptw_entry.entrant_unique_id AS winner_unique_id
 FROM vw_deleted_play_to_win_games AS ptw_game
-         LEFT JOIN vw_library_games AS g ON g.id = ptw_game.game_id
+         LEFT JOIN games AS g ON g.id = ptw_game.game_id
          LEFT JOIN play_to_win_entries AS ptw_entry ON ptw_game.winner_id = ptw_entry.id;
 
 CREATE VIEW vw_play_to_win_groups AS

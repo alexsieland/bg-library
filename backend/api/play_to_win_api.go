@@ -242,40 +242,6 @@ func (api *PlayToWinApi) ListPlayToWinGames(ctx context.Context, params ListPlay
 	}
 
 	// Get play to win games based on query params
-	dbPTWGames, err := api.service.ListPlayToWinGameOverviews(ctx, params.Title, limit, offset, nil)
-	if err != nil {
-		return PlayToWinGameList{}, err
-	}
-
-	ptwGameList := FromPlayToWinGameList(dbPTWGames)
-	return ptwGameList, nil
-}
-
-func (api *PlayToWinApi) ListPlayToWinGames(ctx context.Context, params ListPlayToWinGamesParams) (PlayToWinGameList, error) {
-	var (
-		limit        int32 = 100
-		offset       int32 = 0
-		errorDetails ErrorDetails
-	)
-
-	// Validate query params
-	if params.Limit != nil {
-		limit = *params.Limit
-		errorDetails.ValidateIntMin("limit", limit, 1)
-		errorDetails.ValidateIntMax("limit", limit, 100)
-	}
-	if params.Offset != nil {
-		offset = *params.Offset
-		errorDetails.ValidateIntMin("offset", offset, 0)
-	}
-	if params.Title != nil && *params.Title != "" {
-		errorDetails.ValidateStringLength("title", *params.Title, 1, 100)
-	}
-	if !errorDetails.Empty() {
-		return PlayToWinGameList{}, errorDetails
-	}
-
-	// Get play to win games based on query params
 	if params.DeletionReason == nil {
 		dbPTWGames, err := api.service.ListPlayToWinGameOverviews(ctx, params.Title, limit, offset, nil)
 		if err != nil {
