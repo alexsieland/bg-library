@@ -19,6 +19,7 @@ type playToWinService interface {
 	GetPlayToWinGroupByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGroup, error)
 	GetPlayToWinGameOverview(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGameOverview, error)
 	ListPlayToWinGameOverviews(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwPlayToWinGameOverview, error)
+	ListDeletedPlayToWinGameOverviews(ctx context.Context, deletionReason db.NullPlayToWinGameDeletionType, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwDeletedPlayToWinGameOverview, error)
 	GetPlayToWinGameEntriesByGroupId(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error)
 	GetPlayToWinGameEntriesByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error)
 	ListPlayToWinEntriesByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error)
@@ -250,6 +251,53 @@ func (api *PlayToWinApi) ListPlayToWinGames(ctx context.Context, params ListPlay
 	return ptwGameList, nil
 }
 
+func (api *PlayToWinApi) ListPlayToWinGames(ctx context.Context, params ListPlayToWinGamesParams) (PlayToWinGameList, error) {
+	var (
+		limit        int32 = 100
+		offset       int32 = 0
+		errorDetails ErrorDetails
+	)
+
+	// Validate query params
+	if params.Limit != nil {
+		limit = *params.Limit
+		errorDetails.ValidateIntMin("limit", limit, 1)
+		errorDetails.ValidateIntMax("limit", limit, 100)
+	}
+	if params.Offset != nil {
+		offset = *params.Offset
+		errorDetails.ValidateIntMin("offset", offset, 0)
+	}
+	if params.Title != nil && *params.Title != "" {
+		errorDetails.ValidateStringLength("title", *params.Title, 1, 100)
+	}
+	if !errorDetails.Empty() {
+		return PlayToWinGameList{}, errorDetails
+	}
+
+	// Get play to win games based on query params
+	if params.DeletionReason == nil {
+		dbPTWGames, err := api.service.ListPlayToWinGameOverviews(ctx, params.Title, limit, offset, nil)
+		if err != nil {
+			return PlayToWinGameList{}, err
+		}
+
+		ptwGameList := FromPlayToWinGameList(dbPTWGames)
+		return ptwGameList, nil
+	}
+
+	// If there is a deletion reason, get the deleted ptw games instead
+	deletionReason := string(*params.DeletionReason)
+	dbDeletionReason := errorDetails.playToWinGameDeletionReason(&deletionReason)
+	dbDeletedPTWGames, err := api.service.ListDeletedPlayToWinGameOverviews(ctx, dbDeletionReason, params.Title, limit, offset, nil)
+	if err != nil {
+		return PlayToWinGameList{}, err
+	}
+
+	ptwGameList := FromDeletedPlayToWinGameList(dbDeletedPTWGames)
+	return ptwGameList, nil
+}
+
 func (api *PlayToWinApi) UpdatePlayToWinGame(ctx context.Context, ptwId types.UUID, request UpdatePlayToWinGame) error {
 	winnerId := pgtype.UUID{
 		Valid: false,
@@ -278,7 +326,7 @@ func (api *PlayToWinApi) UpdatePlayToWinGame(ctx context.Context, ptwId types.UU
 }
 
 func (api *PlayToWinApi) DeletePlayToWinGame(ctx context.Context, ptwId types.UUID, request RemovePlayToWinGameRequest) error {
-	if request.RemovalReason == Claimed {
+	if request.RemovalReason == RemovePlayToWinGameRequestRemovalReasonClaimed {
 		return api.ClaimPlayToWinGame(ctx, ptwId)
 	}
 

@@ -684,6 +684,59 @@ func (q *Queries) ListCheckedOutGames(ctx context.Context, arg ListCheckedOutGam
 	return items, nil
 }
 
+const listDeletedPlayToWinGameOverviews = `-- name: ListDeletedPlayToWinGameOverviews :many
+SELECT ptw_game_id, game_id, ptw_group_id, game_title, sanitized_title, deletion_reason, deletion_reason_comment, deleted_at, winner_id, winner_name, winner_unique_id
+FROM vw_deleted_play_to_win_game_overview
+WHERE deletion_reason = $1
+  AND ($4::text IS NULL OR sanitized_title ILIKE $4)
+ORDER BY deleted_at DESC, sanitized_title ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListDeletedPlayToWinGameOverviewsParams struct {
+	DeletionReason NullPlayToWinGameDeletionType
+	Limit          int32
+	Offset         int32
+	SanitizedTitle pgtype.Text
+}
+
+func (q *Queries) ListDeletedPlayToWinGameOverviews(ctx context.Context, arg ListDeletedPlayToWinGameOverviewsParams) ([]VwDeletedPlayToWinGameOverview, error) {
+	rows, err := q.db.Query(ctx, listDeletedPlayToWinGameOverviews,
+		arg.DeletionReason,
+		arg.Limit,
+		arg.Offset,
+		arg.SanitizedTitle,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VwDeletedPlayToWinGameOverview
+	for rows.Next() {
+		var i VwDeletedPlayToWinGameOverview
+		if err := rows.Scan(
+			&i.PtwGameID,
+			&i.GameID,
+			&i.PtwGroupID,
+			&i.GameTitle,
+			&i.SanitizedTitle,
+			&i.DeletionReason,
+			&i.DeletionReasonComment,
+			&i.DeletedAt,
+			&i.WinnerID,
+			&i.WinnerName,
+			&i.WinnerUniqueID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGames = `-- name: ListGames :many
 SELECT id, display_title, title, sanitized_title, barcode, play_to_win_game_id, created_at
 FROM vw_library_games

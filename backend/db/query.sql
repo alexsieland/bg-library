@@ -255,3 +255,12 @@ WHERE id = $1;
 UPDATE play_to_win_games
 SET winner_id = NULL
 WHERE deletion_reason IS DISTINCT FROM 'claimed';
+
+-- name: ListDeletedPlayToWinGameOverviews :many
+SELECT *
+FROM vw_deleted_play_to_win_game_overview
+WHERE deletion_reason = $1
+  AND (sqlc.narg('sanitized_title')::text IS NULL OR sanitized_title ILIKE sqlc.narg('sanitized_title'))
+ORDER BY deleted_at DESC, sanitized_title ASC
+LIMIT $2 OFFSET $3;
+

@@ -272,10 +272,26 @@ type VwDeletedPlayToWinEntry struct {
 
 type VwDeletedPlayToWinGame struct {
 	ID                    pgtype.UUID
+	PtwGroupID            pgtype.UUID
 	GameID                pgtype.UUID
 	DeletedAt             pgtype.Timestamp
 	DeletionReason        NullPlayToWinGameDeletionType
 	DeletionReasonComment pgtype.Text
+	WinnerID              pgtype.UUID
+}
+
+type VwDeletedPlayToWinGameOverview struct {
+	PtwGameID             pgtype.UUID
+	GameID                pgtype.UUID
+	PtwGroupID            pgtype.UUID
+	GameTitle             string
+	SanitizedTitle        string
+	DeletionReason        NullPlayToWinGameDeletionType
+	DeletionReasonComment pgtype.Text
+	DeletedAt             pgtype.Timestamp
+	WinnerID              pgtype.UUID
+	WinnerName            pgtype.Text
+	WinnerUniqueID        pgtype.Text
 }
 
 type VwDeletedPlayToWinSession struct {

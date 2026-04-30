@@ -185,6 +185,41 @@ func FromPlayToWinGameOverview(dbPTWGame db.VwPlayToWinGameOverview) PlayToWinGa
 	return game
 }
 
+func FromDeletedPlayToWinGameList(dbPTWGames []db.VwDeletedPlayToWinGameOverview) PlayToWinGameList {
+	games := make([]PlayToWinGame, len(dbPTWGames))
+	for i, dbPTWGame := range dbPTWGames {
+		games[i] = FromDeletedPlayToWinGameOverview(dbPTWGame)
+	}
+	return PlayToWinGameList{Games: games}
+}
+
+func FromDeletedPlayToWinGameOverview(dbPTWGame db.VwDeletedPlayToWinGameOverview) PlayToWinGame {
+	var winner *PlayToWinEntry
+	if dbPTWGame.WinnerID.Valid {
+		winnerName := ""
+		if dbPTWGame.WinnerName.Valid {
+			winnerName = dbPTWGame.WinnerName.String
+		}
+		winnerUniqueId := ""
+		if dbPTWGame.WinnerUniqueID.Valid {
+			winnerUniqueId = dbPTWGame.WinnerUniqueID.String
+		}
+		winner = &PlayToWinEntry{
+			EntryId:         pgUUIDToUUID(dbPTWGame.WinnerID),
+			EntrantName:     winnerName,
+			EntrantUniqueId: winnerUniqueId,
+		}
+	}
+
+	game := PlayToWinGame{
+		GameId:      pgUUIDToUUID(dbPTWGame.GameID),
+		PlayToWinId: pgUUIDToUUID(dbPTWGame.PtwGameID),
+		Title:       dbPTWGame.GameTitle,
+		Winner:      winner,
+	}
+	return game
+}
+
 // Error Utils
 
 func NewErrorResponseWithDetails(errorCode ErrorResponseErrorCode, message string, details []ErrorDetail) ErrorResponse {
