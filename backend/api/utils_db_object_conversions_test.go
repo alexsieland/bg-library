@@ -263,6 +263,98 @@ func TestFromPlayToWinGameList(t *testing.T) {
 	assert.Nil(t, games.Games[0].Winner)
 }
 
+func TestFromDeletedPlayToWinGameOverview_NoWinner(t *testing.T) {
+	ptwID := uuid.New()
+	gameID := uuid.New()
+
+	dbGame := db.VwDeletedPlayToWinGameOverview{
+		PtwGameID: pgtype.UUID{Bytes: ptwID, Valid: true},
+		GameID:    pgtype.UUID{Bytes: gameID, Valid: true},
+		GameTitle: "Deleted Game",
+		WinnerID:  pgtype.UUID{Valid: false},
+	}
+
+	game := FromDeletedPlayToWinGameOverview(dbGame)
+
+	assert.Equal(t, ptwID, game.PlayToWinId)
+	assert.Equal(t, gameID, game.GameId)
+	assert.Equal(t, "Deleted Game", game.Title)
+	assert.Nil(t, game.Winner)
+}
+
+func TestFromDeletedPlayToWinGameOverview_WithWinner(t *testing.T) {
+	ptwID := uuid.New()
+	gameID := uuid.New()
+	winnerID := uuid.New()
+
+	dbGame := db.VwDeletedPlayToWinGameOverview{
+		PtwGameID:      pgtype.UUID{Bytes: ptwID, Valid: true},
+		GameID:         pgtype.UUID{Bytes: gameID, Valid: true},
+		GameTitle:      "Claimed Game",
+		WinnerID:       pgtype.UUID{Bytes: winnerID, Valid: true},
+		WinnerName:     pgtype.Text{String: "Bob", Valid: true},
+		WinnerUniqueID: pgtype.Text{String: "bob-1", Valid: true},
+	}
+
+	game := FromDeletedPlayToWinGameOverview(dbGame)
+
+	assert.Equal(t, ptwID, game.PlayToWinId)
+	assert.Equal(t, gameID, game.GameId)
+	assert.Equal(t, "Claimed Game", game.Title)
+	require.NotNil(t, game.Winner)
+	assert.Equal(t, winnerID, game.Winner.EntryId)
+	assert.Equal(t, "Bob", game.Winner.EntrantName)
+	assert.Equal(t, "bob-1", game.Winner.EntrantUniqueId)
+}
+
+func TestFromDeletedPlayToWinGameOverview_WinnerWithNullNameFields(t *testing.T) {
+	ptwID := uuid.New()
+	winnerID := uuid.New()
+
+	dbGame := db.VwDeletedPlayToWinGameOverview{
+		PtwGameID:      pgtype.UUID{Bytes: ptwID, Valid: true},
+		GameID:         pgtype.UUID{Valid: true},
+		GameTitle:      "Mystery",
+		WinnerID:       pgtype.UUID{Bytes: winnerID, Valid: true},
+		WinnerName:     pgtype.Text{Valid: false},
+		WinnerUniqueID: pgtype.Text{Valid: false},
+	}
+
+	game := FromDeletedPlayToWinGameOverview(dbGame)
+
+	require.NotNil(t, game.Winner)
+	assert.Equal(t, "", game.Winner.EntrantName)
+	assert.Equal(t, "", game.Winner.EntrantUniqueId)
+}
+
+func TestFromDeletedPlayToWinGameList(t *testing.T) {
+	ptwID1, ptwID2 := uuid.New(), uuid.New()
+	gameID1, gameID2 := uuid.New(), uuid.New()
+
+	dbGames := []db.VwDeletedPlayToWinGameOverview{
+		{
+			PtwGameID: pgtype.UUID{Bytes: ptwID1, Valid: true},
+			GameID:    pgtype.UUID{Bytes: gameID1, Valid: true},
+			GameTitle: "Alpha",
+			WinnerID:  pgtype.UUID{Valid: false},
+		},
+		{
+			PtwGameID: pgtype.UUID{Bytes: ptwID2, Valid: true},
+			GameID:    pgtype.UUID{Bytes: gameID2, Valid: true},
+			GameTitle: "Beta",
+			WinnerID:  pgtype.UUID{Valid: false},
+		},
+	}
+
+	list := FromDeletedPlayToWinGameList(dbGames)
+
+	assert.Len(t, list.Games, 2)
+	assert.Equal(t, ptwID1, list.Games[0].PlayToWinId)
+	assert.Equal(t, "Alpha", list.Games[0].Title)
+	assert.Equal(t, ptwID2, list.Games[1].PlayToWinId)
+	assert.Equal(t, "Beta", list.Games[1].Title)
+}
+
 // requireTimeNow returns a time suitable for tests and fails the test on error.
 func requireTimeNow(t *testing.T) (nowTime time.Time) {
 	t.Helper()
