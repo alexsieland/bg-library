@@ -120,6 +120,26 @@ func (s *PlayToWinService) ListPlayToWinGameOverviews(ctx context.Context, gameT
 	return wrapErrorOrReturn(&ptwGameOverviews, []db.VwPlayToWinGameOverview{}, err)
 }
 
+func (s *PlayToWinService) ListDeletedPlayToWinGameOverviews(ctx context.Context, deletionReason db.NullPlayToWinGameDeletionType, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwDeletedPlayToWinGameOverview, error) {
+	var sanitizedTitle *string = nil
+	if gameTitle != nil && *gameTitle != "" {
+		st := GenerateDBRegexString(SanitizeTitle(*gameTitle))
+		sanitizedTitle = &st
+	}
+
+	params := db.ListDeletedPlayToWinGameOverviewsParams{
+		DeletionReason: deletionReason,
+		SanitizedTitle: stringToPgText(sanitizedTitle),
+		Limit:          limit,
+		Offset:         offset,
+	}
+
+	if optTx == nil {
+		return s.libraryService.queries.ListDeletedPlayToWinGameOverviews(ctx, params)
+	}
+	return s.libraryService.queries.WithTx(optTx).ListDeletedPlayToWinGameOverviews(ctx, params)
+}
+
 func (s *PlayToWinService) GetPlayToWinGameEntriesByGroupId(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error) {
 	var (
 		entries []db.VwPlayToWinEntry
