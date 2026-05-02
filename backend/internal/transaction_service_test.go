@@ -120,6 +120,105 @@ func TestTransactionServiceCheckOutGame(t *testing.T) {
 		mockDB.AssertExpectations(t)
 		mockTx.AssertExpectations(t)
 	})
+
+	t.Run("Should return error when patron exceeds checkout limit", func(t *testing.T) {
+		svc, ctx, mockTx, mockDB := setupTransactionServiceWithMockTx(t)
+		t.Setenv("CHECKOUT_LIMIT", "3")
+
+		gameId := uuid.New()
+		patronId := uuid.New()
+
+		// Game status: not checked out — idempotency path is not taken
+		status := makeVwGameStatus(gameId, nil, nil, false, time.Time{})
+
+		mockStatusRow := new(MockRow)
+		MockVwGameStatusScan(mockStatusRow, status, nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{status.GameID}).Return(mockStatusRow).Once()
+
+		// CountActiveCheckoutsByPatron runs via WithTx(tx) → mockTx.QueryRow
+		// Returns 3, which equals the limit — checkout is rejected
+		countRow := new(MockRow)
+		MockCountActiveCheckoutsScan(countRow, int64(3), nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronId, Valid: true}}).Return(countRow).Once()
+
+		// Closure returns error → WithinTx calls Rollback, not Commit
+		mockTx.On("Rollback", ctx).Return(nil).Once()
+
+		_, err := svc.CheckOutGame(ctx, status.GameID, pgtype.UUID{Bytes: patronId, Valid: true}, nil)
+
+		assert.ErrorIs(t, err, ErrCheckoutLimitExceeded)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should allow checkout when patron is under the limit", func(t *testing.T) {
+		svc, ctx, mockTx, mockDB := setupTransactionServiceWithMockTx(t)
+		t.Setenv("CHECKOUT_LIMIT", "5")
+
+		gameId := uuid.New()
+		patronId := uuid.New()
+		txId := uuid.New()
+		now := time.Now().UTC()
+
+		// Game status: not checked out
+		status := makeVwGameStatus(gameId, nil, nil, false, time.Time{})
+
+		mockStatusRow := new(MockRow)
+		MockVwGameStatusScan(mockStatusRow, status, nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{status.GameID}).Return(mockStatusRow).Once()
+
+		// CountActiveCheckoutsByPatron returns 2 — under the limit of 5
+		countRow := new(MockRow)
+		MockCountActiveCheckoutsScan(countRow, int64(2), nil)
+		mockTx.On("QueryRow", mock.Anything, mock.Anything, []any{pgtype.UUID{Bytes: patronId, Valid: true}}).Return(countRow).Once()
+
+		// Checkout INSERT proceeds normally; queries.CheckOutGame uses raw mockDB (no WithTx)
+		mockTxRow := new(MockRow)
+		dbTx := makeTransaction(txId, gameId, patronId, now)
+		MockTransactionScan(mockTxRow, dbTx, nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{dbTx.GameID, pgtype.UUID{Bytes: patronId, Valid: true}}).Return(mockTxRow).Once()
+
+		mockTx.On("Commit", ctx).Return(nil).Once()
+
+		tx, err := svc.CheckOutGame(ctx, dbTx.GameID, pgtype.UUID{Bytes: patronId, Valid: true}, nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, dbTx.ID, tx.ID)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+
+	t.Run("Should allow checkout when no limit is configured", func(t *testing.T) {
+		svc, ctx, mockTx, mockDB := setupTransactionServiceWithMockTx(t)
+		// CHECKOUT_LIMIT intentionally not set — count query must never be called
+
+		gameId := uuid.New()
+		patronId := uuid.New()
+		txId := uuid.New()
+		now := time.Now().UTC()
+
+		// Game status: not checked out
+		status := makeVwGameStatus(gameId, nil, nil, false, time.Time{})
+
+		mockStatusRow := new(MockRow)
+		MockVwGameStatusScan(mockStatusRow, status, nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{status.GameID}).Return(mockStatusRow).Once()
+
+		// Checkout INSERT; no count mock registered, confirming it is never called
+		mockTxRow := new(MockRow)
+		dbTx := makeTransaction(txId, gameId, patronId, now)
+		MockTransactionScan(mockTxRow, dbTx, nil)
+		mockDB.On("QueryRow", mock.Anything, mock.Anything, []any{dbTx.GameID, pgtype.UUID{Bytes: patronId, Valid: true}}).Return(mockTxRow).Once()
+
+		mockTx.On("Commit", ctx).Return(nil).Once()
+
+		tx, err := svc.CheckOutGame(ctx, dbTx.GameID, pgtype.UUID{Bytes: patronId, Valid: true}, nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, dbTx.ID, tx.ID)
+		mockDB.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
 }
 
 func TestTransactionServiceCheckInGame(t *testing.T) {
@@ -233,6 +332,12 @@ func MockTransactionScan(row *MockRow, trans db.Transaction, err error) {
 		*args.Get(2).(*pgtype.UUID) = trans.PatronID
 		*args.Get(3).(*pgtype.Timestamp) = trans.CheckoutTimestamp
 		*args.Get(4).(*pgtype.Timestamp) = trans.CheckinTimestamp
+	}).Return(err)
+}
+
+func MockCountActiveCheckoutsScan(row *MockRow, count int64, err error) {
+	row.On("Scan", mock.Anything).Run(func(args mock.Arguments) {
+		*args.Get(0).(*int64) = count
 	}).Return(err)
 }
 
