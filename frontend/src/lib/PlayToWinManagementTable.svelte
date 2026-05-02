@@ -25,7 +25,7 @@
   let error: string | null = $state(null);
   let offset = $state(0);
   let resetRaffleConfirmationOpen = $state(false);
-  let viewMode: 'available' | 'claimed' | 'all' = $state('available');
+  let viewMode = $state<'available' | 'claimed' | 'all'>('available');
 
   let filteredGames = $derived(playToWinList.games);
   let hasPreviousPage = $derived(viewMode !== 'all' && offset > 0);
