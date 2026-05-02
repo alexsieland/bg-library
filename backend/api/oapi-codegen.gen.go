@@ -224,6 +224,9 @@ type PlayToWinEntryList struct {
 
 // PlayToWinGame defines model for PlayToWinGame.
 type PlayToWinGame struct {
+	// DeletedAt ISO 8601 timestamp when the game was claimed/deleted (only present for deleted games)
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
 	// GameId The ID of the game
 	GameId openapi_types.UUID `json:"gameId"`
 
@@ -557,6 +560,9 @@ type ClientInterface interface {
 	UpdatePlayToWinGameWithBody(ctx context.Context, ptwId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdatePlayToWinGame(ctx context.Context, ptwId openapi_types.UUID, body UpdatePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestorePlayToWinGame request
+	RestorePlayToWinGame(ctx context.Context, ptwId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPlayToWinGames request
 	ListPlayToWinGames(ctx context.Context, params *ListPlayToWinGamesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -962,6 +968,18 @@ func (c *Client) UpdatePlayToWinGameWithBody(ctx context.Context, ptwId openapi_
 
 func (c *Client) UpdatePlayToWinGame(ctx context.Context, ptwId openapi_types.UUID, body UpdatePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdatePlayToWinGameRequest(c.Server, ptwId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RestorePlayToWinGame(ctx context.Context, ptwId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestorePlayToWinGameRequest(c.Server, ptwId)
 	if err != nil {
 		return nil, err
 	}
@@ -2049,6 +2067,40 @@ func NewUpdatePlayToWinGameRequestWithBody(server string, ptwId openapi_types.UU
 	return req, nil
 }
 
+// NewRestorePlayToWinGameRequest generates requests for RestorePlayToWinGame
+func NewRestorePlayToWinGameRequest(server string, ptwId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "ptwId", runtime.ParamLocationPath, ptwId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ptw/game/ptwId/%s/restore", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListPlayToWinGamesRequest generates requests for ListPlayToWinGames
 func NewListPlayToWinGamesRequest(server string, params *ListPlayToWinGamesParams) (*http.Request, error) {
 	var err error
@@ -2405,6 +2457,9 @@ type ClientWithResponsesInterface interface {
 	UpdatePlayToWinGameWithBodyWithResponse(ctx context.Context, ptwId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePlayToWinGameResponse, error)
 
 	UpdatePlayToWinGameWithResponse(ctx context.Context, ptwId openapi_types.UUID, body UpdatePlayToWinGameJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePlayToWinGameResponse, error)
+
+	// RestorePlayToWinGameWithResponse request
+	RestorePlayToWinGameWithResponse(ctx context.Context, ptwId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RestorePlayToWinGameResponse, error)
 
 	// ListPlayToWinGamesWithResponse request
 	ListPlayToWinGamesWithResponse(ctx context.Context, params *ListPlayToWinGamesParams, reqEditors ...RequestEditorFn) (*ListPlayToWinGamesResponse, error)
@@ -2945,6 +3000,28 @@ func (r UpdatePlayToWinGameResponse) StatusCode() int {
 	return 0
 }
 
+type RestorePlayToWinGameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r RestorePlayToWinGameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestorePlayToWinGameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListPlayToWinGamesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -3341,6 +3418,15 @@ func (c *ClientWithResponses) UpdatePlayToWinGameWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseUpdatePlayToWinGameResponse(rsp)
+}
+
+// RestorePlayToWinGameWithResponse request returning *RestorePlayToWinGameResponse
+func (c *ClientWithResponses) RestorePlayToWinGameWithResponse(ctx context.Context, ptwId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RestorePlayToWinGameResponse, error) {
+	rsp, err := c.RestorePlayToWinGame(ctx, ptwId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestorePlayToWinGameResponse(rsp)
 }
 
 // ListPlayToWinGamesWithResponse request returning *ListPlayToWinGamesResponse
@@ -4099,6 +4185,32 @@ func ParseUpdatePlayToWinGameResponse(rsp *http.Response) (*UpdatePlayToWinGameR
 	return response, nil
 }
 
+// ParseRestorePlayToWinGameResponse parses an HTTP response from a RestorePlayToWinGameWithResponse call
+func ParseRestorePlayToWinGameResponse(rsp *http.Response) (*RestorePlayToWinGameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestorePlayToWinGameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListPlayToWinGamesResponse parses an HTTP response from a ListPlayToWinGamesWithResponse call
 func ParseListPlayToWinGamesResponse(rsp *http.Response) (*ListPlayToWinGamesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4304,6 +4416,9 @@ type ServerInterface interface {
 	// Update a play to win game
 	// (PUT /api/v1/ptw/game/ptwId/{ptwId})
 	UpdatePlayToWinGame(c *gin.Context, ptwId openapi_types.UUID)
+	// Restore a claimed play to win game
+	// (POST /api/v1/ptw/game/ptwId/{ptwId}/restore)
+	RestorePlayToWinGame(c *gin.Context, ptwId openapi_types.UUID)
 	// List play to win games
 	// (GET /api/v1/ptw/games)
 	ListPlayToWinGames(c *gin.Context, params ListPlayToWinGamesParams)
@@ -4882,6 +4997,30 @@ func (siw *ServerInterfaceWrapper) UpdatePlayToWinGame(c *gin.Context) {
 	siw.Handler.UpdatePlayToWinGame(c, ptwId)
 }
 
+// RestorePlayToWinGame operation middleware
+func (siw *ServerInterfaceWrapper) RestorePlayToWinGame(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "ptwId" -------------
+	var ptwId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ptwId", c.Param("ptwId"), &ptwId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ptwId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RestorePlayToWinGame(c, ptwId)
+}
+
 // ListPlayToWinGames operation middleware
 func (siw *ServerInterfaceWrapper) ListPlayToWinGames(c *gin.Context) {
 
@@ -5045,6 +5184,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.DeletePlayToWinGame)
 	router.GET(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.GetPlayToWinGame)
 	router.PUT(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId", wrapper.UpdatePlayToWinGame)
+	router.POST(options.BaseURL+"/api/v1/ptw/game/ptwId/:ptwId/restore", wrapper.RestorePlayToWinGame)
 	router.GET(options.BaseURL+"/api/v1/ptw/games", wrapper.ListPlayToWinGames)
 	router.POST(options.BaseURL+"/api/v1/ptw/raffle/ptwId/:ptwId", wrapper.DrawPlayToWinRaffle)
 	router.POST(options.BaseURL+"/api/v1/ptw/raffle/reset", wrapper.ResetPlayToWinRaffle)

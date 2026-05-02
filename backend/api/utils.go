@@ -36,6 +36,13 @@ func pgTextToString(text pgtype.Text) *string {
 	return &text.String
 }
 
+func pgTimestampToTime(ts pgtype.Timestamp) *time.Time {
+	if !ts.Valid {
+		return nil
+	}
+	return &ts.Time
+}
+
 func FromVwGameStatus(dbGameStatus db.VwGameStatus) GameStatus {
 	var checkedOutAt *time.Time
 	if dbGameStatus.CheckoutTimestamp.Valid {
@@ -216,6 +223,7 @@ func FromDeletedPlayToWinGameOverview(dbPTWGame db.VwDeletedPlayToWinGameOvervie
 		PlayToWinId: pgUUIDToUUID(dbPTWGame.PtwGameID),
 		Title:       dbPTWGame.GameTitle,
 		Winner:      winner,
+		DeletedAt:   pgTimestampToTime(dbPTWGame.DeletedAt),
 	}
 	return game
 }

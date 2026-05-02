@@ -310,6 +310,15 @@ func (s *Server) DeletePlayToWinGame(c *gin.Context, ptwId types.UUID) {
 	}
 }
 
+func (s *Server) RestorePlayToWinGame(c *gin.Context, ptwId types.UUID) {
+	err := s.PlayToWinApi.RestorePlayToWinGame(c.Request.Context(), ptwId)
+	handleError(c, err)
+	if c.IsAborted() {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (s *Server) GetPlayToWinGame(c *gin.Context, ptwId types.UUID) {
 	ptwGame, err := s.PlayToWinApi.GetPlayToWinGameOverview(c.Request.Context(), ptwId)
 	handleError(c, err)

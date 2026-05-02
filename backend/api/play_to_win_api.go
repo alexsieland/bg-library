@@ -33,6 +33,7 @@ type playToWinService interface {
 	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
 	DeletePlayToWinEntry(ctx context.Context, entryId pgtype.UUID, deletionReason db.NullPlayToWinEntryDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
 	ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error
+	RestoreClaimedPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error
 	ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error
 }
 
@@ -318,6 +319,14 @@ func (api *PlayToWinApi) ClaimPlayToWinGame(ctx context.Context, ptwId types.UUI
 	err := api.service.ClaimPlayToWinGame(ctx, uuidToPgTypeUUID(ptwId), nil)
 	if err != nil {
 		log.Printf("Error claiming play to win game: %v", err)
+	}
+	return err
+}
+
+func (api *PlayToWinApi) RestorePlayToWinGame(ctx context.Context, ptwId types.UUID) error {
+	err := api.service.RestoreClaimedPlayToWinGame(ctx, uuidToPgTypeUUID(ptwId), nil)
+	if err != nil {
+		log.Printf("Error restoring play to win game: %v", err)
 	}
 	return err
 }

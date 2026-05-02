@@ -776,6 +776,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/ptw/game/ptwId/{ptwId}/restore:
+    post:
+      tags:
+        - ptw
+      operationId: restorePlayToWinGame
+      summary: Restore a claimed play to win game
+      description: Restore a previously claimed play to win game, including its library game record and winner entry
+      parameters:
+        - in: path
+          name: ptwId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Play to win game ID
+      responses:
+        '204':
+          description: Play to win game restored successfully
+        '404':
+          description: Play to win game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/ptw/raffle/reset:
     post:
       tags:
@@ -1274,6 +1299,11 @@ components:
           type: object
           $ref: '#/components/schemas/PlayToWinEntry'
           description: The winner of the play to win game, not set if raffle has not happened
+        deletedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the game was claimed/deleted (only present for deleted games)
+          example: "2026-01-31T12:00:00Z"
 
     PlayToWinGameList:
       type: object

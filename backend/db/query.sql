@@ -34,9 +34,13 @@ WHERE id = $1;
 
 -- name: DeleteGame :exec
 UPDATE games
-SET deleted_at = now(),
-    barcode = NULL
+SET deleted_at = now()
 WHERE deleted_at IS NULL AND id = $1;
+
+-- name: RestoreGame :exec
+UPDATE games
+SET deleted_at = NULL
+WHERE id = $1;
 
 -- name: ListPatrons :many
 SELECT *
@@ -123,6 +127,11 @@ LIMIT $3 OFFSET $4;
 -- name: GetPlayToWinGameOverview :one
 SELECT *
 FROM vw_play_to_win_game_overview
+WHERE ptw_game_id = $1;
+
+-- name: GetDeletedPlayToWinGameOverview :one
+SELECT *
+FROM vw_deleted_play_to_win_game_overview
 WHERE ptw_game_id = $1;
 
 -- name: ListPlayToWinGameOverviews :many
