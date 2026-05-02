@@ -19,6 +19,7 @@ type playToWinService interface {
 	GetPlayToWinGroupByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGroup, error)
 	GetPlayToWinGameOverview(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) (db.VwPlayToWinGameOverview, error)
 	ListPlayToWinGameOverviews(ctx context.Context, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwPlayToWinGameOverview, error)
+	ListDeletedPlayToWinGameOverviews(ctx context.Context, deletionReason db.NullPlayToWinGameDeletionType, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwDeletedPlayToWinGameOverview, error)
 	GetPlayToWinGameEntriesByGroupId(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error)
 	GetPlayToWinGameEntriesByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error)
 	ListPlayToWinEntriesByPlayToWinGameId(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error)
@@ -241,12 +242,25 @@ func (api *PlayToWinApi) ListPlayToWinGames(ctx context.Context, params ListPlay
 	}
 
 	// Get play to win games based on query params
-	dbPTWGames, err := api.service.ListPlayToWinGameOverviews(ctx, params.Title, limit, offset, nil)
+	if params.DeletionReason == nil {
+		dbPTWGames, err := api.service.ListPlayToWinGameOverviews(ctx, params.Title, limit, offset, nil)
+		if err != nil {
+			return PlayToWinGameList{}, err
+		}
+
+		ptwGameList := FromPlayToWinGameList(dbPTWGames)
+		return ptwGameList, nil
+	}
+
+	// If there is a deletion reason, get the deleted ptw games instead
+	deletionReason := string(*params.DeletionReason)
+	dbDeletionReason := errorDetails.playToWinGameDeletionReason(&deletionReason)
+	dbDeletedPTWGames, err := api.service.ListDeletedPlayToWinGameOverviews(ctx, dbDeletionReason, params.Title, limit, offset, nil)
 	if err != nil {
 		return PlayToWinGameList{}, err
 	}
 
-	ptwGameList := FromPlayToWinGameList(dbPTWGames)
+	ptwGameList := FromDeletedPlayToWinGameList(dbDeletedPTWGames)
 	return ptwGameList, nil
 }
 
@@ -278,7 +292,7 @@ func (api *PlayToWinApi) UpdatePlayToWinGame(ctx context.Context, ptwId types.UU
 }
 
 func (api *PlayToWinApi) DeletePlayToWinGame(ctx context.Context, ptwId types.UUID, request RemovePlayToWinGameRequest) error {
-	if request.RemovalReason == Claimed {
+	if request.RemovalReason == RemovePlayToWinGameRequestRemovalReasonClaimed {
 		return api.ClaimPlayToWinGame(ctx, ptwId)
 	}
 

@@ -161,9 +161,26 @@ FROM patrons
 WHERE deleted_at IS NULL;
 
 CREATE VIEW vw_deleted_play_to_win_games AS
-SELECT  id, game_id, deleted_at, deletion_reason, deletion_reason_comment
+SELECT  id, ptw_group_id, game_id, deleted_at, deletion_reason, deletion_reason_comment, winner_id
 FROM play_to_win_games
 WHERE deleted_at IS NOT NULL;
+
+CREATE VIEW vw_deleted_play_to_win_game_overview AS
+SELECT
+    ptw_game.id AS ptw_game_id,
+    ptw_game.game_id AS game_id,
+    ptw_game.ptw_group_id AS ptw_group_id,
+    COALESCE(g.display_title, 'Missing Game') AS game_title,
+    COALESCE(g.sanitized_title, 'missing game') AS sanitized_title,
+    ptw_game.deletion_reason AS deletion_reason,
+    ptw_game.deletion_reason_comment AS deletion_reason_comment,
+    ptw_game.deleted_at AS deleted_at,
+    ptw_entry.id AS winner_id,
+    ptw_entry.entrant_name AS winner_name,
+    ptw_entry.entrant_unique_id AS winner_unique_id
+FROM vw_deleted_play_to_win_games AS ptw_game
+         LEFT JOIN games AS g ON g.id = ptw_game.game_id
+         LEFT JOIN play_to_win_entries AS ptw_entry ON ptw_game.winner_id = ptw_entry.id;
 
 CREATE VIEW vw_play_to_win_groups AS
 SELECT id, name, created_at

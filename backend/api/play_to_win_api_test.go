@@ -13,6 +13,7 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MockTx is a mock of the pgx.Tx interface
@@ -135,6 +136,14 @@ func (m *mockPlayToWinService) ListPlayToWinGameOverviews(ctx context.Context, g
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]db.VwPlayToWinGameOverview), args.Error(1)
+}
+
+func (m *mockPlayToWinService) ListDeletedPlayToWinGameOverviews(ctx context.Context, deletionReason db.NullPlayToWinGameDeletionType, gameTitle *string, limit int32, offset int32, optTx pgx.Tx) ([]db.VwDeletedPlayToWinGameOverview, error) {
+	args := m.Called(ctx, deletionReason, gameTitle, limit, offset, optTx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]db.VwDeletedPlayToWinGameOverview), args.Error(1)
 }
 
 func (m *mockPlayToWinService) GetPlayToWinGameEntriesByGroupId(ctx context.Context, ptwGroupId pgtype.UUID, optTx pgx.Tx) ([]db.VwPlayToWinEntry, error) {
@@ -312,7 +321,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		}
 		svc.On("DeletePlayToWinGameByLibraryGameId", ctx, pgtype.UUID{Bytes: gameID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(nil).Once()
 
-		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(gameID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
+		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(gameID), RemovePlayToWinGameRequest{RemovalReason: RemovePlayToWinGameRequestRemovalReasonMistake})
 		assert.NoError(t, err)
 		svc.AssertExpectations(t)
 	})
@@ -330,7 +339,7 @@ func TestRemovePlayToWinGame(t *testing.T) {
 		}
 		svc.On("DeletePlayToWinGameByLibraryGameId", ctx, pgtype.UUID{Bytes: gameID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(expected).Once()
 
-		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(gameID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
+		err := fixture.RemovePlayToWinGameByGameId(ctx, types.UUID(gameID), RemovePlayToWinGameRequest{RemovalReason: RemovePlayToWinGameRequestRemovalReasonMistake})
 		assert.ErrorIs(t, err, expected)
 		svc.AssertExpectations(t)
 	})
@@ -457,6 +466,117 @@ func TestListPlayToWinGames(t *testing.T) {
 		got, err := fixture.ListPlayToWinGames(ctx, ListPlayToWinGamesParams{Limit: ptrInt32(10), Offset: ptrInt32(0)})
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(got.Games))
+		svc.AssertExpectations(t)
+	})
+
+	t.Run("Should return deleted games when deletionReason is provided", func(t *testing.T) {
+		svc := new(mockPlayToWinService)
+		fixture := newTestPlayToWinApi(svc, nil, nil)
+		ctx := context.Background()
+		ptwID := uuid.New()
+		gameID := uuid.New()
+
+		deletionReason := ListPlayToWinGamesParamsDeletionReasonMistake
+		dbDeletionReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake,
+			Valid:                     true,
+		}
+		dbGames := []db.VwDeletedPlayToWinGameOverview{
+			{
+				PtwGameID:      pgtype.UUID{Bytes: ptwID, Valid: true},
+				GameID:         pgtype.UUID{Bytes: gameID, Valid: true},
+				GameTitle:      "Deleted Game",
+				SanitizedTitle: "deleted game",
+				DeletionReason: dbDeletionReason,
+				WinnerID:       pgtype.UUID{Valid: false},
+			},
+		}
+
+		svc.On("ListDeletedPlayToWinGameOverviews", ctx, dbDeletionReason, (*string)(nil), int32(100), int32(0), (pgx.Tx)(nil)).Return(dbGames, nil).Once()
+
+		got, err := fixture.ListPlayToWinGames(ctx, ListPlayToWinGamesParams{DeletionReason: &deletionReason})
+		assert.NoError(t, err)
+		assert.Len(t, got.Games, 1)
+		assert.Equal(t, ptwID, got.Games[0].PlayToWinId)
+		assert.Equal(t, gameID, got.Games[0].GameId)
+		assert.Equal(t, "Deleted Game", got.Games[0].Title)
+		assert.Nil(t, got.Games[0].Winner)
+		svc.AssertExpectations(t)
+	})
+
+	t.Run("Should return deleted games with winner when deletionReason is claimed", func(t *testing.T) {
+		svc := new(mockPlayToWinService)
+		fixture := newTestPlayToWinApi(svc, nil, nil)
+		ctx := context.Background()
+		ptwID := uuid.New()
+		gameID := uuid.New()
+		winnerID := uuid.New()
+
+		deletionReason := ListPlayToWinGamesParamsDeletionReasonClaimed
+		dbDeletionReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeClaimed,
+			Valid:                     true,
+		}
+		dbGames := []db.VwDeletedPlayToWinGameOverview{
+			{
+				PtwGameID:      pgtype.UUID{Bytes: ptwID, Valid: true},
+				GameID:         pgtype.UUID{Bytes: gameID, Valid: true},
+				GameTitle:      "Claimed Game",
+				SanitizedTitle: "claimed game",
+				DeletionReason: dbDeletionReason,
+				WinnerID:       pgtype.UUID{Bytes: winnerID, Valid: true},
+				WinnerName:     pgtype.Text{String: "Alice", Valid: true},
+				WinnerUniqueID: pgtype.Text{String: "alice-1", Valid: true},
+			},
+		}
+
+		svc.On("ListDeletedPlayToWinGameOverviews", ctx, dbDeletionReason, (*string)(nil), int32(100), int32(0), (pgx.Tx)(nil)).Return(dbGames, nil).Once()
+
+		got, err := fixture.ListPlayToWinGames(ctx, ListPlayToWinGamesParams{DeletionReason: &deletionReason})
+		assert.NoError(t, err)
+		assert.Len(t, got.Games, 1)
+		assert.Equal(t, "Claimed Game", got.Games[0].Title)
+		require.NotNil(t, got.Games[0].Winner)
+		assert.Equal(t, winnerID, got.Games[0].Winner.EntryId)
+		assert.Equal(t, "Alice", got.Games[0].Winner.EntrantName)
+		assert.Equal(t, "alice-1", got.Games[0].Winner.EntrantUniqueId)
+		svc.AssertExpectations(t)
+	})
+
+	t.Run("Should return empty list when no deleted games match deletion reason", func(t *testing.T) {
+		svc := new(mockPlayToWinService)
+		fixture := newTestPlayToWinApi(svc, nil, nil)
+		ctx := context.Background()
+
+		deletionReason := ListPlayToWinGamesParamsDeletionReasonOther
+		dbDeletionReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeOther,
+			Valid:                     true,
+		}
+
+		svc.On("ListDeletedPlayToWinGameOverviews", ctx, dbDeletionReason, (*string)(nil), int32(100), int32(0), (pgx.Tx)(nil)).Return([]db.VwDeletedPlayToWinGameOverview{}, nil).Once()
+
+		got, err := fixture.ListPlayToWinGames(ctx, ListPlayToWinGamesParams{DeletionReason: &deletionReason})
+		assert.NoError(t, err)
+		assert.Empty(t, got.Games)
+		svc.AssertExpectations(t)
+	})
+
+	t.Run("Should propagate service error when ListDeletedPlayToWinGameOverviews fails", func(t *testing.T) {
+		svc := new(mockPlayToWinService)
+		fixture := newTestPlayToWinApi(svc, nil, nil)
+		ctx := context.Background()
+
+		deletionReason := ListPlayToWinGamesParamsDeletionReasonMistake
+		dbDeletionReason := db.NullPlayToWinGameDeletionType{
+			PlayToWinGameDeletionType: db.PlayToWinGameDeletionTypeMistake,
+			Valid:                     true,
+		}
+
+		svc.On("ListDeletedPlayToWinGameOverviews", ctx, dbDeletionReason, (*string)(nil), int32(100), int32(0), (pgx.Tx)(nil)).Return(nil, errors.New("db error")).Once()
+
+		_, err := fixture.ListPlayToWinGames(ctx, ListPlayToWinGamesParams{DeletionReason: &deletionReason})
+		assert.Error(t, err)
 		svc.AssertExpectations(t)
 	})
 }
@@ -596,7 +716,7 @@ func TestDeletePlayToWinGame(t *testing.T) {
 		}
 		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(nil).Once()
 
-		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
+		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{RemovalReason: RemovePlayToWinGameRequestRemovalReasonMistake})
 		assert.NoError(t, err)
 		svc.AssertExpectations(t)
 	})
@@ -614,7 +734,7 @@ func TestDeletePlayToWinGame(t *testing.T) {
 		}
 		svc.On("DeletePlayToWinGameByPlayToWinId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, dbRemovalReason, (*string)(nil), (pgx.Tx)(nil)).Return(expected).Once()
 
-		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{RemovalReason: Mistake})
+		err := fixture.DeletePlayToWinGame(ctx, types.UUID(ptwID), RemovePlayToWinGameRequest{RemovalReason: RemovePlayToWinGameRequestRemovalReasonMistake})
 		assert.ErrorIs(t, err, expected)
 		svc.AssertExpectations(t)
 	})

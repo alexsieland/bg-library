@@ -657,6 +657,15 @@ paths:
             type: string
           description: Filter by game title (optional)
         - in: query
+          name: deletionReason
+          schema:
+            type: string
+            enum:
+              - claimed
+              - mistake
+              - other
+          description: Filter by deletion reason - returns deleted play to win games matching this reason (optional). When omitted, returns active play to win games.
+        - in: query
           name: limit
           schema:
             type: integer

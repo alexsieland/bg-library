@@ -31,15 +31,22 @@ const (
 
 // Defines values for RemovePlayToWinGameRequestRemovalReason.
 const (
-	Claimed RemovePlayToWinGameRequestRemovalReason = "claimed"
-	Mistake RemovePlayToWinGameRequestRemovalReason = "mistake"
-	Other   RemovePlayToWinGameRequestRemovalReason = "other"
+	RemovePlayToWinGameRequestRemovalReasonClaimed RemovePlayToWinGameRequestRemovalReason = "claimed"
+	RemovePlayToWinGameRequestRemovalReasonMistake RemovePlayToWinGameRequestRemovalReason = "mistake"
+	RemovePlayToWinGameRequestRemovalReasonOther   RemovePlayToWinGameRequestRemovalReason = "other"
 )
 
 // Defines values for TransactionEventEventType.
 const (
 	CheckIn  TransactionEventEventType = "check_in"
 	CheckOut TransactionEventEventType = "check_out"
+)
+
+// Defines values for ListPlayToWinGamesParamsDeletionReason.
+const (
+	ListPlayToWinGamesParamsDeletionReasonClaimed ListPlayToWinGamesParamsDeletionReason = "claimed"
+	ListPlayToWinGamesParamsDeletionReasonMistake ListPlayToWinGamesParamsDeletionReason = "mistake"
+	ListPlayToWinGamesParamsDeletionReasonOther   ListPlayToWinGamesParamsDeletionReason = "other"
 )
 
 // BulkAddResponse Response for bulk add operations
@@ -343,12 +350,18 @@ type ListPlayToWinGamesParams struct {
 	// Title Filter by game title (optional)
 	Title *string `form:"title,omitempty" json:"title,omitempty"`
 
+	// DeletionReason Filter by deletion reason - returns deleted play to win games matching this reason (optional). When omitted, returns active play to win games.
+	DeletionReason *ListPlayToWinGamesParamsDeletionReason `form:"deletionReason,omitempty" json:"deletionReason,omitempty"`
+
 	// Limit Limit the number of games returned (optional)
 	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Offset Offset for pagination (optional)
 	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
+
+// ListPlayToWinGamesParamsDeletionReason defines parameters for ListPlayToWinGames.
+type ListPlayToWinGamesParamsDeletionReason string
 
 // CheckOutGameJSONRequestBody defines body for CheckOutGame for application/json ContentType.
 type CheckOutGameJSONRequestBody = CheckOutRequest
@@ -2061,6 +2074,22 @@ func NewListPlayToWinGamesRequest(server string, params *ListPlayToWinGamesParam
 		if params.Title != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "title", runtime.ParamLocationQuery, *params.Title); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DeletionReason != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "deletionReason", runtime.ParamLocationQuery, *params.DeletionReason); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -4866,6 +4895,14 @@ func (siw *ServerInterfaceWrapper) ListPlayToWinGames(c *gin.Context) {
 	err = runtime.BindQueryParameter("form", true, false, "title", c.Request.URL.Query(), &params.Title)
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter title: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "deletionReason" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "deletionReason", c.Request.URL.Query(), &params.DeletionReason)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter deletionReason: %w", err), http.StatusBadRequest)
 		return
 	}
 
