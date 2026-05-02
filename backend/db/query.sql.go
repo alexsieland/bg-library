@@ -45,6 +45,17 @@ func (q *Queries) CheckOutGame(ctx context.Context, arg CheckOutGameParams) (Tra
 	return i, err
 }
 
+const countActiveCheckoutsByPatron = `-- name: CountActiveCheckoutsByPatron :one
+SELECT count(*) FROM transactions WHERE patron_id = $1 AND checkin_timestamp IS NULL
+`
+
+func (q *Queries) CountActiveCheckoutsByPatron(ctx context.Context, patronID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveCheckoutsByPatron, patronID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createGame = `-- name: CreateGame :one
 INSERT INTO games ( title, sanitized_title, barcode ) VALUES ( $1, $2, $3 )
 RETURNING id, title, display_title, sanitized_title, created_at, deleted_at, barcode

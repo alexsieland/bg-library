@@ -86,6 +86,9 @@ WHERE deleted_at IS NULL AND id = $1;
 INSERT INTO transactions (game_id, patron_id) VALUES ($1, $2)
 RETURNING *;
 
+-- name: CountActiveCheckoutsByPatron :one
+SELECT count(*) FROM transactions WHERE patron_id = $1 AND checkin_timestamp IS NULL;
+
 -- name: CheckInGame :exec
 UPDATE transactions
 SET checkin_timestamp = now()
