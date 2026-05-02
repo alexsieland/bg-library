@@ -235,6 +235,11 @@ func (m *mockPlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId
 	return args.Error(0)
 }
 
+func (m *mockPlayToWinService) RestoreClaimedPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error {
+	args := m.Called(ctx, ptwGameId, optTx)
+	return args.Error(0)
+}
+
 func (m *mockPlayToWinService) ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error {
 	args := m.Called(ctx, optTx)
 	return args.Error(0)

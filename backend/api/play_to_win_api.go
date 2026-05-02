@@ -323,6 +323,14 @@ func (api *PlayToWinApi) ClaimPlayToWinGame(ctx context.Context, ptwId types.UUI
 	return err
 }
 
+func (api *PlayToWinApi) RestorePlayToWinGame(ctx context.Context, ptwId types.UUID) error {
+	err := api.service.RestoreClaimedPlayToWinGame(ctx, uuidToPgTypeUUID(ptwId), nil)
+	if err != nil {
+		log.Printf("Error restoring play to win game: %v", err)
+	}
+	return err
+}
+
 func (api *PlayToWinApi) DrawPlayToWinRaffle(ctx context.Context, ptwId types.UUID) (PlayToWinEntry, error) {
 	dbPtwId := uuidToPgTypeUUID(ptwId)
 	entries, err := api.service.GetPlayToWinGameEntriesByPlayToWinGameId(ctx, dbPtwId, nil)
