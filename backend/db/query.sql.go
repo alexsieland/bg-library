@@ -198,8 +198,7 @@ func (q *Queries) CreatePlayToWinSession(ctx context.Context, arg CreatePlayToWi
 
 const deleteGame = `-- name: DeleteGame :exec
 UPDATE games
-SET deleted_at = now(),
-    barcode = NULL
+SET deleted_at = now()
 WHERE deleted_at IS NULL AND id = $1
 `
 
@@ -338,6 +337,31 @@ type EditPatronParams struct {
 func (q *Queries) EditPatron(ctx context.Context, arg EditPatronParams) error {
 	_, err := q.db.Exec(ctx, editPatron, arg.ID, arg.FullName, arg.Barcode)
 	return err
+}
+
+const getDeletedPlayToWinGameOverview = `-- name: GetDeletedPlayToWinGameOverview :one
+SELECT ptw_game_id, game_id, ptw_group_id, game_title, sanitized_title, deletion_reason, deletion_reason_comment, deleted_at, winner_id, winner_name, winner_unique_id
+FROM vw_deleted_play_to_win_game_overview
+WHERE ptw_game_id = $1
+`
+
+func (q *Queries) GetDeletedPlayToWinGameOverview(ctx context.Context, ptwGameID pgtype.UUID) (VwDeletedPlayToWinGameOverview, error) {
+	row := q.db.QueryRow(ctx, getDeletedPlayToWinGameOverview, ptwGameID)
+	var i VwDeletedPlayToWinGameOverview
+	err := row.Scan(
+		&i.PtwGameID,
+		&i.GameID,
+		&i.PtwGroupID,
+		&i.GameTitle,
+		&i.SanitizedTitle,
+		&i.DeletionReason,
+		&i.DeletionReasonComment,
+		&i.DeletedAt,
+		&i.WinnerID,
+		&i.WinnerName,
+		&i.WinnerUniqueID,
+	)
+	return i, err
 }
 
 const getGame = `-- name: GetGame :one
@@ -908,6 +932,17 @@ WHERE deletion_reason IS DISTINCT FROM 'claimed'
 
 func (q *Queries) ResetPlayToWinGameWinners(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, resetPlayToWinGameWinners)
+	return err
+}
+
+const restoreGame = `-- name: RestoreGame :exec
+UPDATE games
+SET deleted_at = NULL
+WHERE id = $1
+`
+
+func (q *Queries) RestoreGame(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, restoreGame, id)
 	return err
 }
 
