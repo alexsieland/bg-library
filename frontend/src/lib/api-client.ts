@@ -26,6 +26,7 @@ const API_PATHS = {
   getPlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}',
   updatePlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}',
   deletePlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}',
+  restorePlayToWinGame: '/api/v1/ptw/game/ptwId/{ptwId}/restore',
   getPlayToWinEntries: '/api/v1/ptw/entries/playToWinId/{playToWinId}',
   addPlayToWinSession: '/api/v1/ptw/session',
   resetPlayToWinRaffle: '/api/v1/ptw/raffle/reset',
@@ -274,10 +275,15 @@ class ApiClient {
   async listPlayToWinGames(
     title: string,
     limit: number,
-    offset: number
+    offset: number,
+    deletionReason?: 'claimed' | 'mistake' | 'other'
   ): Promise<PlayToWinGameList> {
+    const query: Record<string, string | number> = { title, limit, offset };
+    if (deletionReason) {
+      query.deletionReason = deletionReason;
+    }
     const res = await this.client.GET(API_PATHS.listPlayToWinGames, {
-      params: { query: { title, limit, offset } },
+      params: { query },
     });
     return this.handleResponse(res);
   }
@@ -301,6 +307,13 @@ class ApiClient {
     const res = await this.client.DELETE(API_PATHS.deletePlayToWinGame, {
       params: { path: { ptwId } },
       body: reqBody,
+    });
+    return this.handleResponse(res);
+  }
+
+  async restorePlayToWinGame(ptwId: string): Promise<void> {
+    const res = await this.client.POST(API_PATHS.restorePlayToWinGame, {
+      params: { path: { ptwId } },
     });
     return this.handleResponse(res);
   }

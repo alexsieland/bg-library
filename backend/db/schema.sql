@@ -170,7 +170,7 @@ SELECT
     ptw_game.id AS ptw_game_id,
     ptw_game.game_id AS game_id,
     ptw_game.ptw_group_id AS ptw_group_id,
-    COALESCE(g.display_title, 'Missing Game') AS game_title,
+    COALESCE(g.display_title, g.title, 'Missing Game') AS game_title,
     COALESCE(g.sanitized_title, 'missing game') AS sanitized_title,
     ptw_game.deletion_reason AS deletion_reason,
     ptw_game.deletion_reason_comment AS deletion_reason_comment,
