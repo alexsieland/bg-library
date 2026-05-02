@@ -76,6 +76,10 @@ func handleError(c *gin.Context, err error) {
 		conflict(c, "Game already checked out by another patron")
 		return
 	}
+	if errors.Is(err, internal.ErrCheckoutLimitExceeded) {
+		badRequest(c, "Checkout limit exceeded")
+		return
+	}
 	if errors.Is(err, internal.ErrClaimUnwonPtwGame) {
 		badRequest(c, "Cannot claim play-to-win game without a winner")
 		return
