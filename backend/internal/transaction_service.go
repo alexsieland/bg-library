@@ -2,6 +2,9 @@ package internal
 
 import (
 	"context"
+	"log"
+	"os"
+	"strconv"
 
 	"github.com/alexsieland/bg-library/db"
 	"github.com/jackc/pgx/v5"
@@ -47,6 +50,21 @@ func (s *TransactionService) CheckOutGame(ctx context.Context, gameId pgtype.UUI
 				}, nil
 			}
 			return nil, ErrCheckOutConflict
+		}
+
+		if limitStr := os.Getenv("CHECKOUT_LIMIT"); limitStr != "" {
+			limit, err := strconv.ParseInt(limitStr, 10, 64)
+			if err != nil {
+				log.Printf("Invalid CHECKOUT_LIMIT value: %v", limitStr)
+			} else {
+				count, err := s.libraryService.queries.WithTx(tx).CountActiveCheckoutsByPatron(ctx, patronId)
+				if err != nil {
+					return nil, err
+				}
+				if count >= limit {
+					return nil, ErrCheckoutLimitExceeded
+				}
+			}
 		}
 
 		params := db.CheckOutGameParams{

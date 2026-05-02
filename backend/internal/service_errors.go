@@ -6,6 +6,7 @@ var ErrNotFound = fmt.Errorf("not found")
 var ErrAlreadyExists = fmt.Errorf("already exists")
 var ErrInvalidInput = fmt.Errorf("invalid input")
 var ErrCheckOutConflict = fmt.Errorf("check out conflict")
+var ErrCheckoutLimitExceeded = fmt.Errorf("checkout limit exceeded")
 var ErrClaimUnwonPtwGame = fmt.Errorf("no play-to-win raffle winner")
 var ErrInvalidState = fmt.Errorf("invalid service state")
 
