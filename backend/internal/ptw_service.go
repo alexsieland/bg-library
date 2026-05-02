@@ -487,3 +487,57 @@ func (s *PlayToWinService) ClaimPlayToWinGame(ctx context.Context, ptwGameId pgt
 
 	return wrapDatabaseError(err)
 }
+
+// RestoreClaimedPlayToWinGame restores a previously claimed play to win game.
+// First restores the play to win game
+// Then restores the library game
+// Finally, restores the winner entry if present
+// If any of the above steps fail, the transaction will be rolled back.
+func (s *PlayToWinService) RestoreClaimedPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error {
+	if s.gameService == nil {
+		panic("gameService must be set before calling RestoreClaimedPlayToWinGame")
+	}
+
+	// Look up the deleted game to get gameId and winnerId
+	var deletedGame db.VwDeletedPlayToWinGameOverview
+	var err error
+
+	if optTx == nil {
+		deletedGame, err = s.libraryService.queries.GetDeletedPlayToWinGameOverview(ctx, ptwGameId)
+	} else {
+		deletedGame, err = s.libraryService.queries.WithTx(optTx).GetDeletedPlayToWinGameOverview(ctx, ptwGameId)
+	}
+
+	if err != nil {
+		if errors.Is(ErrNotFound, err) {
+			return nil
+		}
+		return wrapDatabaseError(err)
+	}
+
+	_, err = WithinTx(s.libraryService, ctx, optTx, func(tx pgx.Tx) (*struct{}, error) {
+		// Restore the PTW game
+		err := s.libraryService.queries.WithTx(tx).RestorePlayToWinGame(ctx, ptwGameId)
+		if err != nil {
+			return nil, err
+		}
+
+		// Restore the library game
+		err = s.libraryService.queries.WithTx(tx).RestoreGame(ctx, deletedGame.GameID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Restore the winner entry if present
+		if deletedGame.WinnerID.Valid {
+			err = s.libraryService.queries.WithTx(tx).RestorePlayToWinEntry(ctx, deletedGame.WinnerID)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return nil, nil
+	})
+
+	return wrapDatabaseError(err)
+}

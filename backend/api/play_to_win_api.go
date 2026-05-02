@@ -33,6 +33,7 @@ type playToWinService interface {
 	DeletePlayToWinGameByLibraryGameId(ctx context.Context, gameId pgtype.UUID, deletionReason db.NullPlayToWinGameDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
 	DeletePlayToWinEntry(ctx context.Context, entryId pgtype.UUID, deletionReason db.NullPlayToWinEntryDeletionType, deletionReasonComment *string, optTx pgx.Tx) error
 	ClaimPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error
+	RestoreClaimedPlayToWinGame(ctx context.Context, ptwGameId pgtype.UUID, optTx pgx.Tx) error
 	ResetPlayToWinGameWinners(ctx context.Context, optTx pgx.Tx) error
 }
 
