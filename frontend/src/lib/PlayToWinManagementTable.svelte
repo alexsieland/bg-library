@@ -25,16 +25,49 @@
   let error: string | null = $state(null);
   let offset = $state(0);
   let resetRaffleConfirmationOpen = $state(false);
+  let viewMode: 'available' | 'claimed' | 'all' = $state('available');
 
   let filteredGames = $derived(playToWinList.games);
-  let hasPreviousPage = $derived(offset > 0);
-  let hasNextPage = $derived(playToWinList.games.length === PAGE_SIZE);
+  let hasPreviousPage = $derived(viewMode !== 'all' && offset > 0);
+  let hasNextPage = $derived(viewMode !== 'all' && playToWinList.games.length === PAGE_SIZE);
+  let isPaginationDisabled = $derived(viewMode === 'all');
+
+  function formatDate(dateString: string | undefined) {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
 
   async function fetchPlayToWinGames() {
     loading = true;
     error = null;
     try {
-      playToWinList = await apiClient.listPlayToWinGames(searchQuery, PAGE_SIZE, offset);
+      if (viewMode === 'all') {
+        // Fetch both available and claimed games, concatenate with claimed games after available
+        const [availableGames, claimedGames] = await Promise.all([
+          apiClient.listPlayToWinGames(searchQuery, PAGE_SIZE, 0),
+          apiClient.listPlayToWinGames(searchQuery, PAGE_SIZE, 0, 'claimed'),
+        ]);
+        playToWinList = {
+          games: [...availableGames.games, ...claimedGames.games],
+        };
+      } else if (viewMode === 'claimed') {
+        playToWinList = await apiClient.listPlayToWinGames(
+          searchQuery,
+          PAGE_SIZE,
+          offset,
+          'claimed'
+        );
+      } else {
+        playToWinList = await apiClient.listPlayToWinGames(searchQuery, PAGE_SIZE, offset);
+      }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
@@ -91,8 +124,25 @@
     }
   }
 
+  async function restoreGame(playToWinId: string, gameTitle: string) {
+    try {
+      await apiClient.restorePlayToWinGame(playToWinId);
+      toasts.add(`Restored Play To Win game ${gameTitle}`, 'success');
+      await fetchPlayToWinGames();
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      toasts.add(`Failed to restore Play To Win game ${gameTitle}: ${errorMessage}`, 'error');
+    }
+  }
+
   function handleSearch(query: string) {
     searchQuery = query;
+    offset = 0;
+    fetchPlayToWinGames();
+  }
+
+  function handleViewModeChange(mode: 'available' | 'claimed' | 'all') {
+    viewMode = mode;
     offset = 0;
     fetchPlayToWinGames();
   }
@@ -131,6 +181,35 @@
       />
     </div>
     <div class="flex items-center gap-2">
+      <div
+        class="inline-flex rounded-lg border border-slate-300 dark:border-slate-600"
+        data-testid="ptw-view-mode-selector"
+      >
+        <Button
+          color={viewMode === 'available' ? 'primary' : 'light'}
+          size="sm"
+          class="rounded-r-none"
+          onclick={() => handleViewModeChange('available')}
+        >
+          Available
+        </Button>
+        <Button
+          color={viewMode === 'claimed' ? 'primary' : 'light'}
+          size="sm"
+          class="rounded-none border-x"
+          onclick={() => handleViewModeChange('claimed')}
+        >
+          Claimed
+        </Button>
+        <Button
+          color={viewMode === 'all' ? 'primary' : 'light'}
+          size="sm"
+          class="rounded-l-none"
+          onclick={() => handleViewModeChange('all')}
+        >
+          All
+        </Button>
+      </div>
       <Button color="alternative" size="sm">
         Actions
         <ChevronDownOutline class="ml-2 h-3 w-3" />
@@ -156,6 +235,7 @@
       <TableHead>
         <TableHeadCell class="px-4 py-3" scope="col">Game Title</TableHeadCell>
         <TableHeadCell class="px-4 py-3" scope="col">Winner</TableHeadCell>
+        <TableHeadCell class="px-4 py-3" scope="col">Claimed At</TableHeadCell>
         <TableHeadCell class="px-4 py-3" scope="col">Action</TableHeadCell>
       </TableHead>
 
@@ -163,7 +243,7 @@
         {#if filteredGames.length === 0}
           <TableBodyRow>
             <TableBodyCell
-              colspan={3}
+              colspan={4}
               class="px-4 py-12 text-center text-slate-500 dark:text-slate-400"
               data-testid="ptw-management-empty-state"
             >
@@ -172,12 +252,13 @@
           </TableBodyRow>
         {:else}
           {#each filteredGames as game (game.playToWinId)}
+            {@const isClaimed = !!game.deletedAt}
             <TableBodyRow>
               <TableBodyCell
                 class="px-4 py-3 text-lg font-medium text-slate-900 dark:text-slate-100"
                 data-testid={`ptw-management-title-${game.playToWinId}`}
               >
-                {game.title}
+                <span class:line-through={isClaimed}>{game.title}</span>
               </TableBodyCell>
               <TableBodyCell
                 class="px-4 py-3 text-slate-700 dark:text-slate-200"
@@ -189,23 +270,39 @@
                   &mdash;
                 {/if}
               </TableBodyCell>
+              <TableBodyCell
+                class="px-4 py-3 text-slate-700 dark:text-slate-200"
+                data-testid={`ptw-management-claimed-at-${game.playToWinId}`}
+              >
+                {formatDate(game.deletedAt)}
+              </TableBodyCell>
               <TableBodyCell class="px-4 py-3">
                 <div class="flex gap-2">
-                  <Button
-                    color="primary"
-                    size="sm"
-                    onclick={() => drawWinner(game.playToWinId, game.title)}
-                    data-testid={`ptw-management-draw-button-${game.playToWinId}`}
-                    >Draw Winner</Button
-                  >
-                  <Button
-                    color="emerald"
-                    size="sm"
-                    disabled={!game.winner}
-                    onclick={() => claimRaffle(game.playToWinId, game.title)}
-                    data-testid={`ptw-management-claim-button-${game.playToWinId}`}
-                    >Claim Raffle</Button
-                  >
+                  {#if isClaimed}
+                    <Button
+                      color="yellow"
+                      size="sm"
+                      onclick={() => restoreGame(game.playToWinId, game.title)}
+                      data-testid={`ptw-management-restore-button-${game.playToWinId}`}
+                      >Restore</Button
+                    >
+                  {:else}
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onclick={() => drawWinner(game.playToWinId, game.title)}
+                      data-testid={`ptw-management-draw-button-${game.playToWinId}`}
+                      >Draw Winner</Button
+                    >
+                    <Button
+                      color="emerald"
+                      size="sm"
+                      disabled={!game.winner}
+                      onclick={() => claimRaffle(game.playToWinId, game.title)}
+                      data-testid={`ptw-management-claim-button-${game.playToWinId}`}
+                      >Claim Raffle</Button
+                    >
+                  {/if}
                 </div>
               </TableBodyCell>
             </TableBodyRow>
@@ -219,11 +316,19 @@
       aria-label="Pagination"
       data-testid="ptw-management-pagination-nav"
     >
-      <Button color="light" size="xs" disabled={!hasPreviousPage} onclick={previousPage}
-        >Previous</Button
+      <Button
+        color="light"
+        size="xs"
+        disabled={!hasPreviousPage || isPaginationDisabled}
+        onclick={previousPage}>Previous</Button
       >
       <span class="text-sm text-slate-500 dark:text-slate-400">|</span>
-      <Button color="light" size="xs" disabled={!hasNextPage} onclick={nextPage}>Next</Button>
+      <Button
+        color="light"
+        size="xs"
+        disabled={!hasNextPage || isPaginationDisabled}
+        onclick={nextPage}>Next</Button
+      >
     </nav>
   {/if}
 </div>
