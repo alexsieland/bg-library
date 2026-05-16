@@ -1,72 +1,68 @@
-# Renting a Game (Manual Process)
+# Renting a Game
 
-This guide covers how to check out a game to a patron using the manual workflow — no barcode scanner required.
-
----
-
-## Overview
-
-The Rent (checkout) workflow lets a librarian loan a game to a patron. The librarian searches for the desired game, selects it, and then identifies the patron borrowing it. If the patron is not yet in the system, they can be added on the spot without leaving the checkout flow.
+Use this guide when a patron wants to borrow a game. It walks you through each step, from opening the app to finishing the checkout.
 
 ---
 
-## Step-by-Step
+## Steps
 
-### 1. Navigate to the Checkout Page
+### 1. Go to the Check Out page
 
 <!-- TODO: screenshot — Rent_Page.png -->
-![Checkout page](img/Rent_Page.png)
+![The Check Out page showing a table of all games in the library](img/Rent_Page.png)
 
-Open the application and ensure you are on the **Check Out** tab (the default view).
+When you open the app, you should already be on the **Check Out** tab. If not, click the **Check Out** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
 
-The table displays all games in the library — both available and currently checked out — so you can quickly tell a patron whether a title is in the collection even if it is currently borrowed.
-
----
-
-### 2. Find the Game
-
-Use the **search bar** at the top of the table to filter games by title.
-
-> **Tip:** The search is accent-insensitive. Searching for `barenpark` will match *Bärenpark*.
-
-Locate the game in the filtered results. Games that are already checked out will be indicated with a status badge.
+The table shows all games in the library, including ones that are already checked out. This lets you tell a patron whether a game is in the collection, even if someone else has it right now.
 
 ---
 
-### 3. Open the Loan Modal
+### 2. Find the game
 
-Click the **Check Out** button next to the game you want to loan.
+Type the game's name into the **Search** box at the top of the table. The list will narrow down as you type.
+
+> **Tip:** You do not need to spell the name perfectly. For example, typing `barenpark` will still find *Bärenpark*.
+
+Look for the game in the results. If the game is already checked out, you will see a badge next to it showing its status.
+
+---
+
+### 3. Open the checkout window
+
+Click the **Check Out** button next to the game you want to loan — or press **Tab** to move to the button, then press **Enter** or **Space** to select it.
 
 <!-- TODO: screenshot — Rent_Modal.png -->
-![Loan modal](img/Rent_Modal.png)
+![The checkout pop-up window showing the game title and a patron name search field](img/Rent_Modal.png)
 
-The Loan Modal will open.
-
----
-
-### 4. Identify the Patron
-
-In the **Patron Name** field, begin typing the patron's name. The field will search the patron registry as you type.
-
-- If the patron appears in the suggestions, select them.
-- If the patron is **not yet registered**, see [Adding a New Patron](add-patron.md) and then return to this workflow.
+A pop-up window will appear.
 
 ---
 
-### 5. Confirm the Checkout
+### 4. Find the patron
 
-Review the game title and patron name displayed in the modal, then click **Check Out** to confirm the loan.
+In the **Patron Name** field, start typing the patron's name. A list of matching names will appear below the field.
 
-The game's status will update to **Checked Out** in the table.
+- If you see the patron's name, click it to select them.
+- If the patron is **not in the list**, you will need to add them first. See [Adding a Patron](add-patron.md), then come back and start from Step 3.
+
+---
+
+### 5. Finish the checkout
+
+Check that the game title and patron name shown in the window are correct, then click **Check Out** to complete the loan.
+
+The game's status in the table will change to show it is checked out.
 
 ---
 
 ## Notes
 
-- A game can only be checked out to one patron at a time. If you attempt to check out a game that is already loaned, the system will display a conflict error.
-- Checkouts are expected to last approximately one hour; games must be returned within 24 hours.
+- A game can only be checked out to one person at a time. If you try to check out a game that is already loaned, the app will show an error.
+- Games are usually returned within about one hour. The app will flag any game that has been out for more than 24 hours.
+- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 
 *See also: [Renting with a Barcode Scanner](rent-barcode.md) · [Returning a Game](return-manual.md) · [Adding a Patron](add-patron.md)*
+
 

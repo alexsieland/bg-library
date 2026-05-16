@@ -1,61 +1,55 @@
-# Returning a Game (Manual Process)
+# Returning a Game
 
-This guide covers how to check a game back in using the manual workflow — no barcode scanner required.
-
----
-
-## Overview
-
-The Return (check-in) workflow marks a checked-out game as returned, making it available for the next patron. The librarian locates the game in the check-in table, confirms the returning patron, and completes the transaction.
+Use this guide when a patron brings a game back. It walks you through each step, from opening the app to finishing the return.
 
 ---
 
-## Step-by-Step
+## Steps
 
-### 1. Navigate to the Return Page
+### 1. Go to the Check In page
 
 <!-- TODO: screenshot — Return_Page.png -->
-![Return page](img/Return_Page.png)
+![The Check In page showing a table of all currently checked-out games](img/Return_Page.png)
 
-Open the application and select the **Check In** tab.
+Click the **Check In** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
 
-The table displays all games currently checked out, along with the patron who has each game and how long it has been borrowed.
-
----
-
-### 2. Find the Game
-
-Use the **search bar** at the top of the table to filter by game title if needed.
-
-Locate the game in the checked-out list.
+The table shows every game that is currently checked out, who has it, and how long they have had it.
 
 ---
 
-### 3. Open the Return Modal
+### 2. Find the game
+
+Look through the list for the game being returned. If there are many games checked out, type the game's name into the **Search** box at the top of the table to narrow things down.
+
+---
+
+### 3. Open the return window
 
 Click the **Check In** button next to the game being returned.
 
 <!-- TODO: screenshot — Return_Modal.png -->
-![Return modal](img/Return_Modal.png)
+![The return pop-up window showing the game title and the patron who has it](img/Return_Modal.png)
 
-The Return Modal will open, showing the game title and the patron it is currently checked out to.
+A pop-up window will appear, showing the game title and the name of the patron who has it.
 
 ---
 
-### 4. Confirm the Return
+### 4. Finish the return
 
-Review the details to make sure the correct game and patron are shown, then click **Check In** to complete the return.
+Check that the correct game and patron are shown, then click **Check In** to complete the return.
 
-The game's status will update to **Available** and it will be removed from the checked-out list.
+The game will be removed from the checked-out list and will show as available again.
 
 ---
 
 ## Notes
 
-- Only games that are currently checked out appear in the Check In table in the return view.
-- If multiple copies of the same game are checked out to different patrons, each copy will appear as a separate row.
+- Only games that are currently checked out appear on this page.
+- If the same game title has more than one copy checked out to different patrons, each copy will show as its own row.
+- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 
 *See also: [Returning with a Barcode Scanner](return-barcode.md) · [Renting a Game](rent-manual.md) · [Adding a Patron](add-patron.md)*
+
 

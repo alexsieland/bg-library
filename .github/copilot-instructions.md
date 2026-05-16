@@ -17,6 +17,7 @@ This document provides comprehensive guidelines for AI assistants working on the
 - **[Testing Guidelines](docs/testing-guidelines.md)**: Testing strategy and best practices
 - **[Functional Requirements](docs/functional-requirements.md)**: Feature requirements and user workflows
 - **[Frontend Style Guide](docs/frontend-styleguide.md)**: UI/UX standards and design principles
+- **[End-User Documentation Style Guide](docs/enduser-documentation-styleguide.md)**: Rules for all librarian-facing manual pages in `docs/manual/`
 
 ---
 

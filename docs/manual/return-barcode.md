@@ -1,91 +1,77 @@
-# Returning a Game (Barcode-Assisted Process)
+# Returning a Game (with a Barcode Scanner)
 
-This guide covers how to check a game back in using a USB or Bluetooth HID barcode scanner. Barcode scanning must be enabled in the deployment configuration (`BARCODE_ENABLED = true`).
-
----
-
-## Overview
-
-The barcode-assisted return workflow lets a librarian scan the game's barcode label to instantly locate and check in the correct copy, eliminating manual searching. When multiple copies of the same title are checked out, the system may prompt the librarian to resolve which copy is being returned.
+Use this guide when your station has a barcode scanner and you want to check in a game by scanning its label. This is the fastest way to process returns when things are busy.
 
 ---
 
-## Prerequisites
+## What You Need
 
-- Barcode scanning is enabled (`BARCODE_ENABLED = true` in `config.js`).
-- Game copies have barcode labels affixed.
-- Patron ID cards with barcodes are available for conflict resolution (recommended).
+- A barcode scanner connected to your station.
+- A game with a barcode label on the box.
+- A patron ID card with a barcode (helpful if more than one copy of the game is checked out).
 
 ---
 
-## Step-by-Step
+## Steps
 
-### 1. Navigate to the Return Page
+### 1. Go to the Check In page
 
 <!-- TODO: screenshot — Return_Page.png (barcode field visible) -->
-![Return page with barcode input](img/Return_Page.png)
+![The Check In page with the BARCODE input field visible in the toolbar](img/Return_Page.png)
 
-Open the application and select the **Check In** tab. When barcode support is enabled, a **BARCODE** input field is visible in the toolbar.
+Click the **Check In** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+
+You should see a **BARCODE** field in the toolbar near the top of the page.
 
 ---
 
-### 2. Scan the Game Barcode
+### 2. Scan the game's barcode
 
 Point the scanner at the barcode label on the game box and scan it.
 
-**If no element on the page is focused**, the global listener will automatically detect the scan burst, focus the barcode input field, and trigger the game lookup — no clicking required.
-
-**If the BARCODE field is not focused**, click into it first, then scan.
+- **If nothing on the page is selected (no text box is active):** The app will pick up the scan on its own. You do not need to click anything first.
+- **If the scan does not seem to work:** Click into the **BARCODE** field first, then scan again. This field always works as a backup.
 
 ---
 
-### 3. Single Copy — Return Modal Opens Automatically
+### 3. One copy checked out — the return window opens automatically
 
 <!-- TODO: screenshot — Return_Modal.png -->
-![Return modal](img/Return_Modal.png)
+![The return pop-up window showing the game title and patron name](img/Return_Modal.png)
 
-If exactly one copy of the game is checked out, the **Return Modal** opens showing the game title and the patron it belongs to. Confirm to complete the check-in.
-
----
-
-### 4. Multiple Copies — Conflict Resolution
-
-If more than one copy of the same game is currently checked out to different patrons, the system cannot determine which copy is being returned from the game barcode alone. A **conflict resolution prompt** will appear.
-
-Resolve the conflict by identifying the returning patron:
-
-- **Scan the patron's barcode ID card** into the dedicated patron barcode field that appears in the conflict modal, or
-- **Type or search for the patron's name** manually.
-
-The system will match the patron to the correct checked-out copy and complete the return.
+If only one copy of the game is currently checked out, a pop-up window will open right away, showing the game and the patron who has it. Skip to Step 5.
 
 ---
 
-### 5. Confirm the Return
+### 4. More than one copy checked out — pick the right patron
 
-Review the game title and patron name shown in the Return Modal, then click **Check In** to complete the return.
+If more than one copy of the same game is checked out to different patrons, the app cannot tell which copy is coming back just from the game barcode. A prompt will appear asking you to identify the patron.
 
-The game's status will update to **Available** and the barcode field will be cleared and ready for the next scan.
+To do this:
+
+- **Scan the patron's barcode ID card** into the patron field that appears in the prompt, or
+- **Type the patron's name** into the same field and select them from the list.
+
+The app will match the patron to the right copy and open the return window.
 
 ---
 
-## Barcode Field Behavior Summary
+### 5. Finish the return
 
-| Situation | What happens |
-|---|---|
-| No element focused, game barcode scanned | Global listener detects burst → focuses barcode field → triggers game lookup |
-| BARCODE field manually focused, game barcode scanned | Scan types into field → `Enter` triggers game lookup |
-| Single copy checked out | Return Modal opens automatically |
-| Multiple copies checked out | Conflict resolution prompt appears; scan or type patron to disambiguate |
+Check that the correct game and patron are shown, then click **Check In** to complete the return.
+
+The game will be removed from the checked-out list and marked as available. The barcode field will clear so you are ready for the next scan.
 
 ---
 
 ## Notes
 
-- The global listener uses an 80 ms inter-keystroke timing threshold. If scanning feels unreliable, click into the **BARCODE** field manually and scan again as a fallback.
-- Only checked-out games are visible in the Check In table and lookup.
+- If the scanner does not seem to be working, click directly into the **BARCODE** field and try scanning again. This always works.
+- Only games that are currently checked out will be found by a scan on this page.
+- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 
-*See also: [Returning Manually](return-manual.md) · [Renting with a Barcode Scanner](rent-barcode.md) · [Adding a Patron](add-patron.md)*
+*See also: [Returning Without a Scanner](return-manual.md) · [Renting with a Barcode Scanner](rent-barcode.md) · [Adding a Patron](add-patron.md)*
+
 
