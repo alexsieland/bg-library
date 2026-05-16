@@ -52,6 +52,11 @@ Apply this note the **first time** a button is mentioned in a document. For repe
 
 Page tabs and navigation items follow the same rule — include the keyboard shortcut or Tab-navigation note on first mention.
 
+**Do not describe UI elements by color alone.** Color can be used as a helpful extra detail, but always pair it with the element's label or another identifier. This ensures the instructions work for users who cannot distinguish colors.
+
+> ✅ Click the **New Patron** button (shown in green).  
+> ❌ Click the green button.
+
 ---
 
 ## Error Handling

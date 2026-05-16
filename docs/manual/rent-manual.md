@@ -6,12 +6,12 @@ Use this guide when a patron wants to borrow a game. It walks you through each s
 
 ## Steps
 
-### 1. Go to the Check Out page
+### 1. Go to the Rent page
 
 <!-- TODO: screenshot — Rent_Page.png -->
-![The Check Out page showing a table of all games in the library](img/Rent_Page.png)
+![The Rent page showing a search bar and a table of games with Rent buttons](img/Rent_Page.png)
 
-When you open the app, you should already be on the **Check Out** tab. If not, click the **Check Out** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Look for the navigation bar in the **top right of the screen**. Click the **Rent** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
 
 The table shows all games in the library, including ones that are already checked out. This lets you tell a patron whether a game is in the collection, even if someone else has it right now.
 
@@ -23,16 +23,14 @@ Type the game's name into the **Search** box at the top of the table. The list w
 
 > **Tip:** You do not need to spell the name perfectly. For example, typing `barenpark` will still find *Bärenpark*.
 
-Look for the game in the results. If the game is already checked out, you will see a badge next to it showing its status.
-
 ---
 
-### 3. Open the checkout window
+### 3. Open the rental window
 
-Click the **Check Out** button next to the game you want to loan — or press **Tab** to move to the button, then press **Enter** or **Space** to select it.
+Find the game in the results and click the **Rent** button next to it.
 
 <!-- TODO: screenshot — Rent_Modal.png -->
-![The checkout pop-up window showing the game title and a patron name search field](img/Rent_Modal.png)
+![The rental pop-up window with a patron name search field and a Rent button](img/Rent_Modal.png)
 
 A pop-up window will appear.
 
@@ -40,25 +38,36 @@ A pop-up window will appear.
 
 ### 4. Find the patron
 
-In the **Patron Name** field, start typing the patron's name. A list of matching names will appear below the field.
+Type the patron's **full name** into the name field. A list of matching names will appear as you type.
 
-- If you see the patron's name, click it to select them.
-- If the patron is **not in the list**, you will need to add them first. See [Adding a Patron](add-patron.md), then come back and start from Step 3.
+- **If the patron's name appears in the list:** Click their name to select it, then click **Rent** to finish.
+- **If the patron's name does not appear:** Go to Step 5 to add them as a new patron.
 
 ---
 
-### 5. Finish the checkout
+### 5. Add a new patron (if needed)
 
-Check that the game title and patron name shown in the window are correct, then click **Check Out** to complete the loan.
+If the patron is not in the system yet, click the **New Patron** button (labeled "New Patron", shown in green) inside the pop-up window — or press **Tab** to move to it, then press **Enter** or **Space** to select it.
 
-The game's status in the table will change to show it is checked out.
+Follow the steps to add the patron. When you are done, their name will be filled in automatically.
+
+Click **Rent** to complete the checkout.
+
+> **Note:** For full instructions on adding a patron, see [Adding a Patron](add-patron.md).
+
+---
+
+### 6. Confirm the checkout was successful
+
+A green banner saying the checkout was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+
+The game will no longer show as available in the Rent list. The checkout is complete.
 
 ---
 
 ## Notes
 
-- A game can only be checked out to one person at a time. If you try to check out a game that is already loaned, the app will show an error.
-- Games are usually returned within about one hour. The app will flag any game that has been out for more than 24 hours.
+- A game can only be rented to one person at a time. If you try to rent a game that is already checked out, the app will show an error.
 - If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
