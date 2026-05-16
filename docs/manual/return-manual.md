@@ -6,39 +6,36 @@ Use this guide when a patron brings a game back. It walks you through each step,
 
 ## Steps
 
-### 1. Go to the Check In page
+### 1. Go to the Return page
 
 <!-- TODO: screenshot — Return_Page.png -->
-![The Check In page showing a table of all currently checked-out games](img/Return_Page.png)
+![The Return page showing a search bar and a table of checked-out games](img/Return_Page.png)
 
-Click the **Check In** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Look for the navigation bar in the **top right of the screen**. Click the **Return** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
 
-The table shows every game that is currently checked out, who has it, and how long they have had it.
+The table shows every game that is currently checked out.
 
 ---
 
 ### 2. Find the game
 
-Look through the list for the game being returned. If there are many games checked out, type the game's name into the **Search** box at the top of the table to narrow things down.
+Type the **game's name** into the **Search** box at the top of the table. The list will narrow down as you type.
+
+> **Note:** Search by the game's name, not the borrower's name.
 
 ---
 
-### 3. Open the return window
+### 3. Mark the game as returned
 
-Click the **Check In** button next to the game being returned.
-
-<!-- TODO: screenshot — Return_Modal.png -->
-![The return pop-up window showing the game title and the patron who has it](img/Return_Modal.png)
-
-A pop-up window will appear, showing the game title and the name of the patron who has it.
+Click the **Returned** button next to the game being returned.
 
 ---
 
-### 4. Finish the return
+### 4. Confirm the return was successful
 
-Check that the correct game and patron are shown, then click **Check In** to complete the return.
+A green banner saying the return was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
 
-The game will be removed from the checked-out list and will show as available again.
+The game will no longer appear in the list. The return is complete.
 
 ---
 
