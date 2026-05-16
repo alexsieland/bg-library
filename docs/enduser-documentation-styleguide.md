@@ -57,13 +57,18 @@ Page tabs and navigation items follow the same rule — include the keyboard sho
 > ✅ Click the **New Patron** button (shown in green).  
 > ❌ Click the green button.
 
+This also applies to status banners. Always lead with the meaning, then mention the color as a secondary detail.
+
+> ✅ A success banner (shown in green) will appear at the bottom of the screen.  
+> ❌ A green banner will appear at the bottom of the screen.
+
 ---
 
 ## Error Handling
 
 Every document must include the following note in the **Notes** section at the bottom, word-for-word (or close to it):
 
-> If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
+> If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 This text must always appear as a bullet point in the Notes section.
 
@@ -131,7 +136,7 @@ One-sentence plain-language description of what this guide covers.
 ## Notes
 
 - Specific notes relevant to librarians only.
-- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
+- If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 

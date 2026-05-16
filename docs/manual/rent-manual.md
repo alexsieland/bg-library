@@ -59,7 +59,7 @@ Click **Rent** to complete the checkout.
 
 ### 6. Confirm the checkout was successful
 
-A green banner saying the checkout was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+A success banner (shown in green) will appear at the **bottom of the screen** confirming the checkout was completed. It will close on its own after a moment.
 
 The game will no longer show as available in the Rent list. The checkout is complete.
 
@@ -68,7 +68,7 @@ The game will no longer show as available in the Rent list. The checkout is comp
 ## Notes
 
 - A game can only be rented to one person at a time. If you try to rent a game that is already checked out, the app will show an error.
-- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
+- If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 

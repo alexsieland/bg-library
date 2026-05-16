@@ -29,7 +29,7 @@ You will see a **Barcode** scan text field in the toolbar near the top of the pa
 
 Point the scanner at the barcode label on the game box and scan it. The app will look up the game right away and the rental pop-up window will open automatically.
 
-**If a red error bar appears at the bottom of the screen with the message "No available games with this barcode":**
+**An error banner (shown in red) appears at the bottom of the screen with the message "No available games with this barcode":**
 The game's barcode has not been added to the system. Do the following:
 1. Use the [manual rental process](rent-manual.md) to search for and rent the game by name instead.
 2. Let someone know that this game's barcode needs to be added to the system.
@@ -68,7 +68,7 @@ Ask the attendee for their **full name** and type it into the name field, then s
 
 Check that the game title and patron name are correct, then click **Rent** to complete the checkout.
 
-A green banner saying the checkout was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+A success banner (shown in green) will appear at the **bottom of the screen** confirming the checkout was completed. It will close on its own after a moment.
 
 The game will no longer show as available in the Rent list. The checkout is complete.
 
@@ -84,7 +84,7 @@ Click directly on the **Barcode** scan text field on the page (or inside the ren
 ## Notes
 
 - A game can only be rented to one person at a time. Scanning a game that is already checked out will show an error.
-- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
+- If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 

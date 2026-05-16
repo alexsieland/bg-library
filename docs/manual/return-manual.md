@@ -33,7 +33,7 @@ Click the **Returned** button next to the game being returned.
 
 ### 4. Confirm the return was successful
 
-A green banner saying the return was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+A success banner (shown in green) will appear at the **bottom of the screen** confirming the return was completed. It will close on its own after a moment.
 
 The game will no longer appear in the list. The return is complete.
 
@@ -43,7 +43,7 @@ The game will no longer appear in the list. The return is complete.
 
 - Only games that are currently checked out appear on this page.
 - If the same game title has more than one copy checked out to different patrons, each copy will show as its own row.
-- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
+- If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 

@@ -50,7 +50,7 @@ Point the scanner at the barcode on the attendee's badge and scan it. Their name
 
 ### 5. Confirm the return was successful
 
-A green banner saying the return was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+A success banner (shown in green) will appear at the **bottom of the screen** confirming the return was completed. It will close on its own after a moment.
 
 The game will no longer appear in the list. The return is complete.
 
@@ -58,7 +58,7 @@ The game will no longer appear in the list. The return is complete.
 
 ## Troubleshooting
 
-**A red error bar appears with the message "No checked out games with this barcode":**
+**An error banner (shown in red) appears with the message "No checked out games with this barcode":**
 This means the game was not recorded as checked out in the system. This was likely a mistake made during the rental process. Accept the returned game and close the error message by clicking the **X** on it (or pressing **Escape**). Let someone know so the rental record can be looked into.
 
 **The scanner does not seem to be working:**
@@ -69,8 +69,10 @@ Click directly on the **Barcode** scan text field on the page (or inside the ret
 ## Notes
 
 - The return window will always appear when you scan a game, even if only one copy is checked out.
-- If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
+- If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 
 *See also: [Returning Without a Scanner](return-manual.md) · [Renting with a Barcode Scanner](rent-barcode.md) · [Adding a Patron](add-patron.md)*
+
+
