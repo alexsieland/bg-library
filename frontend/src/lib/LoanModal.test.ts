@@ -160,14 +160,14 @@ describe('LoanModal', () => {
     expect(patronButtons.length).toBe(5);
   });
 
-  // --- Loan button state ---
+  // --- Rent button state ---
 
-  it('Should disable the Loan button when no patron is selected', async () => {
+  it('Should disable the Rent button when no patron is selected', async () => {
     render(LoanModal, { open: true, game: mockGame });
-    expect(screen.getByText('Loan').closest('button')).toBeDisabled();
+    expect(screen.getByTestId('rent-button')).toBeDisabled();
   });
 
-  it('Should enable the Loan button after a patron is selected from the dropdown', async () => {
+  it('Should enable the Rent button after a patron is selected from the dropdown', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({
       patrons: mockPatrons,
     });
@@ -178,7 +178,7 @@ describe('LoanModal', () => {
     await waitFor(() => screen.getByText('Alice'), { timeout: 1000 });
     await fireEvent.click(screen.getByText('Alice'));
 
-    expect(screen.getByText('Loan').closest('button')).not.toBeDisabled();
+    expect(screen.getByTestId('rent-button')).not.toBeDisabled();
   });
 
   it('Should dismiss the dropdown when a patron is selected', async () => {
@@ -197,7 +197,7 @@ describe('LoanModal', () => {
 
   // --- Deselection behaviour ---
 
-  it('Should deselect the patron and disable the Loan button when the name input is modified after a dropdown selection', async () => {
+  it('Should deselect the patron and disable the Rent button when the name input is modified after a dropdown selection', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({
       patrons: mockPatrons,
     });
@@ -207,12 +207,12 @@ describe('LoanModal', () => {
     await waitFor(() => screen.getByText('Alice'), { timeout: 1000 });
     await fireEvent.click(screen.getByText('Alice'));
 
-    expect(screen.getByText('Loan').closest('button')).not.toBeDisabled();
+    expect(screen.getByTestId('rent-button')).not.toBeDisabled();
 
     // Modify the name field
     await typeInPatronField('Alice Smith');
 
-    expect(screen.getByText('Loan').closest('button')).toBeDisabled();
+    expect(screen.getByTestId('rent-button')).toBeDisabled();
   });
 
   it('Should require explicit re-selection even if modified text matches a patron name exactly', async () => {
@@ -229,7 +229,7 @@ describe('LoanModal', () => {
     await typeInPatronField('Alice');
 
     // Still disabled — no explicit re-selection was made
-    expect(screen.getByText('Loan').closest('button')).toBeDisabled();
+    expect(screen.getByTestId('rent-button')).toBeDisabled();
   });
 
   // --- Enter key behaviour ---
@@ -344,7 +344,7 @@ describe('LoanModal', () => {
 
   // --- Successful checkout with selected patron ---
 
-  it('Should checkout to the selected patron when Loan is clicked', async () => {
+  it('Should checkout to the selected patron when Rent is clicked', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({
       patrons: mockPatrons,
     });
@@ -356,7 +356,7 @@ describe('LoanModal', () => {
     await searchAndWaitForResults('Ali');
     await waitFor(() => screen.getByText('Alice'), { timeout: 1000 });
     await fireEvent.click(screen.getByText('Alice'));
-    await fireEvent.click(screen.getByText('Loan').closest('button')!);
+    await fireEvent.click(screen.getByTestId('rent-button'));
 
     await waitFor(() => {
       expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p1');
@@ -365,7 +365,7 @@ describe('LoanModal', () => {
     });
   });
 
-  it('Should never call addPatron during a loan — patron creation is only via AddPatronModal', async () => {
+  it('Should never call addPatron during a rent — patron creation is only via AddPatronModal', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({
       patrons: mockPatrons,
     });
@@ -375,7 +375,7 @@ describe('LoanModal', () => {
     await searchAndWaitForResults('Ali');
     await waitFor(() => screen.getByText('Alice'), { timeout: 1000 });
     await fireEvent.click(screen.getByText('Alice'));
-    await fireEvent.click(screen.getByText('Loan').closest('button')!);
+    await fireEvent.click(screen.getByTestId('rent-button'));
 
     await waitFor(() => expect(apiClient.checkOutGame).toHaveBeenCalled());
     expect(apiClient.addPatron).not.toHaveBeenCalled();
@@ -408,7 +408,7 @@ describe('LoanModal', () => {
     });
   });
 
-  it('Should enable the Loan button immediately after patron creation without requiring a search', async () => {
+  it('Should enable the Rent button immediately after patron creation without requiring a search', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
     vi.mocked(apiClient.addPatron).mockResolvedValue({
       patronId: 'p-new',
@@ -425,7 +425,7 @@ describe('LoanModal', () => {
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
     await waitFor(() => {
-      expect(screen.getByText('Loan').closest('button')).not.toBeDisabled();
+      expect(screen.getByTestId('rent-button')).not.toBeDisabled();
     });
   });
 
@@ -447,12 +447,12 @@ describe('LoanModal', () => {
     const callCountBefore = vi.mocked(apiClient.listPatrons).mock.calls.length;
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
-    await waitFor(() => expect(screen.getByText('Loan').closest('button')).not.toBeDisabled());
+    await waitFor(() => expect(screen.getByTestId('rent-button')).not.toBeDisabled());
 
     expect(vi.mocked(apiClient.listPatrons).mock.calls.length).toBe(callCountBefore);
   });
 
-  it('Should complete a full loan after patron creation when the Loan button is clicked', async () => {
+  it('Should complete a full rent after patron creation when the Rent button is clicked', async () => {
     vi.mocked(apiClient.listPatrons).mockResolvedValue({ patrons: [] });
     vi.mocked(apiClient.addPatron).mockResolvedValue({
       patronId: 'p-new',
@@ -470,8 +470,8 @@ describe('LoanModal', () => {
     await waitFor(() => expect(screen.getByTestId('add-patron-submit')).toBeInTheDocument());
     await fireEvent.click(screen.getByTestId('add-patron-submit'));
 
-    await waitFor(() => expect(screen.getByText('Loan').closest('button')).not.toBeDisabled());
-    await fireEvent.click(screen.getByText('Loan').closest('button')!);
+    await waitFor(() => expect(screen.getByTestId('rent-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('rent-button'));
 
     await waitFor(() => {
       expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p-new');
@@ -674,7 +674,7 @@ describe('LoanModal (barcode enabled)', () => {
       expect(patronInput.value).toBe('Alice');
     });
 
-    await fireEvent.click(screen.getByText('Loan').closest('button')!);
+    await fireEvent.click(screen.getByTestId('rent-button'));
 
     await waitFor(() => {
       expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p1');

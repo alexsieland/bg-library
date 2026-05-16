@@ -167,10 +167,10 @@
           <TableBodyCell>
             {#if !gameStatus.patron}
               <Button onclick={() => handleCheckout(gameStatus.game)} color="primary" size="sm">
-                Loan
+                Rent
               </Button>
             {:else}
-              <Button disabled color="alternative" size="sm">Loan</Button>
+              <Button disabled color="alternative" size="sm">Rent</Button>
             {/if}
           </TableBodyCell>
         </TableBodyRow>

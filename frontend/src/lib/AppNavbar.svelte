@@ -21,8 +21,9 @@
         onTabChange('checkout');
       }}
       class="cursor-pointer {activeTab === 'checkout' ? 'text-blue-300' : 'text-white'}"
+      data-testid="nav-rent-tab"
     >
-      Check Out
+      Rent
     </NavLi>
     <NavLi
       href="#"

@@ -173,7 +173,7 @@ describe('CheckOutTable (barcode enabled)', () => {
     expect(screen.getByTestId('barcode-scanner-input')).toBeInTheDocument();
   });
 
-  it('Should open the loan modal with the found game when a barcode scan succeeds', async () => {
+  it('Should open the rent modal with the found game when a barcode scan succeeds', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValueOnce({ games: [] });
 
     render(CheckOutTable);
@@ -204,10 +204,10 @@ describe('CheckOutTable (barcode enabled)', () => {
         barcode: '9780307455925',
         checkedOut: false,
       });
-      expect(screen.getByText('Loan Game: Catan')).toBeInTheDocument();
+      expect(screen.getByText('Rent Game: Catan')).toBeInTheDocument();
     });
   });
-  it('Should open the loan modal for the first available copy when multiple games share a barcode', async () => {
+  it('Should open the rent modal for the first available copy when multiple games share a barcode', async () => {
     // Initial load
     vi.mocked(apiClient.listGames).mockResolvedValueOnce({
       games: [
@@ -248,10 +248,10 @@ describe('CheckOutTable (barcode enabled)', () => {
     expect(savedOnScanCallback).toBeTruthy();
     savedOnScanCallback!('UPC-001');
 
-    // g1 is checked out (filtered out); g2 is the first available — loan modal should open for Catan (g2)
+    // g1 is checked out (filtered out); g2 is the first available — rent modal should open for Catan (g2)
     await waitFor(() => {
       expect(apiClient.listGames).toHaveBeenCalledWith({ barcode: 'UPC-001', checkedOut: false });
-      expect(screen.getByText('Loan Game: Catan')).toBeInTheDocument();
+      expect(screen.getByText('Rent Game: Catan')).toBeInTheDocument();
     });
   });
 
@@ -285,12 +285,12 @@ describe('CheckOutTable (barcode enabled)', () => {
       expect(apiClient.listGames).toHaveBeenCalledWith({ barcode: 'UPC-001', checkedOut: false });
     });
 
-    // Should not open loan modal since no available copies
+    // Should not open rent modal since no available copies
     await waitFor(() => {
-      expect(screen.queryByText('Loan Game: Catan')).not.toBeInTheDocument();
+      expect(screen.queryByText('Rent Game: Catan')).not.toBeInTheDocument();
     });
 
-    // Verify no loan modal was opened (no modal heading present)
+    // Verify no rent modal was opened (no modal heading present)
     expect(container.querySelector('[data-testid="check-out-table"]')).toBeInTheDocument();
   });
 });
