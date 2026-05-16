@@ -86,7 +86,7 @@ describe('CheckInTable', () => {
     });
   });
 
-  it('Should format check out time correctly', async () => {
+  it('Should format rental start time correctly', async () => {
     vi.mocked(apiClient.listGames).mockResolvedValue(mockCheckedOutGames);
 
     render(CheckInTable);

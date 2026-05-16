@@ -50,15 +50,15 @@ vi.mock('./lib/AppNavbar.svelte', () => ({
 describe('App', () => {
   it('Should render with checkout tab active by default', () => {
     render(App);
-    // Test that App renders the checkout heading (from App.svelte itself, not child components)
+    // Test that App renders the rent heading (from App.svelte itself, not child components)
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveTextContent('Checkout Games');
+    expect(heading).toHaveTextContent('Rent Games');
   });
 
-  it('Should render Check In Games heading when checkin tab is active', () => {
+  it('Should render Return Games heading when checkin tab is active', () => {
     render(App, { props: { activeTab: 'checkin' } });
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveTextContent('Check In Games');
+    expect(heading).toHaveTextContent('Return Games');
   });
 
   it('Should render Play To Win heading when ptw tab is active', () => {

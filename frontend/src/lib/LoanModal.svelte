@@ -100,7 +100,7 @@
     try {
       await apiClient.checkOutGame(game.gameId, selectedPatron.patronId);
 
-      toasts.add(`Successfully loaned ${game.title} to ${selectedPatron.name}`, 'success');
+      toasts.add(`Successfully rented ${game.title} to ${selectedPatron.name}`, 'success');
       onLoanSuccess();
       open = false;
       patronName = '';
@@ -108,9 +108,9 @@
       selectedPatron = null;
     } catch (e) {
       console.error('Error during loan process:', e);
-      const errorMessage = e instanceof Error ? e.message : 'Loan process failed';
+      const errorMessage = e instanceof Error ? e.message : 'Rental process failed';
       error = errorMessage;
-      toasts.add(`Failed to loan game: ${errorMessage}`, 'error');
+      toasts.add(`Failed to rent game: ${errorMessage}`, 'error');
     } finally {
       loaning = false;
     }
@@ -162,7 +162,7 @@
 
 <Modal
   bind:open
-  title={`Loan Game: ${game?.title || ''}`}
+  title={`Rent Game: ${game?.title || ''}`}
   size="md"
   autoclose={false}
   class="w-full"
@@ -219,11 +219,16 @@
         {/if}
       </div>
 
-      <Button onclick={handleLoan} disabled={loaning || !selectedPatron} class="mb-0">
+      <Button
+        onclick={handleLoan}
+        disabled={loaning || !selectedPatron}
+        class="mb-0"
+        data-testid="rent-button"
+      >
         {#if loaning}
           <Spinner size="4" class="me-2" />
         {/if}
-        Loan
+        Rent
       </Button>
     </div>
 

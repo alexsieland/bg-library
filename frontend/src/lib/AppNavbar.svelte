@@ -21,8 +21,9 @@
         onTabChange('checkout');
       }}
       class="cursor-pointer {activeTab === 'checkout' ? 'text-blue-300' : 'text-white'}"
+      data-testid="nav-rent-tab"
     >
-      Check Out
+      Rent
     </NavLi>
     <NavLi
       href="#"
@@ -33,8 +34,9 @@
         onTabChange('checkin');
       }}
       class="cursor-pointer {activeTab === 'checkin' ? 'text-blue-300' : 'text-white'}"
+      data-testid="nav-return-tab"
     >
-      Check In
+      Return
     </NavLi>
     <NavLi
       href="#"

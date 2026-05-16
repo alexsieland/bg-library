@@ -8,16 +8,16 @@ describe('AppNavbar', () => {
     expect(screen.getByText('BG Library')).toBeInTheDocument();
   });
 
-  it('Should highlight the "Check Out" tab when activeTab is "checkout"', () => {
+  it('Should highlight the "Rent" tab when activeTab is "checkout"', () => {
     render(AppNavbar, { props: { activeTab: 'checkout' } });
-    const checkOutLink = screen.getByText('Check Out');
-    expect(checkOutLink).toHaveClass('text-blue-300');
+    const rentLink = screen.getByTestId('nav-rent-tab');
+    expect(rentLink).toHaveClass('text-blue-300');
   });
 
-  it('Should highlight the "Check In" tab when activeTab is "checkin"', () => {
+  it('Should highlight the "Return" tab when activeTab is "checkin"', () => {
     render(AppNavbar, { props: { activeTab: 'checkin' } });
-    const checkInLink = screen.getByText('Check In');
-    expect(checkInLink).toHaveClass('text-blue-300');
+    const returnLink = screen.getByTestId('nav-return-tab');
+    expect(returnLink).toHaveClass('text-blue-300');
   });
 
   it('Should highlight the "Play To Win" tab when activeTab is "ptw"', () => {
