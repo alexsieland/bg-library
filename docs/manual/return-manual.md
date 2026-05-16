@@ -11,7 +11,7 @@ Use this guide when a patron brings a game back. It walks you through each step,
 <!-- TODO: screenshot — Return_Page.png -->
 ![The Return page showing a search bar and a table of checked-out games](img/Return_Page.png)
 
-Look for the navigation bar in the **top right of the screen**. Click the **Return** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Select the **Return** tab in the navigation bar at the **top right of the screen** — or press **Tab** on your keyboard until **Return** is selected, then press **Enter**.
 
 The table shows every game that is currently checked out.
 
@@ -25,9 +25,9 @@ Type the **game's name** into the **Search** box at the top of the table. The li
 
 ---
 
-### 3. Mark the game as returned
+### 3. Return the game
 
-Click the **Returned** button next to the game being returned.
+Click the **Returned** button next to the game being returned — or press **Tab** to move to the button, then press **Enter** or **Space**.
 
 ---
 
@@ -48,5 +48,3 @@ The game will no longer appear in the list. The return is complete.
 ---
 
 *See also: [Returning with a Barcode Scanner](return-barcode.md) · [Renting a Game](rent-manual.md) · [Adding a Patron](add-patron.md)*
-
-

@@ -1,6 +1,6 @@
 # Adding a Patron
 
-Use this guide to add a new patron to the system. You can do this at any time, including right in the middle of a rental if the patron is not yet registered.
+Use this guide to add a new patron to the system. You can do this at any time, including right in the middle of a rental if the patron is not yet registered. If your station has a barcode scanner, you can scan the patron's badge to fill in their barcode automatically.
 
 ---
 
@@ -8,7 +8,7 @@ Use this guide to add a new patron to the system. You can do this at any time, i
 
 ### 1. Go to the Admin page
 
-Look for the navigation bar in the **top right of the screen**. Click the **Admin** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Select the **Admin** tab in the navigation bar at the **top right of the screen** — or press **Tab** on your keyboard until **Admin** is selected, then press **Enter**.
 
 ---
 
@@ -17,7 +17,7 @@ Look for the navigation bar in the **top right of the screen**. Click the **Admi
 <!-- TODO: screenshot — Patrons_Page.png -->
 ![The Admin page with the Patron tab selected, showing a list of registered patrons](img/Patrons_Page.png)
 
-Under the **Admin** title, you will see a row of tabs. Click the **Patron** tab to open the patron list.
+Under the **Admin** title, select the **Patron** tab to open the patron list. You can click it, or press **Tab** until **Patron** is selected, then press **Enter**.
 
 ---
 
@@ -42,8 +42,8 @@ Type the patron's full name into the **Name** field.
 
 Scan the barcode on the patron's badge into the **Barcode** field.
 
-- **If you arrived here by scanning a badge during a rental**, the barcode may already be filled in. If so, you can skip this step.
-- **If you opened this window from the Add Patron button**, the field will be empty — scan the badge to fill it in.
+- If you opened this window during a rental, the barcode may already be filled in.
+- If you opened this window from the **Add Patron** button, the field will be empty — scan the badge to fill it in.
 
 ---
 
@@ -85,11 +85,9 @@ A patron with that badge barcode is already in the system. Do the following:
 ## Notes
 
 - Two patrons can have the same name. The app allows this.
-- Patron records can only be edited or removed by an administrator.
+- If you are not sure whether a patron is already in the system, search for them before adding a new record.
 - If an error banner (shown in red) appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 
 *See also: [Renting a Game](rent-manual.md) · [Returning a Game](return-manual.md)*
-
-

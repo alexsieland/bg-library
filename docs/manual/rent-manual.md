@@ -11,7 +11,7 @@ Use this guide when a patron wants to borrow a game. It walks you through each s
 <!-- TODO: screenshot — Rent_Page.png -->
 ![The Rent page showing a search bar and a table of games with Rent buttons](img/Rent_Page.png)
 
-Look for the navigation bar in the **top right of the screen**. Click the **Rent** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Select the **Rent** tab in the navigation bar at the **top right of the screen** — or press **Tab** on your keyboard until **Rent** is selected, then press **Enter**.
 
 The table shows all games in the library, including ones that are already checked out. This lets you tell a patron whether a game is in the collection, even if someone else has it right now.
 
@@ -27,7 +27,7 @@ Type the game's name into the **Search** box at the top of the table. The list w
 
 ### 3. Open the rental window
 
-Find the game in the results and click the **Rent** button next to it.
+Find the game in the results and click the **Rent** button next to it — or press **Tab** to move to the button, then press **Enter** or **Space**.
 
 <!-- TODO: screenshot — Rent_Modal.png -->
 ![The rental pop-up window with a patron name search field and a Rent button](img/Rent_Modal.png)
@@ -38,7 +38,7 @@ A pop-up window will appear.
 
 ### 4. Find the patron
 
-Type the patron's **full name** into the name field. A list of matching names will appear as you type.
+Type the patron's **full name** into the **Patron Name** field. A list of matching names will appear as you type.
 
 - **If the patron's name appears in the list:** Click their name to select it, then click **Rent** to finish.
 - **If the patron's name does not appear:** Go to Step 5 to add them as a new patron.
@@ -49,7 +49,7 @@ Type the patron's **full name** into the name field. A list of matching names wi
 
 If the patron is not in the system yet, click the **New Patron** button (labeled "New Patron", shown in green) inside the pop-up window — or press **Tab** to move to it, then press **Enter** or **Space** to select it.
 
-Follow the steps to add the patron. When you are done, their name will be filled in automatically.
+In the **New Patron** window, enter the patron's full name and save. When you are done, their name will be filled in automatically.
 
 Click **Rent** to complete the checkout.
 
@@ -73,5 +73,3 @@ The game will no longer show as available in the Rent list. The checkout is comp
 ---
 
 *See also: [Renting with a Barcode Scanner](rent-barcode.md) · [Returning a Game](return-manual.md) · [Adding a Patron](add-patron.md)*
-
-
