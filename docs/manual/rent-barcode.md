@@ -1,6 +1,6 @@
 # Renting a Game (with a Barcode Scanner)
 
-Use this guide when your station has a barcode scanner and you want to check out a game by scanning its label. This is the fastest way to process checkouts when things are busy.
+Use this guide when your station has a barcode scanner. Scanning is the fastest way to process a rental, but the steps are mostly the same as the manual process.
 
 ---
 
@@ -8,66 +8,82 @@ Use this guide when your station has a barcode scanner and you want to check out
 
 - A barcode scanner connected to your station.
 - A game with a barcode label on the box.
-- A patron ID card with a barcode (optional, but helpful).
+- The attendee's badge (it has a barcode on it).
 
 ---
 
 ## Steps
 
-### 1. Go to the Check Out page
+### 1. Go to the Rent page
 
 <!-- TODO: screenshot — Rent_Page.png (barcode field visible) -->
-![The Check Out page with the BARCODE input field visible in the toolbar](img/Rent_Page.png)
+![The Rent page with the Barcode scan text field visible in the toolbar](img/Rent_Page.png)
 
-When you open the app, you should already be on the **Check Out** tab. If not, click the **Check Out** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Look for the navigation bar in the **top right of the screen**. Click the **Rent** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
 
-You should see a **BARCODE** field in the toolbar near the top of the page. This is where scanned barcodes will go.
+You will see a **Barcode** scan text field in the toolbar near the top of the page. This is where scanned barcodes will go.
 
 ---
 
 ### 2. Scan the game's barcode
 
-Point the scanner at the barcode label on the game box and scan it.
+Point the scanner at the barcode label on the game box and scan it. The app will look up the game right away and the rental pop-up window will open automatically.
 
-- **If nothing on the page is selected (no text box is active):** The app will pick up the scan on its own. You do not need to click anything first.
-- **If the scan does not seem to work:** Click into the **BARCODE** field first, then scan again. The field is always there as a backup.
-
-The app will look up the game right away.
+**If a red error bar appears at the bottom of the screen with the message "No available games with this barcode":**
+The game's barcode has not been added to the system. Do the following:
+1. Use the [manual rental process](rent-manual.md) to search for and rent the game by name instead.
+2. Let someone know that this game's barcode needs to be added to the system.
 
 ---
 
-### 3. The checkout window opens
+### 3. The rental window opens
 
 <!-- TODO: screenshot — Rent_Modal.png -->
-![The checkout pop-up window showing the game title and a patron name field](img/Rent_Modal.png)
+![The rental pop-up window showing the game title and a patron name field](img/Rent_Modal.png)
 
-If the game is available, a pop-up window will open automatically. If the game is already checked out, the app will show a message instead.
-
----
-
-### 4. Find the patron
-
-In the **Patron Name** field inside the window, you can:
-
-- **Type** the patron's name to search, or
-- **Scan the patron's barcode ID card** — while the window is open, the scanner will type directly into the Patron Name field.
-
-Select the correct patron from the list that appears.
+The rental window will show the name of the game. Now you need to identify the patron.
 
 ---
 
-### 5. Finish the checkout
+### 4. Scan the attendee's badge
 
-Check that the game title and patron name are correct, then click **Check Out** to complete the loan.
+Point the scanner at the barcode on the attendee's badge and scan it. Their name will be looked up and filled in automatically.
 
-The game's status in the table will change to show it is checked out, and the barcode field will clear so you are ready for the next scan.
+- **If the correct name appears:** Skip to Step 6.
+- **If an Add Patron window appears:** The attendee is not in the system yet. Go to Step 5.
+
+---
+
+### 5. Add a new patron (if needed)
+
+If the attendee is not in the system, an **Add Patron** window will appear. Their scanned badge barcode will already be filled in.
+
+Ask the attendee for their **full name** and type it into the name field, then save. The rental window will come back with their name filled in.
+
+> **Note:** For full instructions on adding a patron, see [Adding a Patron](add-patron.md).
+
+---
+
+### 6. Finish the rental
+
+Check that the game title and patron name are correct, then click **Rent** to complete the checkout.
+
+A green banner saying the checkout was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+
+The game will no longer show as available in the Rent list. The checkout is complete.
+
+---
+
+## Troubleshooting
+
+**The scanner does not seem to be working:**
+Click directly on the **Barcode** scan text field on the page (or inside the rental window), then try scanning again. Clicking the field first makes sure the scanner knows where to send the barcode.
 
 ---
 
 ## Notes
 
-- If the scanner does not seem to be working, click directly into the **BARCODE** field and try scanning again. This always works.
-- A game can only be checked out to one person at a time. Scanning a game that is already loaned will show an error message.
+- A game can only be rented to one person at a time. Scanning a game that is already checked out will show an error.
 - If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
