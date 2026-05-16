@@ -1,6 +1,6 @@
 # Returning a Game (with a Barcode Scanner)
 
-Use this guide when your station has a barcode scanner and you want to check in a game by scanning its label. This is the fastest way to process returns when things are busy.
+Use this guide when your station has a barcode scanner. The barcode return process works a lot like the barcode rental process — scan the game, scan the attendee, confirm.
 
 ---
 
@@ -8,20 +8,20 @@ Use this guide when your station has a barcode scanner and you want to check in 
 
 - A barcode scanner connected to your station.
 - A game with a barcode label on the box.
-- A patron ID card with a barcode (helpful if more than one copy of the game is checked out).
+- The attendee's badge (it has a barcode on it).
 
 ---
 
 ## Steps
 
-### 1. Go to the Check In page
+### 1. Go to the Return page
 
 <!-- TODO: screenshot — Return_Page.png (barcode field visible) -->
-![The Check In page with the BARCODE input field visible in the toolbar](img/Return_Page.png)
+![The Return page with the Barcode scan text field visible in the toolbar](img/Return_Page.png)
 
-Click the **Check In** tab at the top of the page — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
+Look for the navigation bar in the **top right of the screen**. Click the **Return** tab — or press **Tab** on your keyboard to move to it, then press **Enter** to open it.
 
-You should see a **BARCODE** field in the toolbar near the top of the page.
+You will see a **Barcode** scan text field in the toolbar near the top of the page.
 
 ---
 
@@ -29,49 +29,48 @@ You should see a **BARCODE** field in the toolbar near the top of the page.
 
 Point the scanner at the barcode label on the game box and scan it.
 
-- **If nothing on the page is selected (no text box is active):** The app will pick up the scan on its own. You do not need to click anything first.
-- **If the scan does not seem to work:** Click into the **BARCODE** field first, then scan again. This field always works as a backup.
+A return pop-up window will appear automatically.
 
 ---
 
-### 3. One copy checked out — the return window opens automatically
+### 3. The return window opens
 
 <!-- TODO: screenshot — Return_Modal.png -->
-![The return pop-up window showing the game title and patron name](img/Return_Modal.png)
+![The return pop-up window showing the game title and a patron barcode field](img/Return_Modal.png)
 
-If only one copy of the game is currently checked out, a pop-up window will open right away, showing the game and the patron who has it. Skip to Step 5.
-
----
-
-### 4. More than one copy checked out — pick the right patron
-
-If more than one copy of the same game is checked out to different patrons, the app cannot tell which copy is coming back just from the game barcode. A prompt will appear asking you to identify the patron.
-
-To do this:
-
-- **Scan the patron's barcode ID card** into the patron field that appears in the prompt, or
-- **Type the patron's name** into the same field and select them from the list.
-
-The app will match the patron to the right copy and open the return window.
+The window will show the name of the game. A field will be ready for you to scan the attendee's badge.
 
 ---
 
-### 5. Finish the return
+### 4. Scan the attendee's badge
 
-Check that the correct game and patron are shown, then click **Check In** to complete the return.
+Point the scanner at the barcode on the attendee's badge and scan it. Their name will be filled in automatically.
 
-The game will be removed from the checked-out list and marked as available. The barcode field will clear so you are ready for the next scan.
+---
+
+### 5. Confirm the return was successful
+
+A green banner saying the return was successful will appear at the **bottom of the screen**. It will close on its own after a moment.
+
+The game will no longer appear in the list. The return is complete.
+
+---
+
+## Troubleshooting
+
+**A red error bar appears with the message "No checked out games with this barcode":**
+This means the game was not recorded as checked out in the system. This was likely a mistake made during the rental process. Accept the returned game and close the error message by clicking the **X** on it (or pressing **Escape**). Let someone know so the rental record can be looked into.
+
+**The scanner does not seem to be working:**
+Click directly on the **Barcode** scan text field on the page (or inside the return window), then try scanning again. Clicking the field first makes sure the scanner knows where to send the barcode.
 
 ---
 
 ## Notes
 
-- If the scanner does not seem to be working, click directly into the **BARCODE** field and try scanning again. This always works.
-- Only games that are currently checked out will be found by a scan on this page.
+- The return window will always appear when you scan a game, even if only one copy is checked out.
 - If a red error message appears at the bottom of the screen and the reason is not clear, ask for help or write down what you were doing so someone can look into it later.
 
 ---
 
 *See also: [Returning Without a Scanner](return-manual.md) · [Renting with a Barcode Scanner](rent-barcode.md) · [Adding a Patron](add-patron.md)*
-
-
