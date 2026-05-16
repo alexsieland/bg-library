@@ -14,10 +14,10 @@ describe('AppNavbar', () => {
     expect(rentLink).toHaveClass('text-blue-300');
   });
 
-  it('Should highlight the "Check In" tab when activeTab is "checkin"', () => {
+  it('Should highlight the "Return" tab when activeTab is "checkin"', () => {
     render(AppNavbar, { props: { activeTab: 'checkin' } });
-    const checkInLink = screen.getByText('Check In');
-    expect(checkInLink).toHaveClass('text-blue-300');
+    const returnLink = screen.getByTestId('nav-return-tab');
+    expect(returnLink).toHaveClass('text-blue-300');
   });
 
   it('Should highlight the "Play To Win" tab when activeTab is "ptw"', () => {

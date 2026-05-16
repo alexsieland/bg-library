@@ -22,7 +22,7 @@
         {#if activeTab === 'checkout'}
           Rent Games
         {:else if activeTab === 'checkin'}
-          Check In Games
+          Return Games
         {:else if activeTab === 'ptw'}
           Play To Win
         {:else}

@@ -55,10 +55,10 @@ describe('App', () => {
     expect(heading).toHaveTextContent('Rent Games');
   });
 
-  it('Should render Check In Games heading when checkin tab is active', () => {
+  it('Should render Return Games heading when checkin tab is active', () => {
     render(App, { props: { activeTab: 'checkin' } });
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveTextContent('Check In Games');
+    expect(heading).toHaveTextContent('Return Games');
   });
 
   it('Should render Play To Win heading when ptw tab is active', () => {

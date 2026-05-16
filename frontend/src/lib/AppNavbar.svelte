@@ -34,8 +34,9 @@
         onTabChange('checkin');
       }}
       class="cursor-pointer {activeTab === 'checkin' ? 'text-blue-300' : 'text-white'}"
+      data-testid="nav-return-tab"
     >
-      Check In
+      Return
     </NavLi>
     <NavLi
       href="#"
