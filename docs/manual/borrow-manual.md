@@ -72,4 +72,4 @@ The game will no longer show as available in the Borrow list. The checkout is co
 
 ---
 
-*See also: [Borrowing with a Barcode Scanner](borrow-barcode.md) · [Returning a Game](return-manual.md) · [Adding a Patron](add-patron.md)*
+*See also: [Borrowing with a Barcode Scanner](borrow-barcode.md) · [Returning a Game](return-manual.md) · [Recording a Play to Win Session](play-to-win.md) · [Adding a Patron](add-patron.md)*
