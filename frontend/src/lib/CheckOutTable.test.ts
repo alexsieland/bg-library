@@ -204,7 +204,7 @@ describe('CheckOutTable (barcode enabled)', () => {
         barcode: '9780307455925',
         checkedOut: false,
       });
-      expect(screen.getByText('Rent Game: Catan')).toBeInTheDocument();
+      expect(screen.getByText('Borrow Game: Catan')).toBeInTheDocument();
     });
   });
   it('Should open the rent modal for the first available copy when multiple games share a barcode', async () => {
@@ -251,7 +251,7 @@ describe('CheckOutTable (barcode enabled)', () => {
     // g1 is checked out (filtered out); g2 is the first available — rent modal should open for Catan (g2)
     await waitFor(() => {
       expect(apiClient.listGames).toHaveBeenCalledWith({ barcode: 'UPC-001', checkedOut: false });
-      expect(screen.getByText('Rent Game: Catan')).toBeInTheDocument();
+      expect(screen.getByText('Borrow Game: Catan')).toBeInTheDocument();
     });
   });
 
@@ -287,7 +287,7 @@ describe('CheckOutTable (barcode enabled)', () => {
 
     // Should not open rent modal since no available copies
     await waitFor(() => {
-      expect(screen.queryByText('Rent Game: Catan')).not.toBeInTheDocument();
+      expect(screen.queryByText('Borrow Game: Catan')).not.toBeInTheDocument();
     });
 
     // Verify no rent modal was opened (no modal heading present)
