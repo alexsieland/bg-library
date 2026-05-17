@@ -20,7 +20,7 @@
     <div class="space-y-2">
       <h1 class="text-center text-3xl font-bold text-slate-900 dark:text-slate-100">
         {#if activeTab === 'checkout'}
-          Rent Games
+          Borrow Games
         {:else if activeTab === 'checkin'}
           Return Games
         {:else if activeTab === 'ptw'}

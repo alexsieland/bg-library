@@ -23,7 +23,7 @@
       class="cursor-pointer {activeTab === 'checkout' ? 'text-blue-300' : 'text-white'}"
       data-testid="nav-rent-tab"
     >
-      Rent
+      Borrow
     </NavLi>
     <NavLi
       href="#"

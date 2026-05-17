@@ -52,7 +52,7 @@ describe('App', () => {
     render(App);
     // Test that App renders the rent heading (from App.svelte itself, not child components)
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveTextContent('Rent Games');
+    expect(heading).toHaveTextContent('Borrow Games');
   });
 
   it('Should render Return Games heading when checkin tab is active', () => {

@@ -1,6 +1,6 @@
 # Returning a Game (with a Barcode Scanner)
 
-Use this guide when your station has a barcode scanner. The barcode return process works a lot like the barcode rental process — scan the game, scan the patron, confirm.
+Use this guide when your station has a barcode scanner. The barcode return process works a lot like the barcode borrow process — scan the game, scan the patron, confirm.
 
 ---
 
@@ -59,7 +59,7 @@ The game will no longer appear in the list. The return is complete.
 ## Troubleshooting
 
 **An error banner (shown in red) appears with the message "No checked out games with this barcode":**
-This means the game was not recorded as checked out in the system. This was likely a mistake made during the rental process. Take the game back from the patron, even though the app shows an error. Then close the error banner by clicking the **X** on it or pressing **Escape**. Let someone know so the rental record can be looked into.
+This means the game was not recorded as checked out in the system. This was likely a mistake made during the borrow process. Take the game back from the patron, even though the app shows an error. Then close the error banner by clicking the **X** on it or pressing **Escape**. Let someone know so the borrow record can be looked into.
 
 **The scanner does not seem to be working:**
 Click directly on the **Barcode** scan text field on the page (or inside the return window), then try scanning again. Clicking the field first makes sure the scanner knows where to send the barcode.
@@ -73,4 +73,4 @@ Click directly on the **Barcode** scan text field on the page (or inside the ret
 
 ---
 
-*See also: [Returning Without a Scanner](return-manual.md) · [Renting with a Barcode Scanner](rent-barcode.md) · [Adding a Patron](add-patron.md)*
+*See also: [Returning Without a Scanner](return-manual.md) · [Borrowing with a Barcode Scanner](borrow-barcode.md) · [Adding a Patron](add-patron.md)*

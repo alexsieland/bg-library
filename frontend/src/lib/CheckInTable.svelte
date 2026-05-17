@@ -149,7 +149,7 @@
     <TableHead>
       <TableHeadCell>Game Title</TableHeadCell>
       <TableHeadCell>Borrower</TableHeadCell>
-      <TableHeadCell>Rental Start Time</TableHeadCell>
+      <TableHeadCell>Borrow Start Time</TableHeadCell>
       <TableHeadCell>Action</TableHeadCell>
     </TableHead>
     <TableBody class="divide-y">

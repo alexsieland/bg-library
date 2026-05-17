@@ -1,6 +1,6 @@
 # Adding a Patron
 
-Use this guide to add a new patron to the system. You can do this at any time, including right in the middle of a rental if the patron is not yet registered. If your station has a barcode scanner, you can scan the patron's badge to fill in their barcode automatically.
+Use this guide to add a new patron to the system. You can do this at any time, including right in the middle of borrowing a game if the patron is not yet registered. If your station has a barcode scanner, you can scan the patron's badge to fill in their barcode automatically.
 
 ---
 
@@ -42,7 +42,7 @@ Type the patron's full name into the **Name** field.
 
 Scan the barcode on the patron's badge into the **Barcode** field.
 
-- If you opened this window during a rental, the barcode may already be filled in.
+- If you opened this window during a borrow, the barcode may already be filled in.
 - If you opened this window from the **Add Patron** button, the field will be empty — scan the badge to fill it in.
 
 ---
@@ -57,18 +57,18 @@ Click the **Add Patron** button inside the pop-up window to save.
 
 A success banner (shown in green) will appear at the **bottom of the screen** confirming the patron was added. It will close on its own after a moment.
 
-The patron will now appear in the list and can be found when processing a rental.
+The patron will now appear in the list and can be found when processing a borrow.
 
 ---
 
-## Adding a Patron During a Rental
+## Adding a Patron During a Borrow
 
-If you are in the middle of renting a game and the patron is not in the system yet, you do not need to leave the rental screen.
+If you are in the middle of borrowing a game and the patron is not in the system yet, you do not need to leave the borrow screen.
 
-1. In the rental pop-up window, start typing the patron's name in the name field.
+1. In the borrow pop-up window, start typing the patron's name in the name field.
 2. If their name does not appear, click the **New Patron** button (labeled "New Patron", shown in green) — or press **Tab** to move to it, then press **Enter** or **Space** to select it.
 3. Enter the patron's full name and scan their badge barcode.
-4. Save the patron. Their name will be filled in automatically and you can finish the rental.
+4. Save the patron. Their name will be filled in automatically and you can finish the borrow.
 
 ---
 
@@ -77,7 +77,7 @@ If you are in the middle of renting a game and the patron is not in the system y
 **An error banner (shown in red) appears with the message "Failed to add patron: Resource already exists":**
 A patron with that badge barcode is already in the system. Do the following:
 1. Check the patron list to see if they are already registered.
-2. If they are already in the system, use their existing record to process the rental.
+2. If they are already in the system, use their existing record to process the borrow.
 3. If they are not in the system but the error still appears, the barcode on their badge may be a duplicate. Ask for assistance — the patron may need a replacement badge.
 
 ---
@@ -90,4 +90,4 @@ A patron with that badge barcode is already in the system. Do the following:
 
 ---
 
-*See also: [Renting a Game](rent-manual.md) · [Returning a Game](return-manual.md)*
+*See also: [Borrowing a Game](borrow-manual.md) · [Returning a Game](return-manual.md)*
