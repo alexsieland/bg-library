@@ -47,4 +47,4 @@ The game will no longer appear in the list. The return is complete.
 
 ---
 
-*See also: [Returning with a Barcode Scanner](return-barcode.md) · [Renting a Game](rent-manual.md) · [Adding a Patron](add-patron.md)*
+*See also: [Returning with a Barcode Scanner](return-barcode.md) · [Borrowing a Game](borrow-manual.md) · [Adding a Patron](add-patron.md)*
