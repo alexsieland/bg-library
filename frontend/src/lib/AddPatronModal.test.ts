@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import AddPatronModal from './AddPatronModal.svelte';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiClient } from './api-client';
 import { isBarcodeEnabled } from './config';
 import { toasts } from './toast-store';
@@ -368,5 +368,120 @@ describe('AddPatronModal (barcode enabled)', () => {
       const barcodeInput = screen.getByTestId('add-patron-barcode-input') as HTMLInputElement;
       expect(barcodeInput.value).toBe('9780307455925');
     });
+  });
+});
+
+describe('AddPatronModal (AAMVA driver licence scan)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isBarcodeEnabled).mockReturnValue(false);
+    // Use fake timers to control the 300ms AAMVA debounce flush.
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Builds a minimal AAMVA v2+ payload fragment (everything after the @\r trigger).
+  function aamvaPayload(opts: { dcs?: string; dac?: string }): string {
+    const lines = ['ANSI 636000'];
+    if (opts.dcs) lines.push(`DCS${opts.dcs}`);
+    if (opts.dac) lines.push(`DAC${opts.dac}`);
+    return lines.join('\n');
+  }
+
+  // Simulates a USB HID barcode scanner sending an AAMVA PDF417 scan into the
+  // name field via individual keydown events (as a real scanner would).
+  async function simulateAamvaScan(
+    nameInput: HTMLElement,
+    payloadAfterTrigger: string
+  ): Promise<void> {
+    // 1. Scanner types '@' — sets patronName via bind:value.
+    await fireEvent.input(nameInput, { target: { value: '@' } });
+    // 2. Scanner sends the \n immediately following @ — triggers capture mode.
+    await fireEvent.keyDown(nameInput, { key: 'Enter' });
+    // 3. Scanner sends the remainder of the barcode character-by-character.
+    for (const char of payloadAfterTrigger) {
+      if (char === '\r' || char === '\n') {
+        await fireEvent.keyDown(nameInput, { key: 'Enter' });
+      } else {
+        await fireEvent.keyDown(nameInput, { key: char });
+      }
+    }
+    // 4. Final Enter terminator from scanner.
+    await fireEvent.keyDown(nameInput, { key: 'Enter' });
+  }
+
+  it('Should populate patron name from AAMVA scan when both first and last names are present', async () => {
+    render(AddPatronModal, { open: true });
+    const nameInput = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+
+    await simulateAamvaScan(nameInput, aamvaPayload({ dcs: 'SMITH', dac: 'JOHN' }));
+    vi.advanceTimersByTime(400);
+
+    await waitFor(() => {
+      expect(nameInput.value).toBe('JOHN SMITH');
+    });
+  });
+
+  it('Should populate patron name with only first name when last name is absent', async () => {
+    render(AddPatronModal, { open: true });
+    const nameInput = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+
+    await simulateAamvaScan(nameInput, aamvaPayload({ dac: 'JANE' }));
+    vi.advanceTimersByTime(400);
+
+    await waitFor(() => {
+      expect(nameInput.value).toBe('JANE');
+    });
+  });
+
+  it('Should populate patron name with only last name when first name is absent', async () => {
+    render(AddPatronModal, { open: true });
+    const nameInput = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+
+    await simulateAamvaScan(nameInput, aamvaPayload({ dcs: 'DOE' }));
+    vi.advanceTimersByTime(400);
+
+    await waitFor(() => {
+      expect(nameInput.value).toBe('DOE');
+    });
+  });
+
+  it('Should not persist AAMVA payload data in the name field after name extraction', async () => {
+    render(AddPatronModal, { open: true });
+    const nameInput = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+
+    await simulateAamvaScan(nameInput, aamvaPayload({ dcs: 'JONES', dac: 'BOB' }));
+    vi.advanceTimersByTime(400);
+
+    await waitFor(() => expect(nameInput.value).toBe('BOB JONES'));
+    // The raw licence data must not linger in the field
+    expect(nameInput.value).not.toContain('ANSI');
+    expect(nameInput.value).not.toContain('DCS');
+    expect(nameInput.value).not.toContain('DAC');
+  });
+
+  it('Should not trigger AAMVA mode when the name field contains text other than @', async () => {
+    render(AddPatronModal, { open: true });
+    const nameInput = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+
+    await fireEvent.input(nameInput, { target: { value: 'Alice' } });
+    await fireEvent.keyDown(nameInput, { key: 'Enter' });
+
+    // Field should still contain the typed name — AAMVA mode was not triggered
+    expect(nameInput.value).toBe('Alice');
+  });
+
+  it('Should not trigger AAMVA mode when @ is part of a longer value', async () => {
+    render(AddPatronModal, { open: true });
+    const nameInput = screen.getByTestId('add-patron-name-input') as HTMLInputElement;
+
+    await fireEvent.input(nameInput, { target: { value: '@bob' } });
+    await fireEvent.keyDown(nameInput, { key: 'Enter' });
+
+    expect(nameInput.value).toBe('@bob');
   });
 });

@@ -3,6 +3,7 @@
   import { apiClient, type Patron } from './api-client';
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
+  import { parseAamvaName } from './aamva';
   export let open = false;
   export let patronId: string | null = null;
   export let initialName: string = '';
@@ -18,6 +19,12 @@
   let patronBarcode = '';
   let barcodeLoading = false;
   let loading = false;
+
+  // AAMVA PDF417 driver's licence capture state
+  let aamvaCapturing = false;
+  let aamvaBuffer = '';
+  let aamvaFlushTimeout: ReturnType<typeof setTimeout> | null = null;
+
   // Re-apply initialName/initialBarcode and reset fields every time the modal opens
   $: if (open && patronId) {
     loadPatronData();
@@ -27,6 +34,7 @@
   } else {
     patronName = '';
     patronBarcode = '';
+    cancelAamvaCapture();
   }
 
   async function loadPatronData() {
@@ -75,9 +83,57 @@
   }
   // Suppress Enter on the name input — HID barcode scanners use Enter as their
   // terminator and would trigger submission before the librarian can review.
+  // Also detects the AAMVA PDF417 trigger sequence (@<Enter>) to capture
+  // driver's licence data silently and populate the name field.
   function handleNameKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
+    if (aamvaCapturing) {
+      // Capture all keystrokes into the buffer; prevent them from reaching the input.
       event.preventDefault();
+      if (event.key === 'Enter') {
+        aamvaBuffer += '\r';
+        tryFlushAamva();
+      } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        aamvaBuffer += event.key;
+      }
+      // Non-printable special keys (Shift, Ctrl, etc.) are silently dropped.
+      return;
+    }
+
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+
+    // Trigger: the field contains only '@' — beginning of an AAMVA header.
+    if (patronName.trim() === '@') {
+      aamvaCapturing = true;
+      aamvaBuffer = '@\r';
+      patronName = '';
+      (event.target as HTMLInputElement).value = '';
+    }
+    // else: normal Enter suppression (already prevented above).
+  }
+
+  // Attempt to flush the AAMVA buffer once the scanner has stopped sending
+  // data.  Uses a debounce rather than eager parsing so that partial payloads
+  // (e.g. only DCS received before DCS+DAC are both present) never produce an
+  // incomplete name.
+  function tryFlushAamva() {
+    if (aamvaFlushTimeout) clearTimeout(aamvaFlushTimeout);
+    aamvaFlushTimeout = setTimeout(() => {
+      applyAamvaName(parseAamvaName(aamvaBuffer));
+    }, 300);
+  }
+
+  function applyAamvaName(name: string | null) {
+    if (name) patronName = name;
+    cancelAamvaCapture();
+  }
+
+  function cancelAamvaCapture() {
+    aamvaCapturing = false;
+    aamvaBuffer = '';
+    if (aamvaFlushTimeout) {
+      clearTimeout(aamvaFlushTimeout);
+      aamvaFlushTimeout = null;
     }
   }
   async function handleBarcodeKeydown(event: KeyboardEvent) {
