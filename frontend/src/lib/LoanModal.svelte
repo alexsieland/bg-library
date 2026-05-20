@@ -11,6 +11,7 @@
   export let open = false;
   export let game: components['schemas']['Game'] | null = null;
   export let onLoanSuccess: () => void = () => {};
+  export let initialFocus: 'patron' | 'barcode' = 'patron';
 
   let patronName = '';
   let patrons: Patron[] = [];
@@ -27,10 +28,23 @@
   let barcodeLoading = false;
   let pendingBarcode = '';
   let addPatronModalOpen = false;
+  let barcodeInputEl: HTMLInputElement | undefined;
 
   // Close AddPatronModal if the loan modal is closed programmatically
   $: if (!open) {
     addPatronModalOpen = false;
+  }
+
+  // Focus the appropriate field when the modal opens
+  $: if (open) {
+    setTimeout(() => {
+      if (initialFocus === 'barcode' && isBarcodeEnabled() && barcodeInputEl) {
+        barcodeInputEl.focus();
+      } else {
+        const patronEl = document.getElementById('patronName') as HTMLInputElement | null;
+        if (patronEl) patronEl.focus();
+      }
+    }, 50);
   }
 
   // Show "New Patron" button when 3+ chars typed and no patron selected
@@ -244,6 +258,7 @@
           <div class="relative">
             <input
               type="text"
+              bind:this={barcodeInputEl}
               bind:value={patronBarcode}
               onkeydown={handleBarcodeKeydown}
               placeholder="Scan…"
