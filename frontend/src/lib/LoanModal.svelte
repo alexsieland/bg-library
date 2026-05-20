@@ -46,6 +46,7 @@
     try {
       const patron = await apiClient.getPatronByBarcode(value);
       selectPatron(patron);
+      await handleLoan();
     } catch (e) {
       const message = e instanceof Error ? e.message : '';
       const isNotFound = message.toLowerCase().includes('not found') || message.includes('404');
