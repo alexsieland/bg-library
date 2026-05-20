@@ -18,7 +18,6 @@ vi.mock('./api-client', async (importOriginal) => {
       addGame: vi.fn(),
       getGame: vi.fn(),
       updateGame: vi.fn(),
-      getGameByBarcode: vi.fn(),
     },
   };
 });
@@ -305,9 +304,12 @@ describe('AddGameModal (Update Mode)', () => {
     await fireEvent.click(screen.getByTestId('add-game-submit'));
 
     await waitFor(() => {
-      expect(apiClient.updateGame).toHaveBeenCalledWith('g2', expect.objectContaining({
-        isPlayToWin: true,
-      }));
+      expect(apiClient.updateGame).toHaveBeenCalledWith(
+        'g2',
+        expect.objectContaining({
+          isPlayToWin: true,
+        })
+      );
     });
   });
 });
@@ -325,8 +327,6 @@ describe('AddGameModal (barcode enabled)', () => {
   });
 
   it('Should not submit when Enter is pressed in the barcode input', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
-
     render(AddGameModal, { open: true, gameId: null });
 
     const barcodeInput = screen.getByPlaceholderText('Scan game barcode…');
@@ -336,43 +336,44 @@ describe('AddGameModal (barcode enabled)', () => {
     expect(apiClient.addGame).not.toHaveBeenCalled();
   });
 
-  it('Should show an error toast when barcode already belongs to a different game', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [mockGame],
-    });
-
-    render(AddGameModal, { open: true, gameId: null });
-
-    const barcodeInput = screen.getByPlaceholderText('Scan game barcode…') as HTMLInputElement;
-    await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
-    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
-
-    await waitFor(() => {
-      expect(toasts.add).toHaveBeenCalledWith('A game with this barcode already exists', 'error');
-      expect(barcodeInput.value).toBe('');
-    });
-  });
-
-  it('Should keep the barcode in the field when the barcode is not found (free to use)', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
-
+  it('Should keep the barcode in the field after Enter is pressed', async () => {
     render(AddGameModal, { open: true, gameId: null });
 
     const barcodeInput = screen.getByPlaceholderText('Scan game barcode…') as HTMLInputElement;
     await fireEvent.input(barcodeInput, { target: { value: '1234567890' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
+    expect(barcodeInput.value).toBe('1234567890');
+    expect(toasts.add).not.toHaveBeenCalled();
+  });
+
+  it('Should allow a barcode that is already used by another game', async () => {
+    vi.mocked(apiClient.addGame).mockResolvedValue({ ...mockGame, barcode: '9780307455925' });
+    const onGameSaved = vi.fn();
+
+    render(AddGameModal, { open: true, gameId: null, onGameSaved });
+
+    await fireEvent.input(screen.getByPlaceholderText('Enter game title'), {
+      target: { value: 'Catan 2' },
+    });
+    await fireEvent.input(screen.getByPlaceholderText('Scan game barcode…'), {
+      target: { value: '9780307455925' },
+    });
+    await fireEvent.keyDown(screen.getByPlaceholderText('Scan game barcode…'), { key: 'Enter' });
+    await fireEvent.click(screen.getByTestId('add-game-submit'));
+
     await waitFor(() => {
-      expect(barcodeInput.value).toBe('1234567890');
-      expect(toasts.add).not.toHaveBeenCalled();
+      expect(apiClient.addGame).toHaveBeenCalledWith({
+        title: 'Catan 2',
+        barcode: '9780307455925',
+        isPlayToWin: false,
+      });
+      expect(onGameSaved).toHaveBeenCalled();
     });
   });
 
-  it('Should allow the same barcode in edit mode (same game)', async () => {
+  it('Should allow a barcode in edit mode even when already used by another game', async () => {
     vi.mocked(apiClient.getGame).mockResolvedValue(mockGame);
-    vi.mocked(apiClient.getGameByBarcode).mockResolvedValue({
-      games: [mockGame],
-    });
 
     render(AddGameModal, { open: true, gameId: 'g1' });
 
@@ -384,18 +385,11 @@ describe('AddGameModal (barcode enabled)', () => {
     await fireEvent.input(barcodeInput, { target: { value: '9780307455925' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
-    await waitFor(() => {
-      // Should not clear the barcode or show error
-      expect(barcodeInput.value).toBe('9780307455925');
-      expect(toasts.add).not.toHaveBeenCalledWith(
-        'A game with this barcode already exists',
-        'error'
-      );
-    });
+    expect(barcodeInput.value).toBe('9780307455925');
+    expect(toasts.add).not.toHaveBeenCalledWith('A game with this barcode already exists', 'error');
   });
 
   it('Should submit with the barcode value included when a game is created', async () => {
-    vi.mocked(apiClient.getGameByBarcode).mockRejectedValue(new Error('Not found'));
     vi.mocked(apiClient.addGame).mockResolvedValue({
       ...mockGame,
       barcode: '1234567890',
@@ -423,8 +417,3 @@ describe('AddGameModal (barcode enabled)', () => {
     });
   });
 });
-
-
-
-
-
