@@ -652,13 +652,10 @@ describe('LoanModal (barcode enabled)', () => {
     expect(apiClient.getPatronByBarcode).not.toHaveBeenCalled();
   });
 
-  it('Should allow immediate loan submission after patron is populated by barcode scan', async () => {
+  it('Should automatically complete the loan when a patron barcode scan succeeds', async () => {
     vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
       patronId: 'p1',
       name: 'Alice',
-    });
-    vi.mocked(apiClient.listPatrons).mockResolvedValue({
-      patrons: [{ patronId: 'p1', name: 'Alice' }],
     });
     vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
 
@@ -669,16 +666,31 @@ describe('LoanModal (barcode enabled)', () => {
     await fireEvent.input(barcodeInput, { target: { value: 'P-12345' } });
     await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
 
-    await waitFor(() => {
-      const patronInput = screen.getByPlaceholderText('Enter patron name') as HTMLInputElement;
-      expect(patronInput.value).toBe('Alice');
-    });
-
-    await fireEvent.click(screen.getByTestId('rent-button'));
-
+    // No button click required — loan should fire automatically after patron is found
     await waitFor(() => {
       expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p1');
       expect(onLoanSuccess).toHaveBeenCalled();
+    });
+  });
+
+  it('Should populate the patron name field before completing the loan on barcode scan', async () => {
+    vi.mocked(apiClient.getPatronByBarcode).mockResolvedValue({
+      patronId: 'p1',
+      name: 'Alice',
+    });
+    vi.mocked(apiClient.listPatrons).mockResolvedValue({
+      patrons: [{ patronId: 'p1', name: 'Alice' }],
+    });
+    vi.mocked(apiClient.checkOutGame).mockResolvedValue({} as any);
+
+    render(LoanModal, { open: true, game: mockGame });
+
+    const barcodeInput = screen.getByPlaceholderText('Scan…');
+    await fireEvent.input(barcodeInput, { target: { value: 'P-12345' } });
+    await fireEvent.keyDown(barcodeInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.checkOutGame).toHaveBeenCalledWith('g1', 'p1');
     });
   });
 });

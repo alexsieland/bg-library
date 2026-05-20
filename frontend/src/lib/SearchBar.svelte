@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Search } from 'flowbite-svelte';
+  import { isBarcodeEnabled } from './config';
 
   export let searchQuery: string = '';
   export let placeholder: string = 'Search...';
@@ -34,7 +35,16 @@
 
     // Check if it's a single printable character (length 1) and not a modifier key
     // Skip if Alt is held — Alt+B should go to barcode, not search
-    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    // Skip entirely when barcode scanning is enabled — scan characters must reach
+    // the global barcode scanner listener, not auto-focus the search bar.
+    // Use Alt+S to focus the search bar when a scanner is active.
+    if (
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !isBarcodeEnabled()
+    ) {
       if (searchInput) {
         searchInput.focus();
       }

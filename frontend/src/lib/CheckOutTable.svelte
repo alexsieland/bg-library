@@ -23,6 +23,7 @@
   let searchQuery = '';
   let loanModalOpen = false;
   let selectedGame: components['schemas']['Game'] | null = null;
+  let loanInitialFocus: 'patron' | 'barcode' = 'patron';
 
   let gameStatusList: GameStatusList = { games: [] };
   let error: string | null = null;
@@ -65,6 +66,7 @@
   }
 
   function handleBarcodeFound(game: components['schemas']['Game']) {
+    loanInitialFocus = 'barcode';
     handleCheckout(game);
   }
 
@@ -131,7 +133,12 @@
   </div>
 </div>
 
-<LoanModal bind:open={loanModalOpen} game={selectedGame} onLoanSuccess={fetchGames} />
+<LoanModal
+  bind:open={loanModalOpen}
+  game={selectedGame}
+  onLoanSuccess={fetchGames}
+  initialFocus={loanInitialFocus}
+/>
 
 {#if loading && gameStatusList.games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
@@ -166,7 +173,14 @@
           </TableBodyCell>
           <TableBodyCell>
             {#if !gameStatus.patron}
-              <Button onclick={() => handleCheckout(gameStatus.game)} color="primary" size="sm">
+              <Button
+                onclick={() => {
+                  loanInitialFocus = 'patron';
+                  handleCheckout(gameStatus.game);
+                }}
+                color="primary"
+                size="sm"
+              >
                 Borrow
               </Button>
             {:else}

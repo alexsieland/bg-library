@@ -12,7 +12,6 @@
   let gameTitle = '';
   let gameBarcode = '';
   let isPlayToWin = false;
-  let barcodeLoading = false;
   let loading = false;
 
   // Determine if we're in edit mode
@@ -94,41 +93,11 @@
     }
   }
 
-  async function handleBarcodeKeydown(event: KeyboardEvent) {
+  // Suppress Enter on the barcode input — HID barcode scanners use Enter as their
+  // terminator and would trigger submission before the librarian can review.
+  function handleBarcodeKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       event.preventDefault();
-      await handleBarcodeScan();
-    }
-  }
-
-  async function handleBarcodeScan() {
-    const value = gameBarcode.trim();
-    if (!value) return;
-
-    barcodeLoading = true;
-    try {
-      // Check if the barcode already belongs to an existing game
-      const result = await apiClient.getGameByBarcode(value);
-      if (result.games.length > 0) {
-        // If we're in edit mode and this is the same game's barcode, allow it
-        if (isEditMode && gameId && result.games[0].gameId === gameId) {
-          // Same game, barcode is fine
-          return;
-        }
-        // A different game already has this barcode
-        toasts.add('A game with this barcode already exists', 'error');
-        gameBarcode = '';
-      }
-    } catch (e) {
-      // A 404 means the barcode is free to use — keep it in the field
-      const message = e instanceof Error ? e.message : '';
-      if (!message.toLowerCase().includes('not found') && !message.includes('404')) {
-        toasts.add(`Barcode lookup failed: ${message}`, 'error');
-        gameBarcode = '';
-      }
-      // else: barcode is available, leave it in the field
-    } finally {
-      barcodeLoading = false;
     }
   }
 </script>
@@ -165,13 +134,8 @@
             onkeydown={handleBarcodeKeydown}
             autocomplete="off"
             maxlength={48}
-            disabled={loading || barcodeLoading}
+            disabled={loading}
           />
-          {#if barcodeLoading}
-            <div class="pointer-events-none absolute inset-y-0 inset-e-0 flex items-center pe-3">
-              <Spinner size="4" />
-            </div>
-          {/if}
         </div>
         <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
           Optional. Scan a UPC or barcode to associate with this game.
@@ -199,7 +163,7 @@
       <Button
         data-testid="add-game-submit"
         onclick={handleSubmit}
-        disabled={loading || barcodeLoading || !gameTitle.trim()}
+        disabled={loading || !gameTitle.trim()}
       >
         {#if loading}
           <Spinner size="4" class="me-2" />
@@ -209,4 +173,3 @@
     </div>
   </div>
 </Modal>
-
