@@ -2,9 +2,16 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SearchBar from './SearchBar.svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('./config', () => ({
+  isBarcodeEnabled: vi.fn(() => false),
+}));
+
+import { isBarcodeEnabled } from './config';
+
 describe('SearchBar', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.mocked(isBarcodeEnabled).mockReturnValue(false);
   });
 
   it('Should update searchQuery when typing', async () => {
@@ -51,7 +58,8 @@ describe('SearchBar', () => {
     expect(onSearch).toHaveBeenCalledWith('catan');
   });
 
-  it('Should focus the input when a printable character is typed globally', async () => {
+  it('Should focus the input when a printable character is typed globally and barcode scanning is disabled', async () => {
+    vi.mocked(isBarcodeEnabled).mockReturnValue(false);
     render(SearchBar, { props: { searchQuery: '' } });
     const input = screen.getByRole('searchbox');
 
@@ -60,6 +68,18 @@ describe('SearchBar', () => {
     await fireEvent.keyDown(window, { key: 'a' });
 
     expect(document.activeElement).toBe(input);
+  });
+
+  it('Should not focus the input when a printable character is typed globally and barcode scanning is enabled', async () => {
+    vi.mocked(isBarcodeEnabled).mockReturnValue(true);
+    render(SearchBar, { props: { searchQuery: '' } });
+    const input = screen.getByRole('searchbox');
+
+    expect(document.activeElement).not.toBe(input);
+
+    await fireEvent.keyDown(window, { key: 'a' });
+
+    expect(document.activeElement).not.toBe(input);
   });
 
   it('Should not focus the input when typing globally while already editing another input', async () => {
