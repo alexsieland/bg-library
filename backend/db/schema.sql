@@ -158,7 +158,7 @@ WHERE deleted_at IS NULL;
 CREATE OR REPLACE FUNCTION fn_record_checkout_event()
     RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO transaction_events (transaction_id, game_id, patron_id, event_type, event_timestamp)
+    INSERT INTO public.transaction_events (transaction_id, game_id, patron_id, event_type, event_timestamp)
     VALUES (NEW.id, NEW.game_id, NEW.patron_id, 'check_out', NEW.checkout_timestamp);
     RETURN NEW;
 END;
@@ -173,7 +173,7 @@ CREATE OR REPLACE FUNCTION fn_record_checkin_event()
     RETURNS TRIGGER AS $$
 BEGIN
     IF OLD.checkin_timestamp IS NULL AND NEW.checkin_timestamp IS NOT NULL THEN
-        INSERT INTO transaction_events (transaction_id, game_id, patron_id, event_type, event_timestamp)
+        INSERT INTO public.transaction_events (transaction_id, game_id, patron_id, event_type, event_timestamp)
         VALUES (NEW.id, NEW.game_id, NEW.patron_id, 'check_in', NEW.checkin_timestamp);
     END IF;
     RETURN NEW;
