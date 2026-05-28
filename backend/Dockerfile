@@ -24,13 +24,16 @@ COPY backend/ ./
 RUN go build -v -o /usr/local/bin/app ./
 
 # Stage 3: Final Runtime
-FROM debian:bookworm-slim
+# Using postgres:18.2 as the base gives us pg_dump 18 without any apt repo
+# configuration. The Postgres server binaries are present but unused — the
+# ENTRYPOINT below overrides the image default and runs the Go binary only.
+FROM postgres:18.2
 
-# Install CA certificates, pg_dump, and the Node.js runtime.
+# Install CA certificates and the Node.js runtime.
+# pg_dump 18 is already provided by the base image.
 # npm is NOT installed here — it was only needed in the node-deps stage.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    postgresql-client \
     nodejs \
   && rm -rf /var/lib/apt/lists/*
 

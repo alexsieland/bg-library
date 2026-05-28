@@ -1,2 +1,2 @@
-patrons.full_name
-
+public.patrons.full_name:faker.name.findName
+public.play_to_win_entries.entrant_name:faker.name.findName
