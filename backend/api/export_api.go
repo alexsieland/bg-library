@@ -43,6 +43,7 @@ var (
 			"--",
 			connStr,
 			"--data-only",
+			"--exclude-table-data=public.transaction_events",
 		)
 	}
 )
