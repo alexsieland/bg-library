@@ -32,13 +32,15 @@ func TestDatabaseExportSmoke(t *testing.T) {
 
 	schemaPath, err := filepath.Abs("../db/schema.sql")
 	assert.NoError(t, err)
+	viewsPath, err := filepath.Abs("../db/views.sql")
+	assert.NoError(t, err)
 
 	pgContainer, err := postgres.Run(ctx,
-		"postgres:17-alpine",
+		"postgres:18-alpine",
 		postgres.WithDatabase("librarydb"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("postgres"),
-		postgres.WithInitScripts(schemaPath),
+		postgres.WithInitScripts(schemaPath, viewsPath),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
