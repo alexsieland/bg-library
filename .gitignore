@@ -11,3 +11,6 @@ out/
 # Go Coverage tests
 backend/coverage.*
 tmp
+
+# Local development data exports
+local-data/

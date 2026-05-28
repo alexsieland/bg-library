@@ -812,6 +812,54 @@ paths:
           description: Play to win raffle reset successfully
       description: Reset the play to win raffle for all games
 
+  /api/v1/export/database:
+    get:
+      tags:
+        - export
+      operationId: exportDatabase
+      summary: Export full database contents as a SQL file
+      description: |
+        Export all library data (tables and rows) as a data-only SQL dump.
+        Schema definitions are excluded. Patron full names are anonymized.
+
+        The response is a downloadable `.sql` file named `db_export_<timestamp>.sql`
+        (e.g. `db_export_2026-05-27T14-25-30Z.sql`).
+
+        Requires export runtime dependencies (pg_dump, pg-anonymizer).
+        This operation may take up to 2 minutes to complete.
+      responses:
+        '200':
+          description: Database export file successfully generated
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'Attachment filename, e.g. attachment; filename="db_export_2026-05-27T14-25-30Z.sql"'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: Data-only SQL dump file
+        '500':
+          description: Export subprocess failed unexpectedly
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Export runtime dependencies not available in this environment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Export timed out (2-minute deadline exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/ptw/raffle/ptwId/{ptwId}:
     post:
       tags:

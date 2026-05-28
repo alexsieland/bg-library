@@ -472,6 +472,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// ExportDatabase request
+	ExportDatabase(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CheckInGame request
 	CheckInGame(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -580,6 +583,18 @@ type ClientInterface interface {
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) ExportDatabase(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExportDatabaseRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) CheckInGame(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1060,6 +1075,33 @@ func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewExportDatabaseRequest generates requests for ExportDatabase
+func NewExportDatabaseRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/export/database")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewCheckInGameRequest generates requests for CheckInGame
@@ -2369,6 +2411,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// ExportDatabaseWithResponse request
+	ExportDatabaseWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ExportDatabaseResponse, error)
+
 	// CheckInGameWithResponse request
 	CheckInGameWithResponse(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*CheckInGameResponse, error)
 
@@ -2477,6 +2522,30 @@ type ClientWithResponsesInterface interface {
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
+}
+
+type ExportDatabaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON500      *ErrorResponse
+	JSON503      *ErrorResponse
+	JSON504      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ExportDatabaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExportDatabaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type CheckInGameResponse struct {
@@ -3133,6 +3202,15 @@ func (r GetHealthResponse) StatusCode() int {
 	return 0
 }
 
+// ExportDatabaseWithResponse request returning *ExportDatabaseResponse
+func (c *ClientWithResponses) ExportDatabaseWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ExportDatabaseResponse, error) {
+	rsp, err := c.ExportDatabase(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExportDatabaseResponse(rsp)
+}
+
 // CheckInGameWithResponse request returning *CheckInGameResponse
 func (c *ClientWithResponses) CheckInGameWithResponse(ctx context.Context, params *CheckInGameParams, reqEditors ...RequestEditorFn) (*CheckInGameResponse, error) {
 	rsp, err := c.CheckInGame(ctx, params, reqEditors...)
@@ -3480,6 +3558,46 @@ func (c *ClientWithResponses) GetHealthWithResponse(ctx context.Context, reqEdit
 		return nil, err
 	}
 	return ParseGetHealthResponse(rsp)
+}
+
+// ParseExportDatabaseResponse parses an HTTP response from a ExportDatabaseWithResponse call
+func ParseExportDatabaseResponse(rsp *http.Response) (*ExportDatabaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExportDatabaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON504 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseCheckInGameResponse parses an HTTP response from a CheckInGameWithResponse call
@@ -4347,6 +4465,9 @@ func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Export full database contents as a SQL file
+	// (GET /api/v1/export/database)
+	ExportDatabase(c *gin.Context)
 	// Check in a game
 	// (POST /api/v1/library/checkin)
 	CheckInGame(c *gin.Context, params CheckInGameParams)
@@ -4444,6 +4565,19 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// ExportDatabase operation middleware
+func (siw *ServerInterfaceWrapper) ExportDatabase(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExportDatabase(c)
+}
 
 // CheckInGame operation middleware
 func (siw *ServerInterfaceWrapper) CheckInGame(c *gin.Context) {
@@ -5161,6 +5295,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.GET(options.BaseURL+"/api/v1/export/database", wrapper.ExportDatabase)
 	router.POST(options.BaseURL+"/api/v1/library/checkin", wrapper.CheckInGame)
 	router.POST(options.BaseURL+"/api/v1/library/checkout", wrapper.CheckOutGame)
 	router.POST(options.BaseURL+"/api/v1/library/game", wrapper.AddGame)

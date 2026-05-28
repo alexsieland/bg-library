@@ -40,7 +40,7 @@
     setTimeout(() => {
       if (initialFocus === 'barcode' && isBarcodeEnabled() && barcodeInputEl) {
         barcodeInputEl.focus();
-      } else {
+      } else if (typeof document !== 'undefined') {
         const patronEl = document.getElementById('patronName') as HTMLInputElement | null;
         if (patronEl) patronEl.focus();
       }

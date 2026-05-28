@@ -1,0 +1,8 @@
+{
+  "name": "bg-library-anonymizer",
+  "version": "1.0.0",
+  "dependencies": {
+    "pg-anonymizer": "0.8.1"
+  }
+}
+
