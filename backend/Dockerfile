@@ -18,8 +18,20 @@ RUN go build -v -o /usr/local/bin/app ./
 # Stage 2: Final Runtime
 FROM debian:bookworm-slim
 
-# Install CA certificates to make secure HTTPS calls (if needed)
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install CA certificates, pg_dump, Node.js, and npm
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    postgresql-client \
+    nodejs \
+    npm \
+  && rm -rf /var/lib/apt/lists/*
+
+# Pre-install pg-anonymizer at image build time
+COPY backend/export/package.json /opt/pg-anonymizer/package.json
+RUN npm install --prefix /opt/pg-anonymizer
+
+# Copy the anonymizer config file
+COPY backend/export/anonymizer-config.txt /opt/anonymizer-config.txt
 
 WORKDIR /usr/src/app
 
