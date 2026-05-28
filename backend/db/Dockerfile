@@ -3,8 +3,11 @@
 # Dockerfile for PostgreSQL with schema initialization
 FROM postgres:18.2
 
-# Copy the schema file into the initialization directory (runs on first boot only)
-COPY backend/db/schema.sql /docker-entrypoint-initdb.d/
+# Copy the schema file into the initialization directory (runs on first boot only).
+# Prefixed 01_ so it sorts before 99_load-import.sh — initdb.d runs files in
+# sorted name order, and digits sort before letters, so unprefixed schema.sql
+# would run AFTER 99_load-import.sh, causing "relation does not exist" errors.
+COPY backend/db/schema.sql /docker-entrypoint-initdb.d/01_schema.sql
 
 # Copy views and the wrapper entrypoint
 COPY backend/db/views.sql /docker-views/views.sql

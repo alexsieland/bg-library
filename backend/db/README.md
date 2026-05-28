@@ -40,11 +40,9 @@ docker compose up       # Fresh import
 
 ## File Execution Order
 
-Files in `/docker-entrypoint-initdb.d` run in sorted name order:
+Files in `/docker-entrypoint-initdb.d` run in sorted name order (digits before letters):
 
-1. `schema.sql` — table definitions
+1. `01_schema.sql` — table definitions
 2. `99_load-import.sh` — optional data import (if mounted)
 
 Views are applied **after** initialization completes, on every boot.
-
-
