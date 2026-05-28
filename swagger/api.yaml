@@ -820,11 +820,13 @@ paths:
       summary: Export full database contents as a SQL file
       description: |
         Export all library data (tables and rows) as a data-only SQL dump.
-        Schema definitions are excluded.
+        Schema definitions are excluded. Patron full names are anonymized.
 
-        The response is a downloadable `.sql` file named `db_export_<timestamp>.sql`.
+        The response is a downloadable `.sql` file named `db_export_<timestamp>.sql`
+        (e.g. `db_export_2026-05-27T14-25-30Z.sql`).
 
-        This operation will timeout if it takes more than 2 minutes to complete.
+        Requires export runtime dependencies (pg_dump, pg-anonymizer).
+        This operation may take up to 2 minutes to complete.
       responses:
         '200':
           description: Database export file successfully generated
@@ -832,15 +834,27 @@ paths:
             Content-Disposition:
               schema:
                 type: string
-              description: 'Attachment filename, e.g. attachment; filename="db_export_2026-05-26T12:00:00Z.sql"'
+              description: 'Attachment filename, e.g. attachment; filename="db_export_2026-05-27T14-25-30Z.sql"'
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
                 description: Data-only SQL dump file
+        '500':
+          description: Export subprocess failed unexpectedly
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '503':
-          description: Export failed
+          description: Export runtime dependencies not available in this environment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Export timed out (2-minute deadline exceeded)
           content:
             application/json:
               schema:

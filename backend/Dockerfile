@@ -41,6 +41,12 @@ COPY --from=node-deps /opt/pg-anonymizer/node_modules /opt/pg-anonymizer/node_mo
 # Copy the anonymizer config file
 COPY backend/export/anonymizer-config.txt /opt/anonymizer-config.txt
 
+# Copy the entrypoint script that writes ~/.pgpass at container startup so
+# pg_dump (invoked by pg-anonymizer) can authenticate without the password
+# appearing in Go code or subprocess argument lists.
+COPY backend/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 WORKDIR /usr/src/app
 
 # Set environment variable to indicate Docker environment
@@ -54,4 +60,5 @@ COPY swagger/ ./swagger/
 
 EXPOSE 8080
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["app"]
