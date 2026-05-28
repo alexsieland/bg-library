@@ -223,3 +223,54 @@ func TestExportDatabase(t *testing.T) {
 		assert.True(t, os.IsNotExist(statErr), "temp directory should have been removed after failed export")
 	})
 }
+
+func TestStripAnonymizerDirectives(t *testing.T) {
+	t.Run("Should remove \\restrict and \\unrestrict lines from SQL file", func(t *testing.T) {
+		input := `\restrict 7ofWBpazlUO2YjRug3lOgc3N
+-- PostgreSQL database dump
+SET statement_timeout = 0;
+COPY public.patrons (id, full_name) FROM stdin;
+abc	John Doe
+\.
+\unrestrict 7ofWBpazlUO2YjRug3lOgc3N
+`
+		expected := `-- PostgreSQL database dump
+SET statement_timeout = 0;
+COPY public.patrons (id, full_name) FROM stdin;
+abc	John Doe
+\.
+`
+		f, err := os.CreateTemp("", "strip-test-*.sql")
+		assert.NoError(t, err)
+		_, err = f.WriteString(input)
+		assert.NoError(t, err)
+		f.Close()
+		t.Cleanup(func() { os.Remove(f.Name()) })
+
+		err = stripAnonymizerDirectives(f.Name())
+		assert.NoError(t, err)
+
+		result, err := os.ReadFile(f.Name())
+		assert.NoError(t, err)
+		assert.Equal(t, expected, string(result))
+	})
+
+	t.Run("Should leave files without restrict directives unchanged", func(t *testing.T) {
+		input := `-- plain dump
+SET statement_timeout = 0;
+`
+		f, err := os.CreateTemp("", "strip-test-*.sql")
+		assert.NoError(t, err)
+		_, err = f.WriteString(input)
+		assert.NoError(t, err)
+		f.Close()
+		t.Cleanup(func() { os.Remove(f.Name()) })
+
+		err = stripAnonymizerDirectives(f.Name())
+		assert.NoError(t, err)
+
+		result, err := os.ReadFile(f.Name())
+		assert.NoError(t, err)
+		assert.Equal(t, input, string(result))
+	})
+}

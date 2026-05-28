@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -107,6 +109,14 @@ func (s *Server) ExportDatabase(c *gin.Context) {
 		return
 	}
 
+	// pg-anonymizer wraps the dump with \restrict / \unrestrict directives that
+	// are not valid psql meta-commands. Strip them so the file loads cleanly.
+	if err := stripAnonymizerDirectives(tmpPath); err != nil {
+		log.Printf("Error stripping anonymizer directives from export: %v", err)
+		internalError(c, err)
+		return
+	}
+
 	c.FileAttachment(tmpPath, filename)
 }
 
@@ -132,4 +142,32 @@ func getEnvWithDefault(key, defaultValue string) string {
 		return val
 	}
 	return defaultValue
+}
+
+// stripAnonymizerDirectives removes pg-anonymizer's \restrict and \unrestrict
+// lines from a SQL dump file in-place. These directives are not valid psql
+// meta-commands and will cause errors when the file is loaded with psql -f.
+func stripAnonymizerDirectives(path string) error {
+	in, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	var buf bytes.Buffer
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, `\restrict`) || strings.HasPrefix(line, `\unrestrict`) {
+			continue
+		}
+		buf.WriteString(line)
+		buf.WriteByte('\n')
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	in.Close()
+
+	return os.WriteFile(path, buf.Bytes(), 0600)
 }
