@@ -1,6 +1,14 @@
 # syntax=docker/dockerfile:1
 
-# Stage 1: Build
+# Stage 1: Install pg-anonymizer dependencies
+# npm is only required here to install pg-anonymizer; it is intentionally excluded
+# from the final runtime image. Only the node_modules output is copied forward.
+FROM node:lts-slim AS node-deps
+WORKDIR /opt/pg-anonymizer
+COPY backend/export/package.json .
+RUN npm install --omit=dev
+
+# Stage 2: Build
 FROM golang:1.25.7 AS build
 
 WORKDIR /usr/src/app
@@ -15,20 +23,20 @@ COPY backend/ ./
 # Compile the application
 RUN go build -v -o /usr/local/bin/app ./
 
-# Stage 2: Final Runtime
+# Stage 3: Final Runtime
 FROM debian:bookworm-slim
 
-# Install CA certificates, pg_dump, Node.js, and npm
+# Install CA certificates, pg_dump, and the Node.js runtime.
+# npm is NOT installed here — it was only needed in the node-deps stage.
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     postgresql-client \
     nodejs \
-    npm \
   && rm -rf /var/lib/apt/lists/*
 
-# Pre-install pg-anonymizer at image build time
-COPY backend/export/package.json /opt/pg-anonymizer/package.json
-RUN npm install --prefix /opt/pg-anonymizer
+# Copy pre-built pg-anonymizer node_modules from the node-deps stage.
+# No npm required at runtime; nodejs alone is sufficient to execute the tool.
+COPY --from=node-deps /opt/pg-anonymizer/node_modules /opt/pg-anonymizer/node_modules
 
 # Copy the anonymizer config file
 COPY backend/export/anonymizer-config.txt /opt/anonymizer-config.txt
