@@ -27,7 +27,6 @@
   let loadingMore = false;
   let offset = 0;
   let hasMore = true;
-  let scrollContainerElement: HTMLDivElement | undefined;
   let lastSearchQuery = '';
 
   async function fetchPlayToWinGames(newOffset: number = 0) {
@@ -80,19 +79,23 @@
     recordModalOpen = true;
   }
 
-  function handleTableScroll() {
-    if (!scrollContainerElement || loadingMore || !hasMore || error) {
+  function handlePageScroll() {
+    if (loading || loadingMore || !hasMore || error) {
       return;
     }
 
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerElement;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const pageHeight = document.documentElement.scrollHeight;
+    const isAtBottom = pageHeight - (scrollTop + viewportHeight) < 100;
 
     if (isAtBottom) {
       fetchPlayToWinGames(offset);
     }
   }
 </script>
+
+<svelte:window on:scroll={handlePageScroll} />
 
 <div
   class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
@@ -115,58 +118,50 @@
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
 {:else}
-  <div
-    class="max-h-96 overflow-y-auto"
-    bind:this={scrollContainerElement}
-    onscroll={handleTableScroll}
-    data-testid="ptw-scroll-container"
-  >
-    <Table shadow hoverable={true} class="w-full" data-testid="ptw-table">
-      <TableHead>
-        <TableHeadCell>Title</TableHeadCell>
-        <TableHeadCell>Action</TableHeadCell>
-      </TableHead>
-      <TableBody class="divide-y" data-testid="ptw-table-body">
-        {#each games as game (game.playToWinId)}
-          <TableBodyRow data-testid={`ptw-row-${game.playToWinId}`}>
-            <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">
-              {game.title}
-            </TableBodyCell>
-            <TableBodyCell>
-              <Button
-                onclick={() => handleRecord(game)}
-                color="primary"
-                size="sm"
-                data-testid={`ptw-record-button-${game.playToWinId}`}
-              >
-                Record
-              </Button>
-            </TableBodyCell>
-          </TableBodyRow>
-        {/each}
-        {#if games.length === 0}
-          <TableBodyRow>
-            <TableBodyCell
-              colspan={2}
-              class="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
-              data-testid="ptw-empty-state"
+  <Table shadow hoverable={true} class="w-full" data-testid="ptw-table">
+    <TableHead>
+      <TableHeadCell>Title</TableHeadCell>
+      <TableHeadCell>Action</TableHeadCell>
+    </TableHead>
+    <TableBody class="divide-y" data-testid="ptw-table-body">
+      {#each games as game (game.playToWinId)}
+        <TableBodyRow data-testid={`ptw-row-${game.playToWinId}`}>
+          <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">
+            {game.title}
+          </TableBodyCell>
+          <TableBodyCell>
+            <Button
+              onclick={() => handleRecord(game)}
+              color="primary"
+              size="sm"
+              data-testid={`ptw-record-button-${game.playToWinId}`}
             >
-              No Play To Win games found.
-            </TableBodyCell>
-          </TableBodyRow>
-        {/if}
-        {#if loadingMore}
-          <TableBodyRow>
-            <TableBodyCell colspan={2} class="px-6 py-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <Spinner size="4" />
-                <span class="text-sm text-slate-500 dark:text-slate-400">Loading more games...</span
-                >
-              </div>
-            </TableBodyCell>
-          </TableBodyRow>
-        {/if}
-      </TableBody>
-    </Table>
-  </div>
+              Record
+            </Button>
+          </TableBodyCell>
+        </TableBodyRow>
+      {/each}
+      {#if games.length === 0}
+        <TableBodyRow>
+          <TableBodyCell
+            colspan={2}
+            class="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
+            data-testid="ptw-empty-state"
+          >
+            No Play To Win games found.
+          </TableBodyCell>
+        </TableBodyRow>
+      {/if}
+      {#if loadingMore}
+        <TableBodyRow>
+          <TableBodyCell colspan={2} class="px-6 py-4 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <Spinner size="4" />
+              <span class="text-sm text-slate-500 dark:text-slate-400">Loading more games...</span>
+            </div>
+          </TableBodyCell>
+        </TableBodyRow>
+      {/if}
+    </TableBody>
+  </Table>
 {/if}
