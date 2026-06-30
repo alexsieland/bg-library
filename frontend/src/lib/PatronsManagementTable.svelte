@@ -9,6 +9,7 @@
     Button,
     Dropdown,
     DropdownItem,
+    Spinner,
   } from 'flowbite-svelte';
   import { PlusOutline, ChevronDownOutline } from 'flowbite-svelte-icons';
   import { apiClient, type Patron } from './api-client';
@@ -18,12 +19,18 @@
   import CsvUploadModal from './CsvUploadModal.svelte';
   import SearchBar from './SearchBar.svelte';
   import Debounce from './snippets/debounce.svelte';
+  import { createPageScrollHandler } from './snippets/pageScrollLoader';
   import { onMount } from 'svelte';
 
+  const PAGE_LIMIT = 100;
+
   let searchQuery = $state('');
-  let patronList: { patrons: Patron[] } = $state({ patrons: [] });
+  let patrons: Patron[] = $state([]);
   let loading = $state(true);
   let error: string | null = $state(null);
+  let loadingMore = $state(false);
+  let offset = $state(0);
+  let hasMore = $state(true);
 
   let addPatronModalOpen = $state(false);
   let deleteConfirmationOpen = $state(false);
@@ -33,25 +40,45 @@
   let cancelKey = 0;
   let lastValueRef = $state({ v: '' });
 
-  async function fetchPatrons() {
-    loading = true;
-    error = null;
+  async function fetchPatrons(newOffset: number = 0) {
+    if (newOffset === 0) {
+      loading = true;
+      error = null;
+      patrons = [];
+      offset = 0;
+      hasMore = true;
+    } else {
+      loadingMore = true;
+    }
     try {
-      patronList = await apiClient.listPatrons({
+      const result = await apiClient.listPatrons({
         name: searchQuery || undefined,
+        limit: PAGE_LIMIT,
+        offset: newOffset,
       });
+      if (newOffset === 0) {
+        patrons = result.patrons;
+      } else {
+        patrons = [...patrons, ...result.patrons];
+      }
+      offset = newOffset + result.patrons.length;
+      hasMore = result.patrons.length === PAGE_LIMIT;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
       toasts.add(`Failed to load patrons: ${errorMessage}`, 'error');
     } finally {
-      loading = false;
+      if (newOffset === 0) {
+        loading = false;
+      } else {
+        loadingMore = false;
+      }
     }
   }
 
   function handleSearch(query: string) {
     searchQuery = query;
-    fetchPatrons();
+    fetchPatrons(0);
   }
 
   onMount(() => {
@@ -95,8 +122,18 @@
     return await apiClient.bulkAddPatrons(file);
   }
 
-  let filteredPatrons = $derived(patronList.patrons);
+  const handlePageScroll = createPageScrollHandler({
+    isLoading: () => loading,
+    isLoadingMore: () => loadingMore,
+    hasMore: () => hasMore,
+    hasError: () => error !== null,
+    loadMore: () => fetchPatrons(offset),
+  });
+
+  let filteredPatrons = $derived(patrons);
 </script>
+
+<svelte:window on:scroll={handlePageScroll} />
 
 <AddPatronModal
   bind:open={addPatronModalOpen}
@@ -156,7 +193,7 @@
 
 <!-- Main table -->
 <div class="relative overflow-hidden bg-white shadow-md sm:rounded-lg dark:bg-slate-800">
-  {#if loading && patronList.patrons.length === 0}
+  {#if loading && patrons.length === 0}
     <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading patrons...</div>
   {:else if error}
     <div class="p-8 text-center text-rose-500">{error}</div>
@@ -197,6 +234,16 @@
               </TableBodyCell>
             </TableBodyRow>
           {/each}
+        {/if}
+        {#if loadingMore}
+          <TableBodyRow>
+            <TableBodyCell colspan={2} class="px-4 py-4 text-center">
+              <div class="flex items-center justify-center gap-2">
+                <Spinner size="4" />
+                <span class="text-sm text-slate-500 dark:text-slate-400">Loading more patrons...</span>
+              </div>
+            </TableBodyCell>
+          </TableBodyRow>
         {/if}
       </TableBody>
     </Table>

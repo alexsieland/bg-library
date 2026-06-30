@@ -29,6 +29,16 @@ vi.mock('./barcodeScannerAction', () => ({
   },
 }));
 
+function buildGameStatuses(count: number, startIndex: number = 0) {
+  return Array.from({ length: count }, (_, i) => {
+    const id = startIndex + i + 1;
+    return {
+      game: { gameId: `${id}`, title: `Game ${id}`, isPlayToWin: false },
+      patron: undefined,
+    };
+  });
+}
+
 const mockGamesResponse = {
   games: [
     {
@@ -58,6 +68,11 @@ describe('CheckOutTable', () => {
     // Suppress console.logs during tests
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 2000,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 });
   });
 
   it('Should fetch games on mount', async () => {
@@ -150,6 +165,79 @@ describe('CheckOutTable', () => {
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
       expect(screen.getByText('P2W')).toBeInTheDocument();
+    });
+  });
+
+  it('Should load additional games when page scroll reaches bottom', async () => {
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: buildGameStatuses(100, 0) })
+      .mockResolvedValueOnce({ games: buildGameStatuses(2, 100) });
+
+    render(CheckOutTable);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 100, offset: 0 })
+      );
+    });
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 100, offset: 100 })
+      );
+    });
+  });
+
+  it('Should accumulate games across pages', async () => {
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: buildGameStatuses(100, 0) })
+      .mockResolvedValueOnce({ games: buildGameStatuses(2, 100) });
+
+    render(CheckOutTable);
+
+    await waitFor(() => expect(screen.getByTestId('check-out-table')).toBeInTheDocument());
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('Should not fetch more when hasMore is false', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({ games: buildGameStatuses(5, 0) });
+
+    render(CheckOutTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+  });
+
+  it('Should reset offset and games on new search', async () => {
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: buildGameStatuses(100, 0) })
+      .mockResolvedValueOnce({ games: buildGameStatuses(3, 0) });
+
+    render(CheckOutTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    const input = screen.getByRole('searchbox');
+    await fireEvent.input(input, { target: { value: 'catan' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'catan', offset: 0 })
+      );
     });
   });
 });

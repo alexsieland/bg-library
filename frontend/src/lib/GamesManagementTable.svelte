@@ -10,21 +10,28 @@
     Dropdown,
     DropdownItem,
     Badge,
+    Spinner,
   } from 'flowbite-svelte';
   import { PlusOutline, ChevronDownOutline } from 'flowbite-svelte-icons';
-  import { apiClient, type GameStatusList, type Game } from './api-client';
+  import { apiClient, type GameStatus, type Game } from './api-client';
   import { toasts } from './toast-store';
   import AddGameModal from './AddGameModal.svelte';
   import DeleteConfirmationPrompt from './DeleteConfirmationPrompt.svelte';
   import CsvUploadModal from './CsvUploadModal.svelte';
   import SearchBar from './SearchBar.svelte';
   import Debounce from './snippets/debounce.svelte';
+  import { createPageScrollHandler } from './snippets/pageScrollLoader';
   import { onMount } from 'svelte';
 
+  const PAGE_LIMIT = 100;
+
   let searchQuery = $state('');
-  let gameStatusList: GameStatusList = $state({ games: [] });
+  let games: GameStatus[] = $state([]);
   let loading = $state(true);
   let error: string | null = $state(null);
+  let loadingMore = $state(false);
+  let offset = $state(0);
+  let hasMore = $state(true);
 
   let addGameModalOpen = $state(false);
   let deleteConfirmationOpen = $state(false);
@@ -34,25 +41,45 @@
   let cancelKey = 0;
   let lastValueRef = $state({ v: '' });
 
-  async function fetchGames() {
-    loading = true;
-    error = null;
+  async function fetchGames(newOffset: number = 0) {
+    if (newOffset === 0) {
+      loading = true;
+      error = null;
+      games = [];
+      offset = 0;
+      hasMore = true;
+    } else {
+      loadingMore = true;
+    }
     try {
-      gameStatusList = await apiClient.listGames({
+      const result = await apiClient.listGames({
         title: searchQuery || undefined,
+        limit: PAGE_LIMIT,
+        offset: newOffset,
       });
+      if (newOffset === 0) {
+        games = result.games;
+      } else {
+        games = [...games, ...result.games];
+      }
+      offset = newOffset + result.games.length;
+      hasMore = result.games.length === PAGE_LIMIT;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
       toasts.add(`Failed to load games: ${errorMessage}`, 'error');
     } finally {
-      loading = false;
+      if (newOffset === 0) {
+        loading = false;
+      } else {
+        loadingMore = false;
+      }
     }
   }
 
   function handleSearch(query: string) {
     searchQuery = query;
-    fetchGames();
+    fetchGames(0);
   }
 
   onMount(() => {
@@ -96,8 +123,18 @@
     return await apiClient.bulkAddGames(file);
   }
 
-  let filteredGames = $derived(gameStatusList.games);
+  const handlePageScroll = createPageScrollHandler({
+    isLoading: () => loading,
+    isLoadingMore: () => loadingMore,
+    hasMore: () => hasMore,
+    hasError: () => error !== null,
+    loadMore: () => fetchGames(offset),
+  });
+
+  let filteredGames = $derived(games);
 </script>
+
+<svelte:window on:scroll={handlePageScroll} />
 
 <AddGameModal
   bind:open={addGameModalOpen}
@@ -156,7 +193,7 @@
 
 <!-- Main table -->
 <div class="relative overflow-hidden bg-white shadow-md sm:rounded-lg dark:bg-slate-800">
-  {#if loading && gameStatusList.games.length === 0}
+  {#if loading && games.length === 0}
     <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
   {:else if error}
     <div class="p-8 text-center text-rose-500">{error}</div>
@@ -202,6 +239,16 @@
               </TableBodyCell>
             </TableBodyRow>
           {/each}
+        {/if}
+        {#if loadingMore}
+          <TableBodyRow>
+            <TableBodyCell colspan={2} class="px-4 py-4 text-center">
+              <div class="flex items-center justify-center gap-2">
+                <Spinner size="4" />
+                <span class="text-sm text-slate-500 dark:text-slate-400">Loading more games...</span>
+              </div>
+            </TableBodyCell>
+          </TableBodyRow>
         {/if}
       </TableBody>
     </Table>
