@@ -239,6 +239,15 @@ func (api *GameApi) ListGames(ctx context.Context, params ListGamesParams) (Game
 	if params.Barcode != nil {
 		errorDetails.ValidateStringLength("barcode", *params.Barcode, 1, 48)
 	}
+	if params.Limit != nil {
+		errorDetails.ValidateIntMin("limit", *params.Limit, 1)
+		errorDetails.ValidateIntMax("limit", *params.Limit, 100)
+		limit = *params.Limit
+	}
+	if params.Offset != nil {
+		errorDetails.ValidateIntMin("offset", *params.Offset, 0)
+		offset = *params.Offset
+	}
 	if !errorDetails.Empty() {
 		return GameStatusList{}, errorDetails
 	}

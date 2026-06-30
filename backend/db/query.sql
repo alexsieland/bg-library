@@ -275,4 +275,3 @@ WHERE deletion_reason = $1
   AND (sqlc.narg('sanitized_title')::text IS NULL OR sanitized_title ILIKE sqlc.narg('sanitized_title'))
 ORDER BY deleted_at DESC, sanitized_title ASC
 LIMIT $2 OFFSET $3;
-

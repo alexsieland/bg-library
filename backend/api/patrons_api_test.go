@@ -286,7 +286,7 @@ func TestPatronApiListPatrons(t *testing.T) {
 			testDBLibraryPatron(uuid.New(), "Logan Doe", nil),
 		}
 
-		fixture.service.On("ListPatrons", fixture.ctx, ptr(searchName), int32(999), int32(0), nil).Return(expectedPatrons, nil).Once()
+		fixture.service.On("ListPatrons", fixture.ctx, ptr(searchName), int32(100), int32(0), nil).Return(expectedPatrons, nil).Once()
 
 		patronList, err := fixture.api.ListPatrons(fixture.ctx, ListPatronsParams{Name: ptr(searchName)})
 
@@ -312,7 +312,7 @@ func TestPatronApiListPatrons(t *testing.T) {
 		fixture := newPatronApiTestFixture(t).build()
 		expectedErr := errors.New("list failed")
 
-		fixture.service.On("ListPatrons", fixture.ctx, (*string)(nil), int32(999), int32(0), nil).Return(nil, expectedErr).Once()
+		fixture.service.On("ListPatrons", fixture.ctx, (*string)(nil), int32(100), int32(0), nil).Return(nil, expectedErr).Once()
 
 		patronList, err := fixture.api.ListPatrons(fixture.ctx, ListPatronsParams{})
 

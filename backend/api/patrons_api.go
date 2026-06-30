@@ -184,15 +184,29 @@ func (api *PatronApi) UpdatePatron(ctx context.Context, patronId types.UUID, req
 }
 
 func (api *PatronApi) ListPatrons(ctx context.Context, params ListPatronsParams) (PatronList, error) {
-	var errorDetails ErrorDetails
+	var (
+		limit        int32 = 100
+		offset       int32 = 0
+		errorDetails ErrorDetails
+	)
+
 	if params.Name != nil {
 		errorDetails.ValidateStringLength("name", *params.Name, 1, 100)
+	}
+	if params.Limit != nil {
+		errorDetails.ValidateIntMin("limit", *params.Limit, 1)
+		errorDetails.ValidateIntMax("limit", *params.Limit, 100)
+		limit = *params.Limit
+	}
+	if params.Offset != nil {
+		errorDetails.ValidateIntMin("offset", *params.Offset, 0)
+		offset = *params.Offset
 	}
 	if !errorDetails.Empty() {
 		return PatronList{}, errorDetails
 	}
 
-	dbPatronList, err := api.service.ListPatrons(ctx, params.Name, 999, 0, nil)
+	dbPatronList, err := api.service.ListPatrons(ctx, params.Name, limit, offset, nil)
 	if err != nil {
 		log.Printf("Error listing patrons: %v", err)
 		return PatronList{}, err

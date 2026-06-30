@@ -192,11 +192,41 @@ func (api *PlayToWinApi) RemovePlayToWinGameByGameId(c context.Context, gameId t
 	return api.service.DeletePlayToWinGameByLibraryGameId(c, uuidToPgTypeUUID(gameId), dbRemovalReason, request.RemovalComment, nil)
 }
 
-func (api *PlayToWinApi) GetPlayToWinGameEntries(ctx context.Context, ptwGameId types.UUID) (PlayToWinEntryList, error) {
-	dbPtwEntries, err := api.service.GetPlayToWinGameEntriesByPlayToWinGameId(ctx, uuidToPgTypeUUID(ptwGameId), nil)
+func (api *PlayToWinApi) GetPlayToWinGameEntries(ctx context.Context, ptwGameId types.UUID, params GetPlayToWinGameEntriesParams) (PlayToWinEntryList, error) {
+	var (
+		limit        int32 = 100
+		offset       int32 = 0
+		errorDetails ErrorDetails
+	)
+
+	if params.Limit != nil {
+		errorDetails.ValidateIntMin("limit", *params.Limit, 1)
+		errorDetails.ValidateIntMax("limit", *params.Limit, 100)
+		limit = *params.Limit
+	}
+	if params.Offset != nil {
+		errorDetails.ValidateIntMin("offset", *params.Offset, 0)
+		offset = *params.Offset
+	}
+	if !errorDetails.Empty() {
+		return PlayToWinEntryList{}, errorDetails
+	}
+
+	dbPtwEntries, err := api.service.ListPlayToWinEntriesByPlayToWinGameId(ctx, uuidToPgTypeUUID(ptwGameId), nil)
 	if err != nil {
 		return PlayToWinEntryList{}, err
 	}
+
+	start := int(offset)
+	if start > len(dbPtwEntries) {
+		start = len(dbPtwEntries)
+	}
+	end := start + int(limit)
+	if end > len(dbPtwEntries) {
+		end = len(dbPtwEntries)
+	}
+	dbPtwEntries = dbPtwEntries[start:end]
+
 	ptwEntries := make([]PlayToWinEntry, len(dbPtwEntries))
 	for i, dbPtwEntry := range dbPtwEntries {
 		ptwEntries[i] = PlayToWinEntry{

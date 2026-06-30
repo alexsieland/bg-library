@@ -68,6 +68,23 @@ paths:
           schema:
             type: string
           description: Filter games by barcode (optional). Returns all copies sharing this barcode along with their checkout status.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Limit the number of games returned (optional)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+          description: Offset for pagination (optional)
       responses:
         '200':
           description: List of games with checkout status successfully retrieved
@@ -262,6 +279,23 @@ paths:
           schema:
             type: string
           description: Filter patrons by name (optional)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Limit the number of patrons returned (optional)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+          description: Offset for pagination (optional)
       responses:
         '200':
           description: List of games with checkout status successfully retrieved
@@ -628,6 +662,23 @@ paths:
             format: uuid
           required: true
           description: Play to win game ID
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Limit the number of entries returned (optional)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+          description: Offset for pagination (optional)
       description: Get play to win entries by game
       summary: Get all play to win entries for a play to win game
       responses:
