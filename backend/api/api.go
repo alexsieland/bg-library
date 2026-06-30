@@ -267,8 +267,8 @@ func (s *Server) BulkAddGames(c *gin.Context) {
 
 // Play To Win API
 
-func (s *Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID) {
-	ptwEntries, err := s.PlayToWinApi.GetPlayToWinGameEntries(c.Request.Context(), playToWinId)
+func (s *Server) GetPlayToWinGameEntries(c *gin.Context, playToWinId types.UUID, params GetPlayToWinGameEntriesParams) {
+	ptwEntries, err := s.PlayToWinApi.GetPlayToWinGameEntries(c.Request.Context(), playToWinId, params)
 	handleError(c, err)
 	if c.IsAborted() {
 		return

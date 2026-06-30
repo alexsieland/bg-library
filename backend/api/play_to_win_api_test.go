@@ -367,9 +367,9 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 			},
 		}
 
-		svc.On("GetPlayToWinGameEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbEntries, nil).Once()
+		svc.On("ListPlayToWinEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return(dbEntries, nil).Once()
 
-		got, err := fixture.GetPlayToWinGameEntries(ctx, types.UUID(ptwID))
+		got, err := fixture.GetPlayToWinGameEntries(ctx, types.UUID(ptwID), GetPlayToWinGameEntriesParams{})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(got.Entries))
 		assert.Equal(t, entryID.String(), got.Entries[0].EntryId.String())
@@ -384,9 +384,9 @@ func TestGetPlayToWinGameEntries(t *testing.T) {
 		ctx := context.Background()
 		ptwID := uuid.New()
 
-		svc.On("GetPlayToWinGameEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return([]db.VwPlayToWinEntry{}, nil).Once()
+		svc.On("ListPlayToWinEntriesByPlayToWinGameId", ctx, pgtype.UUID{Bytes: ptwID, Valid: true}, (pgx.Tx)(nil)).Return([]db.VwPlayToWinEntry{}, nil).Once()
 
-		got, err := fixture.GetPlayToWinGameEntries(ctx, types.UUID(ptwID))
+		got, err := fixture.GetPlayToWinGameEntries(ctx, types.UUID(ptwID), GetPlayToWinGameEntriesParams{})
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(got.Entries))
 		svc.AssertExpectations(t)

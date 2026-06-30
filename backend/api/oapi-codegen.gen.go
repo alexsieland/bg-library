@@ -319,6 +319,12 @@ type ListGamesParams struct {
 
 	// Barcode Filter games by barcode (optional). Returns all copies sharing this barcode along with their checkout status.
 	Barcode *string `form:"barcode,omitempty" json:"barcode,omitempty"`
+
+	// Limit Limit the number of games returned (optional)
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Offset for pagination (optional)
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // BulkAddGamesTextBody defines parameters for BulkAddGames.
@@ -328,6 +334,12 @@ type BulkAddGamesTextBody = []byte
 type ListPatronsParams struct {
 	// Name Filter patrons by name (optional)
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
+
+	// Limit Limit the number of patrons returned (optional)
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Offset for pagination (optional)
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // BulkAddPatronsTextBody defines parameters for BulkAddPatrons.
@@ -342,6 +354,15 @@ type ListTransactionEventsParams struct {
 	PatronName *string `form:"patron_name,omitempty" json:"patron_name,omitempty"`
 
 	// Limit Limit the number of transactions returned (optional)
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Offset for pagination (optional)
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// GetPlayToWinGameEntriesParams defines parameters for GetPlayToWinGameEntries.
+type GetPlayToWinGameEntriesParams struct {
+	// Limit Limit the number of entries returned (optional)
 	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Offset Offset for pagination (optional)
@@ -541,7 +562,7 @@ type ClientInterface interface {
 	ListTransactionEvents(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPlayToWinGameEntries request
-	GetPlayToWinGameEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPlayToWinGameEntries(ctx context.Context, playToWinId openapi_types.UUID, params *GetPlayToWinGameEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemovePlayToWinGameByGameIdWithBody request with any body
 	RemovePlayToWinGameByGameIdWithBody(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -885,8 +906,8 @@ func (c *Client) ListTransactionEvents(ctx context.Context, params *ListTransact
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetPlayToWinGameEntries(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetPlayToWinGameEntriesRequest(c.Server, playToWinId)
+func (c *Client) GetPlayToWinGameEntries(ctx context.Context, playToWinId openapi_types.UUID, params *GetPlayToWinGameEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPlayToWinGameEntriesRequest(c.Server, playToWinId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1448,6 +1469,38 @@ func NewListGamesRequest(server string, params *ListGamesParams) (*http.Request,
 
 		}
 
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -1722,6 +1775,38 @@ func NewListPatronsRequest(server string, params *ListPatronsParams) (*http.Requ
 
 		}
 
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -1867,7 +1952,7 @@ func NewListTransactionEventsRequest(server string, params *ListTransactionEvent
 }
 
 // NewGetPlayToWinGameEntriesRequest generates requests for GetPlayToWinGameEntries
-func NewGetPlayToWinGameEntriesRequest(server string, playToWinId openapi_types.UUID) (*http.Request, error) {
+func NewGetPlayToWinGameEntriesRequest(server string, playToWinId openapi_types.UUID, params *GetPlayToWinGameEntriesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1890,6 +1975,44 @@ func NewGetPlayToWinGameEntriesRequest(server string, playToWinId openapi_types.
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -2480,7 +2603,7 @@ type ClientWithResponsesInterface interface {
 	ListTransactionEventsWithResponse(ctx context.Context, params *ListTransactionEventsParams, reqEditors ...RequestEditorFn) (*ListTransactionEventsResponse, error)
 
 	// GetPlayToWinGameEntriesWithResponse request
-	GetPlayToWinGameEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinGameEntriesResponse, error)
+	GetPlayToWinGameEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, params *GetPlayToWinGameEntriesParams, reqEditors ...RequestEditorFn) (*GetPlayToWinGameEntriesResponse, error)
 
 	// RemovePlayToWinGameByGameIdWithBodyWithResponse request with any body
 	RemovePlayToWinGameByGameIdWithBodyWithResponse(ctx context.Context, gameId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemovePlayToWinGameByGameIdResponse, error)
@@ -3421,8 +3544,8 @@ func (c *ClientWithResponses) ListTransactionEventsWithResponse(ctx context.Cont
 }
 
 // GetPlayToWinGameEntriesWithResponse request returning *GetPlayToWinGameEntriesResponse
-func (c *ClientWithResponses) GetPlayToWinGameEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlayToWinGameEntriesResponse, error) {
-	rsp, err := c.GetPlayToWinGameEntries(ctx, playToWinId, reqEditors...)
+func (c *ClientWithResponses) GetPlayToWinGameEntriesWithResponse(ctx context.Context, playToWinId openapi_types.UUID, params *GetPlayToWinGameEntriesParams, reqEditors ...RequestEditorFn) (*GetPlayToWinGameEntriesResponse, error) {
+	rsp, err := c.GetPlayToWinGameEntries(ctx, playToWinId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -4521,7 +4644,7 @@ type ServerInterface interface {
 	ListTransactionEvents(c *gin.Context, params ListTransactionEventsParams)
 	// Get all play to win entries for a play to win game
 	// (GET /api/v1/ptw/entries/playToWinId/{playToWinId})
-	GetPlayToWinGameEntries(c *gin.Context, playToWinId openapi_types.UUID)
+	GetPlayToWinGameEntries(c *gin.Context, playToWinId openapi_types.UUID, params GetPlayToWinGameEntriesParams)
 	// Mark a library game as not play to win
 	// (DELETE /api/v1/ptw/game/gameId/{gameId})
 	RemovePlayToWinGameByGameId(c *gin.Context, gameId openapi_types.UUID)
@@ -4766,6 +4889,22 @@ func (siw *ServerInterfaceWrapper) ListGames(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -4914,6 +5053,22 @@ func (siw *ServerInterfaceWrapper) ListPatrons(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -5001,6 +5156,25 @@ func (siw *ServerInterfaceWrapper) GetPlayToWinGameEntries(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPlayToWinGameEntriesParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -5008,7 +5182,7 @@ func (siw *ServerInterfaceWrapper) GetPlayToWinGameEntries(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetPlayToWinGameEntries(c, playToWinId)
+	siw.Handler.GetPlayToWinGameEntries(c, playToWinId, params)
 }
 
 // RemovePlayToWinGameByGameId operation middleware
