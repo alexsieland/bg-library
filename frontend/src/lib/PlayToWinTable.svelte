@@ -14,6 +14,7 @@
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
   import RecordPlayToWinModal from './RecordPlayToWinModal.svelte';
+  import { createPageScrollHandler } from './snippets/pageScrollLoader';
 
   const PAGE_LIMIT = 100;
 
@@ -79,20 +80,13 @@
     recordModalOpen = true;
   }
 
-  function handlePageScroll() {
-    if (loading || loadingMore || !hasMore || error) {
-      return;
-    }
-
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const pageHeight = document.documentElement.scrollHeight;
-    const isAtBottom = pageHeight - (scrollTop + viewportHeight) < 100;
-
-    if (isAtBottom) {
-      fetchPlayToWinGames(offset);
-    }
-  }
+  const handlePageScroll = createPageScrollHandler({
+    isLoading: () => loading,
+    isLoadingMore: () => loadingMore,
+    hasMore: () => hasMore,
+    hasError: () => error !== null,
+    loadMore: () => fetchPlayToWinGames(offset),
+  });
 </script>
 
 <svelte:window on:scroll={handlePageScroll} />
