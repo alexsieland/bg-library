@@ -11,7 +11,6 @@ WHERE sanitized_title ILIKE $1
 ORDER BY sanitized_title
 LIMIT $2 OFFSET $3;
 
-
 -- name: GetGame :one
 SELECT *
 FROM vw_library_games
