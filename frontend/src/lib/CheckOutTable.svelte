@@ -8,62 +8,92 @@
     TableHeadCell,
     Badge,
     Button,
+    Spinner,
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
-  import { apiClient, type GameStatusList, type GameStatus } from './api-client';
+  import { apiClient, type GameStatus } from './api-client';
   import type { components } from '../generated/library-api';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
   import { barcodeScanner } from './barcodeScannerAction';
+  import { createPageScrollHandler } from './snippets/pageScrollLoader';
 
   import LoanModal from './LoanModal.svelte';
+
+  const PAGE_LIMIT = 100;
 
   let searchQuery = '';
   let loanModalOpen = false;
   let selectedGame: components['schemas']['Game'] | null = null;
   let loanInitialFocus: 'patron' | 'barcode' = 'patron';
+  let barcodeInputElement: HTMLInputElement | undefined;
 
-  let gameStatusList: GameStatusList = { games: [] };
+  let games: GameStatus[] = [];
   let error: string | null = null;
   let loading = true;
-  let barcodeInputElement: HTMLInputElement | undefined;
-  async function fetchGames() {
-    console.log('fetchGames called with query:', searchQuery);
-    loading = true;
-    error = null;
+  let loadingMore = false;
+  let offset = 0;
+  let hasMore = true;
+
+  async function fetchGames(newOffset: number = 0) {
+    if (newOffset === 0) {
+      loading = true;
+      error = null;
+      games = [];
+      offset = 0;
+      hasMore = true;
+    } else {
+      loadingMore = true;
+    }
     try {
-      gameStatusList = await apiClient.listGames({
+      const result = await apiClient.listGames({
         title: searchQuery || undefined,
+        limit: PAGE_LIMIT,
+        offset: newOffset,
       });
-      console.log('Fetched games:', gameStatusList.games.length);
+      if (newOffset === 0) {
+        games = result.games;
+      } else {
+        games = [...games, ...result.games];
+      }
+      offset = newOffset + result.games.length;
+      hasMore = result.games.length === PAGE_LIMIT;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
       toasts.add(`Failed to load games: ${errorMessage}`, 'error');
-      console.error('Error fetching games:', e);
     } finally {
-      loading = false;
+      if (newOffset === 0) {
+        loading = false;
+      } else {
+        loadingMore = false;
+      }
     }
   }
 
   onMount(() => {
-    console.log('CheckOutTable mounted');
     fetchGames();
   });
 
   function handleCheckout(game: components['schemas']['Game']) {
-    console.log('Initiating checkout for game:', game.gameId);
     selectedGame = game;
     loanModalOpen = true;
   }
 
   function handleSearch(query: string) {
-    console.log('handleSearch in CheckOutTable:', query);
     searchQuery = query;
-    fetchGames();
+    fetchGames(0);
   }
+
+  const handlePageScroll = createPageScrollHandler({
+    isLoading: () => loading,
+    isLoadingMore: () => loadingMore,
+    hasMore: () => hasMore,
+    hasError: () => error !== null,
+    loadMore: () => fetchGames(offset),
+  });
 
   function handleBarcodeFound(game: components['schemas']['Game']) {
     loanInitialFocus = 'barcode';
@@ -111,7 +141,11 @@
   }
 </script>
 
-<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
+<svelte:window
+  use:barcodeScanner={{ onScan: onScanComplete }}
+  on:keydown={handleWindowKeydown}
+  on:scroll={handlePageScroll}
+/>
 
 <div
   class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
@@ -140,7 +174,7 @@
   initialFocus={loanInitialFocus}
 />
 
-{#if loading && gameStatusList.games.length === 0}
+{#if loading && games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading games...</div>
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
@@ -152,7 +186,7 @@
       <TableHeadCell>Action</TableHeadCell>
     </TableHead>
     <TableBody class="divide-y">
-      {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
+      {#each games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
           <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">
             <div class="flex items-center gap-1">
@@ -189,13 +223,23 @@
           </TableBodyCell>
         </TableBodyRow>
       {/each}
-      {#if gameStatusList.games.length === 0}
+      {#if games.length === 0}
         <TableBodyRow>
           <TableBodyCell
             colspan={3}
             class="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
           >
             No games found.
+          </TableBodyCell>
+        </TableBodyRow>
+      {/if}
+      {#if loadingMore}
+        <TableBodyRow>
+          <TableBodyCell colspan={3} class="px-6 py-4 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <Spinner size="4" />
+              <span class="text-sm text-slate-500 dark:text-slate-400">Loading more games...</span>
+            </div>
           </TableBodyCell>
         </TableBodyRow>
       {/if}

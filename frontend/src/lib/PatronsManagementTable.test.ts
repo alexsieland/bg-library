@@ -44,6 +44,11 @@ describe('PatronsManagementTable', () => {
       return { patronId, name: 'Unknown Patron' };
     });
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 2000,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 });
   });
   // -------------------------------------------------------------------------
   // Initial render
@@ -177,7 +182,7 @@ describe('PatronsManagementTable', () => {
     // Fire Enter to immediately trigger the search (bypasses debounce).
     await fireEvent.keyDown(searchInput, { key: 'Enter' });
     await waitFor(() => {
-      expect(apiClient.listPatrons).toHaveBeenCalledWith({ name: 'alice' });
+      expect(apiClient.listPatrons).toHaveBeenCalledWith(expect.objectContaining({ name: 'alice' }));
     });
   });
   it('Should show "No patrons found." when a search returns no results', async () => {
@@ -208,6 +213,65 @@ describe('PatronsManagementTable', () => {
     await waitFor(() => {
       expect(toasts.add).toHaveBeenCalledWith('Patron saved successfully', 'success');
       expect(apiClient.listPatrons).toHaveBeenCalledTimes(2);
+    });
+  });
+  // -------------------------------------------------------------------------
+  // Infinite scroll
+  // -------------------------------------------------------------------------
+  it('Should load additional patrons when page scroll reaches bottom', async () => {
+    const page1 = { patrons: Array.from({ length: 100 }, (_, i) => ({ patronId: `p${i + 1}`, name: `Patron ${i + 1}` })) };
+    const page2 = { patrons: [{ patronId: 'p101', name: 'Patron 101' }] };
+
+    vi.mocked(apiClient.listPatrons)
+      .mockResolvedValueOnce(page1)
+      .mockResolvedValueOnce(page2);
+
+    render(PatronsManagementTable);
+
+    await waitFor(() => {
+      expect(apiClient.listPatrons).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 100, offset: 0 })
+      );
+    });
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(apiClient.listPatrons).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 100, offset: 100 })
+      );
+    });
+  });
+
+  it('Should not fetch more patrons when result is less than PAGE_LIMIT', async () => {
+    render(PatronsManagementTable);
+
+    await waitFor(() => expect(apiClient.listPatrons).toHaveBeenCalledTimes(1));
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => expect(apiClient.listPatrons).toHaveBeenCalledTimes(1));
+  });
+
+  it('Should reset offset and patrons on new search', async () => {
+    vi.mocked(apiClient.listPatrons)
+      .mockResolvedValueOnce(mockPatrons)
+      .mockResolvedValueOnce({ patrons: [{ patronId: 'p1', name: 'Alice' }] });
+
+    render(PatronsManagementTable);
+
+    await waitFor(() => expect(apiClient.listPatrons).toHaveBeenCalledTimes(1));
+
+    const input = screen.getByPlaceholderText('Search patrons by name...');
+    await fireEvent.input(input, { target: { value: 'alice' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.listPatrons).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'alice', offset: 0 })
+      );
     });
   });
 });

@@ -8,38 +8,65 @@
     TableHeadCell,
     Button,
     Badge,
+    Spinner,
   } from 'flowbite-svelte';
   import SearchBar from './SearchBar.svelte';
   import BarcodeInput from './BarcodeInput.svelte';
-  import { apiClient, type GameStatusList, type GameStatus } from './api-client';
+  import { apiClient, type GameStatus } from './api-client';
   import { onMount } from 'svelte';
   import { toasts } from './toast-store';
   import { isBarcodeEnabled } from './config';
   import { barcodeScanner } from './barcodeScannerAction';
+  import { createPageScrollHandler } from './snippets/pageScrollLoader';
   import ReturnModal from './ReturnModal.svelte';
 
+  const PAGE_LIMIT = 100;
+
   let searchQuery = '';
-  let gameStatusList: GameStatusList = { games: [] };
+  let games: GameStatus[] = [];
   let error: string | null = null;
   let loading = true;
+  let loadingMore = false;
+  let offset = 0;
+  let hasMore = true;
   let barcodeInputElement: HTMLInputElement | undefined;
   let returnModalOpen = false;
   let returnStatuses: GameStatus[] = [];
 
-  async function fetchCheckedOutGames() {
-    loading = true;
-    error = null;
+  async function fetchCheckedOutGames(newOffset: number = 0) {
+    if (newOffset === 0) {
+      loading = true;
+      error = null;
+      games = [];
+      offset = 0;
+      hasMore = true;
+    } else {
+      loadingMore = true;
+    }
     try {
-      gameStatusList = await apiClient.listGames({
+      const result = await apiClient.listGames({
         title: searchQuery || undefined,
         checkedOut: true,
+        limit: PAGE_LIMIT,
+        offset: newOffset,
       });
+      if (newOffset === 0) {
+        games = result.games;
+      } else {
+        games = [...games, ...result.games];
+      }
+      offset = newOffset + result.games.length;
+      hasMore = result.games.length === PAGE_LIMIT;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       error = errorMessage;
       toasts.add(`Failed to load checked out games: ${errorMessage}`, 'error');
     } finally {
-      loading = false;
+      if (newOffset === 0) {
+        loading = false;
+      } else {
+        loadingMore = false;
+      }
     }
   }
 
@@ -64,7 +91,7 @@
 
   function handleSearch(query: string) {
     searchQuery = query;
-    fetchCheckedOutGames();
+    fetchCheckedOutGames(0);
   }
 
   function formatDate(dateString: string | undefined) {
@@ -114,9 +141,21 @@
       if (barcodeInputElement) barcodeInputElement.focus();
     }
   }
+
+  const handlePageScroll = createPageScrollHandler({
+    isLoading: () => loading,
+    isLoadingMore: () => loadingMore,
+    hasMore: () => hasMore,
+    hasError: () => error !== null,
+    loadMore: () => fetchCheckedOutGames(offset),
+  });
 </script>
 
-<svelte:window use:barcodeScanner={{ onScan: onScanComplete }} on:keydown={handleWindowKeydown} />
+<svelte:window
+  use:barcodeScanner={{ onScan: onScanComplete }}
+  on:keydown={handleWindowKeydown}
+  on:scroll={handlePageScroll}
+/>
 
 <div
   class="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50"
@@ -140,7 +179,7 @@
   </div>
 </div>
 
-{#if loading && gameStatusList.games.length === 0}
+{#if loading && games.length === 0}
   <div class="p-8 text-center text-slate-500 dark:text-slate-400">Loading checked out games...</div>
 {:else if error}
   <div class="p-8 text-center text-rose-500">{error}</div>
@@ -153,7 +192,7 @@
       <TableHeadCell>Action</TableHeadCell>
     </TableHead>
     <TableBody class="divide-y">
-      {#each gameStatusList.games as gameStatus (gameStatus.game.gameId)}
+      {#each games as gameStatus (gameStatus.game.gameId)}
         <TableBodyRow>
           <TableBodyCell class="text-lg font-medium text-slate-900 dark:text-slate-100">
             <div class="flex items-center gap-1">
@@ -180,13 +219,23 @@
           </TableBodyCell>
         </TableBodyRow>
       {/each}
-      {#if gameStatusList.games.length === 0}
+      {#if games.length === 0}
         <TableBodyRow>
           <TableBodyCell
             colspan={4}
             class="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
           >
             No checked out games found.
+          </TableBodyCell>
+        </TableBodyRow>
+      {/if}
+      {#if loadingMore}
+        <TableBodyRow>
+          <TableBodyCell colspan={4} class="px-6 py-4 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <Spinner size="4" />
+              <span class="text-sm text-slate-500 dark:text-slate-400">Loading more games...</span>
+            </div>
           </TableBodyCell>
         </TableBodyRow>
       {/if}

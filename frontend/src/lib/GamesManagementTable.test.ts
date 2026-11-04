@@ -51,6 +51,11 @@ describe('GamesManagementTable', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 2000,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 });
   });
 
   it('Should render the games table with search input', () => {
@@ -230,6 +235,69 @@ describe('GamesManagementTable', () => {
 
     await waitFor(() => {
       expect(screen.getByText('No games found.')).toBeInTheDocument();
+    });
+  });
+
+  it('Should load additional games when page scroll reaches bottom', async () => {
+    const page1 = Array.from({ length: 100 }, (_, i) => ({
+      game: { gameId: `${i + 1}`, title: `Game ${i + 1}`, barcode: undefined, isPlayToWin: false },
+      patron: undefined,
+    }));
+    const page2 = [
+      { game: { gameId: '101', title: 'Game 101', barcode: undefined, isPlayToWin: false }, patron: undefined },
+    ];
+
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: page1 })
+      .mockResolvedValueOnce({ games: page2 });
+
+    render(GamesManagementTable);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 100, offset: 0 })
+      );
+    });
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 100, offset: 100 })
+      );
+    });
+  });
+
+  it('Should not fetch more when result is less than PAGE_LIMIT', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({ games: mockGames.games });
+
+    render(GamesManagementTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+  });
+
+  it('Should reset offset and games on new search', async () => {
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: mockGames.games })
+      .mockResolvedValueOnce({ games: [] });
+
+    render(GamesManagementTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    const input = screen.getByPlaceholderText('Search games by title...');
+    await fireEvent.input(input, { target: { value: 'azul' } });
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'azul', offset: 0 })
+      );
     });
   });
 });

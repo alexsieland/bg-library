@@ -35,6 +35,18 @@ vi.mock('./ReturnModal.svelte', () => ({
   default: vi.fn(),
 }));
 
+function buildCheckedOutGames(count: number, startIndex: number = 0) {
+  return Array.from({ length: count }, (_, i) => {
+    const id = startIndex + i + 1;
+    return {
+      game: { gameId: `${id}`, title: `Game ${id}`, isPlayToWin: false },
+      patron: { patronId: `p${id}`, name: `Patron ${id}` },
+      transactionId: `t${id}`,
+      checkedOutAt: '2026-01-31T12:00:00Z',
+    };
+  });
+}
+
 const mockCheckedOutGames = {
   games: [
     {
@@ -69,6 +81,11 @@ describe('CheckInTable', () => {
     vi.mocked(isBarcodeEnabled).mockReturnValue(false);
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 2000,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 });
   });
 
   it('Should fetch checked out games on mount', async () => {
@@ -159,6 +176,62 @@ describe('CheckInTable', () => {
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
       expect(screen.getByText('P2W')).toBeInTheDocument();
+    });
+  });
+
+  it('Should load additional games when page scroll reaches bottom', async () => {
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: buildCheckedOutGames(100, 0) })
+      .mockResolvedValueOnce({ games: buildCheckedOutGames(2, 100) });
+
+    render(CheckInTable);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ checkedOut: true, limit: 100, offset: 0 })
+      );
+    });
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ checkedOut: true, limit: 100, offset: 100 })
+      );
+    });
+  });
+
+  it('Should not fetch more when result is less than PAGE_LIMIT', async () => {
+    vi.mocked(apiClient.listGames).mockResolvedValueOnce({ games: buildCheckedOutGames(5, 0) });
+
+    render(CheckInTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 950 });
+    await fireEvent.scroll(window);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+  });
+
+  it('Should reset offset and games on new search', async () => {
+    vi.mocked(apiClient.listGames)
+      .mockResolvedValueOnce({ games: buildCheckedOutGames(100, 0) })
+      .mockResolvedValueOnce({ games: buildCheckedOutGames(2, 0) });
+
+    render(CheckInTable);
+
+    await waitFor(() => expect(apiClient.listGames).toHaveBeenCalledTimes(1));
+
+    const input = screen.getByPlaceholderText('Search checked out games...');
+    await fireEvent.input(input, { target: { value: 'catan' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(apiClient.listGames).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'catan', checkedOut: true, offset: 0 })
+      );
     });
   });
 });
