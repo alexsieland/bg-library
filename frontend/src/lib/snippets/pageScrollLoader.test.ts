@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { createPageScrollHandler } from './pageScrollLoader';
 
 function setupScrollEnv({
@@ -19,10 +19,10 @@ function setupScrollEnv({
 }
 
 describe('createPageScrollHandler', () => {
-  let loadMore: ReturnType<typeof vi.fn>;
+  let loadMore: Mock<() => void>;
 
   beforeEach(() => {
-    loadMore = vi.fn();
+    loadMore = vi.fn<() => void>();
   });
 
   it('Should call loadMore when scrolled within threshold of the bottom', () => {
